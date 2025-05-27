@@ -1,8 +1,8 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { 
-  FlaskConical, 
-  Plus, 
-  Target, 
+import {
+  FlaskConical,
+  Plus,
+  Target,
   TrendingUp,
   BarChart3,
   Clock,
@@ -17,7 +17,7 @@ import {
   Save
 } from 'lucide-react';
 import { kpiDefinitions } from '../utils/kpiDefinitions';
-import { translations } from '../utils/translations';
+// Removed: import { translations } from '../utils/translations';
 import { useKPIData } from '../hook/useKPIData';
 import { KPICard } from '../components/KPICard';
 import { KPIForm } from '../components/KPIForm';
@@ -26,8 +26,8 @@ import { AppContext } from '../context/AppContext';
 
 // Improved R&D KPI Selector Component
 const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
-  const { language } = useContext(AppContext);
-  const t = translations[language];
+  // Removed: const { language } = useContext(AppContext);
+  // Removed: const t = translations[language];
   const [selectedKPI, setSelectedKPI] = useState('');
 
   const handleSubmit = () => {
@@ -45,7 +45,7 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
     <div className={`rounded-lg border shadow-xl max-h-[85vh] overflow-y-auto ${
       isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
     }`}>
-      
+
       {/* Header */}
       <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         <div className="flex items-center justify-between">
@@ -57,14 +57,14 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
             </div>
             <div>
               <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {t.selectRndKpi || 'Select R&D KPI'}
+                {'Sélectionner un KPI R&D'}
               </h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {t.selectRndKpiDescription || 'Choose the R&D KPI to update'}
+                {'Choisissez le KPI R&D à mettre à jour'}
               </p>
             </div>
           </div>
-          
+
           <button
             onClick={onCancel}
             className={`p-2 rounded-lg transition-colors ${
@@ -80,13 +80,13 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
         {/* Left Side - KPI List */}
         <div className={`flex-1 p-6 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="space-y-4">
-            
+
             {departmentKPIs.length > 0 ? (
               <div className="space-y-3">
                 <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  Available KPIs ({departmentKPIs.length})
+                  KPIs disponibles ({departmentKPIs.length})
                 </h4>
-                
+
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {departmentKPIs.map((kpi, index) => (
                     <button
@@ -94,8 +94,8 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                       onClick={() => setSelectedKPI(kpi.id)}
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedKPI === kpi.id
-                          ? isDark 
-                            ? 'border-blue-500 bg-blue-950/20' 
+                          ? isDark
+                            ? 'border-blue-500 bg-blue-950/20'
                             : 'border-blue-500 bg-blue-50'
                           : isDark
                             ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
@@ -115,25 +115,25 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                           </div>
                           <div className="flex-1">
                             <h4 className={`text-sm font-medium mb-1 ${
-                              selectedKPI === kpi.id 
+                              selectedKPI === kpi.id
                                 ? isDark ? 'text-blue-300' : 'text-blue-700'
                                 : isDark ? 'text-slate-200' : 'text-slate-900'
                             }`}>
-                              {kpi.name?.[language] || kpi.name?.en}
+                              {kpi.name?.fr || kpi.name?.en}
                             </h4>
                             <p className={`text-xs mb-2 ${
-                              selectedKPI === kpi.id 
+                              selectedKPI === kpi.id
                                 ? isDark ? 'text-blue-400' : 'text-blue-600'
                                 : isDark ? 'text-slate-400' : 'text-slate-600'
                             }`}>
-                              {kpi.description?.[language] || kpi.description?.en}
+                              {kpi.description?.fr || kpi.description?.en}
                             </p>
                             <span className={`inline-block px-2 py-1 rounded text-xs ${
                               selectedKPI === kpi.id
                                 ? isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'
                                 : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                             }`}>
-                              Target: {kpi.target}{kpi.unit}
+                              Cible : {kpi.target}{kpi.unit}
                             </span>
                           </div>
                         </div>
@@ -151,10 +151,10 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                   <FlaskConical className={`w-8 h-8 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                 </div>
                 <p className={`text-base font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t.noRndKpisConfigured || 'No R&D KPIs configured'}
+                  {'Aucun KPI R&D configuré'}
                 </p>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Configure KPIs to start tracking
+                  Configurez les KPIs pour commencer le suivi
                 </p>
               </div>
             )}
@@ -168,7 +168,7 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
               <div className="space-y-6">
                 <div>
                   <h4 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Selected KPI
+                    KPI Sélectionné
                   </h4>
                   <div className={`p-5 rounded-lg border ${
                     isDark ? 'border-slate-600 bg-slate-800/50' : 'border-slate-200 bg-slate-50'
@@ -181,21 +181,21 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                       </div>
                       <div className="flex-1">
                         <h5 className={`text-base font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {selectedKPIData.name?.[language] || selectedKPIData.name?.en}
+                          {selectedKPIData.name?.fr || selectedKPIData.name?.en}
                         </h5>
                         <p className={`text-sm mb-3 leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {selectedKPIData.description?.[language] || selectedKPIData.description?.en}
+                          {selectedKPIData.description?.fr || selectedKPIData.description?.en}
                         </p>
                         <div className="flex items-center space-x-3">
                           <span className={`px-3 py-1 rounded text-sm ${
                             isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
                           }`}>
-                            Target: {selectedKPIData.target}{selectedKPIData.unit}
+                            Cible : {selectedKPIData.target}{selectedKPIData.unit}
                           </span>
                           <span className={`px-3 py-1 rounded text-sm ${
                             isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
                           }`}>
-                            Type: {selectedKPIData.type}
+                            Type : {selectedKPIData.type}
                           </span>
                         </div>
                       </div>
@@ -210,10 +210,10 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                     <CheckCircle className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                     <div>
                       <h5 className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                        Ready to update
+                        Prêt à mettre à jour
                       </h5>
                       <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Click continue to start entering new data for this KPI.
+                        Cliquez sur Continuer pour commencer à saisir de nouvelles données pour ce KPI.
                       </p>
                     </div>
                   </div>
@@ -226,10 +226,10 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                     <Target className={`w-10 h-10 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                   </div>
                   <h4 className={`text-lg font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Select a KPI
+                    Sélectionner un KPI
                   </h4>
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Choose a KPI from the list to see details and continue
+                    Choisissez un KPI dans la liste pour afficher les détails et continuer.
                   </p>
                 </div>
               </div>
@@ -249,15 +249,15 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                 : 'text-slate-700 hover:bg-slate-100'
             }`}
           >
-            {t.cancel}
+            {'Annuler'}
           </button>
-          
+
           {selectedKPI && (
             <button
               onClick={handleSubmit}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
             >
-              {t.continue || 'Continue'}
+              {'Continuer'}
             </button>
           )}
         </div>
@@ -266,15 +266,24 @@ const RnDKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
   );
 };
 
+// French display names for KPI statuses
+const kpiStatusDisplayFr = {
+  'excellent': 'Excellent',
+  'good': 'Bon',
+  'fair': 'Passable',
+  'needs-attention': 'Attention Requise',
+  'no-data': 'Aucune Donnée'
+};
+
 // Main R&D Page Component
 export const RnDPage = () => {
-  const { isDark, language } = useContext(AppContext);
-  const t = translations[language];
-  
+  const { isDark } = useContext(AppContext); // Removed language
+  // Removed: const t = translations[language];
+
   // UI State
   const [showKPIForm, setShowKPIForm] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState(null);
-  
+
   // KPI Data Hook with proper state management
   const {
     kpiData,
@@ -286,17 +295,17 @@ export const RnDPage = () => {
     getKPITrend,
     isLoading
   } = useKPIData();
-  
+
   // Department configuration
   const departmentId = 'rnd';
   const department = kpiDefinitions[departmentId];
   const departmentKPIs = department?.kpis || [];
-  
+
   // Get department summary with live data
   const departmentSummary = useMemo(() => {
     return getDepartmentSummary(departmentId);
   }, [getDepartmentSummary, departmentId, kpiData]); // Depend on kpiData to trigger updates
-  
+
   // Handle KPI operations
   const handleEditKPI = (kpi) => {
     setSelectedKPI(kpi);
@@ -314,21 +323,16 @@ export const RnDPage = () => {
 
   const handleSaveKPI = async (departmentId, kpiId, value, notes) => {
     try {
-      // Ensure the data is saved to localStorage
       await updateKPIValue(departmentId, kpiId, value, notes);
-      
-      // Add a small delay to ensure localStorage write completes
       setTimeout(() => {
-        console.log('KPI saved successfully:', { departmentId, kpiId, value, notes });
-        console.log('Current localStorage data:', localStorage.getItem('hydrachim_kpi_data'));
+        console.log('KPI sauvegardé avec succès :', { departmentId, kpiId, value, notes });
+        console.log('Données localStorage actuelles :', localStorage.getItem('hydrachim_kpi_data'));
       }, 100);
-      
       setShowKPIForm(false);
       setSelectedKPI(null);
     } catch (error) {
-      console.error('Error saving KPI:', error);
-      // Show error to user
-      alert('Failed to save KPI data. Please try again.');
+      console.error('Erreur lors de la sauvegarde du KPI :', error);
+      alert('Échec de la sauvegarde des données KPI. Veuillez réessayer.');
     }
   };
 
@@ -341,36 +345,36 @@ export const RnDPage = () => {
   const getStats = () => {
     if (!departmentSummary?.kpis) {
       return [
-        { title: t.kpisTracked || 'KPIs Tracked', value: '0/0', change: 0, changeText: 'active', icon: Target, color: 'blue' },
-        { title: t.performance || 'Performance', value: '0%', change: 0, changeText: 'efficiency', icon: TrendingUp, color: 'emerald' },
-        { title: t.excellent || 'Excellent', value: '0', change: 0, changeText: 'KPIs', icon: CheckCircle, color: 'green' },
-        { title: t.needsAttention || 'Attention', value: '0', change: 0, changeText: 'alerts', icon: AlertTriangle, color: 'gray' }
+        { title: 'KPIs Suivis', value: '0/0', change: 0, changeText: 'actifs', icon: Target, color: 'blue' },
+        { title: 'Performance', value: '0%', change: 0, changeText: 'efficacité', icon: TrendingUp, color: 'emerald' },
+        { title: 'Excellent', value: '0', change: 0, changeText: 'KPIs', icon: CheckCircle, color: 'green' },
+        { title: 'Attention Requise', value: '0', change: 0, changeText: 'alertes', icon: AlertTriangle, color: 'gray' }
       ];
     }
 
     const kpisWithData = departmentSummary.kpis.filter(kpi => kpi.latestValue) || [];
     const excellentKpis = kpisWithData.filter(kpi => kpi.status === 'excellent');
     const needsAttentionKpis = kpisWithData.filter(kpi => kpi.status === 'needs-attention');
-    
+
     return [
       {
-        title: t.kpisTracked || 'KPIs Tracked',
+        title: 'KPIs Suivis',
         value: `${kpisWithData.length}/${departmentSummary.kpis.length}`,
         change: kpisWithData.length,
-        changeText: 'active',
+        changeText: 'actifs',
         icon: Target,
         color: 'blue'
       },
       {
-        title: t.performance || 'Performance',
+        title: 'Performance',
         value: `${departmentSummary.efficiency || 0}%`,
         change: departmentSummary.efficiency || 0,
-        changeText: 'efficiency',
+        changeText: 'efficacité',
         icon: TrendingUp,
         color: 'emerald'
       },
       {
-        title: t.excellent || 'Excellent',
+        title: 'Excellent',
         value: excellentKpis.length.toString(),
         change: excellentKpis.length,
         changeText: 'KPIs',
@@ -378,10 +382,10 @@ export const RnDPage = () => {
         color: 'green'
       },
       {
-        title: t.needsAttention || 'Attention',
+        title: 'Attention Requise',
         value: needsAttentionKpis.length.toString(),
         change: needsAttentionKpis.length,
-        changeText: 'alerts',
+        changeText: 'alertes',
         icon: AlertTriangle,
         color: 'gray'
       }
@@ -392,56 +396,53 @@ export const RnDPage = () => {
   const generateChartData = () => {
     const trendData = [];
     const categoryData = [];
-    
+
     if (!departmentKPIs.length) return { trendData, categoryData };
-    
+
     departmentKPIs.forEach(kpi => {
       const history = getKPIHistory(departmentId, kpi.id);
       if (history.length > 0) {
-        // Add trend data (last 10 entries, chronological order)
         const trendEntries = getKPITrend(departmentId, kpi.id, 10);
         trendData.push(...trendEntries.map(entry => ({
           ...entry,
-          kpi: kpi.name[language] || kpi.name.en,
+          kpi: kpi.name?.fr || kpi.name?.en, // Use French name
           target: kpi.target
         })));
-        
-        // Add category data (latest values vs targets)
-        const latest = history[0]; // Latest entry (first in array due to structure)
+
+        const latest = history[0];
         categoryData.push({
-          name: kpi.name[language] || kpi.name.en,
+          name: kpi.name?.fr || kpi.name?.en, // Use French name
           value: latest.value,
           target: kpi.target,
           progress: (latest.value / kpi.target) * 100
         });
       }
     });
-    
+
     return { trendData, categoryData };
   };
 
   const { trendData, categoryData } = useMemo(() => generateChartData(), [
-    departmentKPIs, 
-    getKPIHistory, 
-    getKPITrend, 
-    departmentId, 
-    language,
-    kpiData // Add kpiData as dependency to regenerate when data changes
+    departmentKPIs,
+    getKPIHistory,
+    getKPITrend,
+    departmentId,
+    // language, // Removed language
+    kpiData
   ]);
 
   const stats = getStats();
-  const deptName = department?.name?.[language] || department?.name?.en || 'R&D Laboratory';
+  const deptName = department?.name?.fr || department?.name?.en || 'Laboratoire R&D';
 
-  // Debug localStorage on component mount
   React.useEffect(() => {
-    console.log('RnD Page mounted. Current localStorage data:', localStorage.getItem('hydrachim_kpi_data'));
-    console.log('Current kpiData state:', kpiData);
-    console.log('Department summary:', departmentSummary);
+    console.log('Page RnD montée. Données localStorage actuelles :', localStorage.getItem('hydrachim_kpi_data'));
+    console.log('État kpiData actuel :', kpiData);
+    console.log('Résumé du département :', departmentSummary);
   }, [kpiData, departmentSummary]);
 
   return (
     <div className={`space-y-8 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
-      
+
       {/* KPI Form Modal */}
       {showKPIForm && (
         <>
@@ -455,7 +456,7 @@ export const RnDPage = () => {
           ) : (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="w-full max-w-6xl max-h-[90vh]">
-                <RnDKPISelector 
+                <RnDKPISelector
                   onSelect={(kpi) => setSelectedKPI(kpi)}
                   onCancel={handleCancelKPI}
                   isDark={isDark}
@@ -478,16 +479,16 @@ export const RnDPage = () => {
               {deptName}
             </h1>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.rndDescription || 'Innovation, efficiency, and quality assurance'}
+              {'Innovation, efficacité et assurance qualité'}
             </p>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => handleAddData()}
           className="flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl"
         >
           <Plus className="w-4 h-4" />
-          <span>{t.addRndData || 'Add R&D Data'}</span>
+          <span>{'Ajouter des Données R&D'}</span>
         </button>
       </div>
 
@@ -498,8 +499,8 @@ export const RnDPage = () => {
             <div
               key={index}
               className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-                isDark 
-                  ? 'bg-slate-800/60 border-slate-700/50' 
+                isDark
+                  ? 'bg-slate-800/60 border-slate-700/50'
                   : 'bg-white border-slate-200/80 shadow-sm'
               }`}
             >
@@ -509,7 +510,7 @@ export const RnDPage = () => {
                 stat.color === 'green' ? (isDark ? 'from-green-500/10 to-emerald-500/5' : 'from-green-50 to-emerald-50/50') :
                 (isDark ? 'from-slate-500/10 to-slate-600/5' : 'from-slate-50 to-slate-100/50')
               } opacity-50`} />
-              
+
               <div className="relative">
                 <div className="flex items-start justify-between mb-4">
                   <div className={`p-3 rounded-xl bg-gradient-to-br ${
@@ -522,7 +523,7 @@ export const RnDPage = () => {
                   </div>
                   <ArrowUpRight className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                 </div>
-                
+
                 <div>
                   <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {stat.title}
@@ -531,7 +532,7 @@ export const RnDPage = () => {
                     stat.color === 'blue' ? 'text-blue-600' :
                     stat.color === 'emerald' ? 'text-emerald-600' :
                     stat.color === 'green' ? 'text-green-600' :
-                    'text-slate-600'
+                    isDark ? 'text-slate-200' : 'text-slate-700' // Adjusted for gray color
                   }`}>
                     {stat.value}
                   </p>
@@ -557,21 +558,21 @@ export const RnDPage = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.keyPerformanceIndicators || 'Key Performance Indicators'}
+              {'Indicateurs Clés de Performance'}
             </h3>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentSummary?.kpis?.length || 0} {t.completed || 'completed'} • Click any card to add data quickly
+              {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentSummary?.kpis?.length || 0} {'complétés'} • Cliquez sur n'importe quelle carte pour ajouter rapidement des données
             </p>
           </div>
-          <button 
+          <button
             onClick={() => handleAddData()}
             className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
-            <span>Select KPI</span>
+            <span>Sélectionner un KPI</span>
           </button>
         </div>
-        
+
         {departmentSummary?.kpis && departmentSummary.kpis.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {departmentSummary.kpis.map((kpi) => {
@@ -591,7 +592,9 @@ export const RnDPage = () => {
               };
 
               const progress = getProgress();
-              const kpiName = kpi.name?.[language] || kpi.name?.en;
+              const kpiName = kpi.name?.fr || kpi.name?.en;
+              const statusText = kpiStatusDisplayFr[kpi.status] || (kpi.status ? kpi.status.charAt(0).toUpperCase() + kpi.status.slice(1) : 'Indéfini');
+
 
               return (
                 <div
@@ -601,18 +604,17 @@ export const RnDPage = () => {
                     isDark ? 'bg-slate-800/60 border-slate-700/50 hover:border-indigo-500/50' : 'bg-white border-slate-200/80 hover:border-indigo-500/50 shadow-sm'
                   }`}
                 >
-                  {/* Header with quick action indicator */}
                   <div className="flex items-center justify-between mb-4">
                     <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(kpi.status)}`}>
-                      {kpi.status === 'no-data' ? 'No Data' : kpi.status.charAt(0).toUpperCase() + kpi.status.slice(1)}
+                      {statusText}
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                        isDark 
-                          ? 'bg-slate-700 text-slate-300 group-hover:bg-indigo-900/30 group-hover:text-indigo-300' 
+                        isDark
+                          ? 'bg-slate-700 text-slate-300 group-hover:bg-indigo-900/30 group-hover:text-indigo-300'
                           : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600'
                       }`}>
-                        {kpi.latestValue ? 'Update' : 'Add Data'}
+                        {kpi.latestValue ? 'Mettre à jour' : 'Ajouter des données'}
                       </div>
                       <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
                         isDark ? 'text-indigo-400' : 'text-indigo-500'
@@ -622,17 +624,15 @@ export const RnDPage = () => {
                     </div>
                   </div>
 
-                  {/* KPI Title and Target */}
                   <div className="mb-4">
                     <h4 className={`text-lg font-semibold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       {kpiName}
                     </h4>
                     <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Target: {kpi.target}{kpi.unit}
+                      Cible : {kpi.target}{kpi.unit}
                     </p>
                   </div>
-                  
-                  {/* Current Value or Add Data Prompt */}
+
                   {kpi.latestValue ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -643,18 +643,18 @@ export const RnDPage = () => {
                           {progress.toFixed(0)}%
                         </span>
                       </div>
-                      
+
                       <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                        <div 
+                        <div
                           className={`h-2 rounded-full transition-all duration-500 ${
-                            progress >= 90 ? 'bg-emerald-500' : 
-                            progress >= 70 ? 'bg-blue-500' : 
+                            progress >= 90 ? 'bg-emerald-500' :
+                            progress >= 70 ? 'bg-blue-500' :
                             progress >= 50 ? 'bg-amber-500' : 'bg-red-500'
                           }`}
                           style={{ width: `${Math.min(progress, 100)}%` }}
                         />
                       </div>
-                      
+
                       {kpi.latestValue.notes && (
                         <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                           "{kpi.latestValue.notes}"
@@ -662,7 +662,7 @@ export const RnDPage = () => {
                       )}
 
                       <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                        Last updated: {new Date(kpi.latestValue.date).toLocaleDateString()}
+                        Dernière mise à jour : {new Date(kpi.latestValue.date).toLocaleDateString('fr-FR')}
                       </div>
                     </div>
                   ) : (
@@ -677,7 +677,7 @@ export const RnDPage = () => {
                       <p className={`text-sm font-medium ${
                         isDark ? 'text-slate-300 group-hover:text-indigo-300' : 'text-slate-600 group-hover:text-indigo-600'
                       } transition-colors`}>
-                        Click to add first data point
+                        Cliquez pour ajouter le premier point de données
                       </p>
                     </div>
                   )}
@@ -691,16 +691,16 @@ export const RnDPage = () => {
               <FlaskConical className="w-8 h-8 text-blue-500" />
             </div>
             <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.noDataAvailable_rnd || 'No Data Available'}
+              {'Aucune Donnée Disponible'}
             </h4>
             <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.startAddingKpiData || 'Start adding KPI data for your R&D laboratory to track innovation and performance'}
+              {'Commencez à ajouter des données KPI pour votre laboratoire R&D afin de suivre l\'innovation et la performance'}
             </p>
-            <button 
+            <button
               onClick={() => handleAddData()}
               className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all font-medium shadow-lg hover:shadow-xl"
             >
-              {t.addFirstKpi || 'Add First KPI'}
+              {'Ajouter le Premier KPI'}
             </button>
           </div>
         )}
@@ -710,7 +710,7 @@ export const RnDPage = () => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <ChartDisplay
           data={trendData}
-          title={t.trendAnalysis || 'KPI Trend Analysis'}
+          title={'Analyse des Tendances des KPIs'}
           height={300}
           dataKey="value"
           xAxisKey="date"
@@ -719,7 +719,7 @@ export const RnDPage = () => {
         />
         <ChartDisplay
           data={categoryData}
-          title={t.kpisByCategory || 'KPI Performance vs Target'}
+          title={'Performance des KPIs par rapport à la Cible'}
           type="bar"
           height={300}
           dataKey="progress"

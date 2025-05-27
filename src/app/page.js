@@ -1,19 +1,19 @@
 'use client'
 import React, { useState, createContext, useContext, useMemo, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  FlaskConical, 
-  ShieldCheck, 
-  Factory, 
-  Package, 
-  Users, 
+import {
+  LayoutDashboard,
+  FlaskConical,
+  ShieldCheck,
+  Factory,
+  Package,
+  Users,
   Menu,
   X,
   Bell,
   Settings,
   Sun,
   Moon,
-  Globe,
+  // Globe, // Globe icon no longer needed for LanguageSwitch
   User,
   Eye,
   EyeOff,
@@ -26,20 +26,20 @@ import { DashboardPage } from './components/Dashboard';
 import { TeamPage } from './components/Team';
 import { ProductionPage } from './components/Production';
 import { QualityPage } from './components/Quality';
-import { RnDPage } from './components/RnD'; // FIXED: Changed to named import
+import { RnDPage } from './components/RnD';
 import { WarehousesPage } from './components/Warehouses';
 
 // Import utilities and context
-import { kpiDefinitions } from './utils/kpiDefinitions';
-import { translations } from './utils/translations';
+import { kpiDefinitions } from './utils/kpiDefinitions'; // Assuming this is still needed for KPI data
+// import { translations } from './utils/translations'; // REMOVED
 import { useKPIData } from './hook/useKPIData';
 
 // Create Context
 const AppContext = createContext({
   isDark: false,
   setIsDark: () => {},
-  language: 'en',
-  setLanguage: () => {},
+  // language: 'en', // REMOVED
+  // setLanguage: () => {}, // REMOVED
   user: null,
   isAuthenticated: false,
   login: () => {},
@@ -61,7 +61,7 @@ const useAuth = () => {
         setUser(userData);
         setIsAuthenticated(true);
       } catch (err) {
-        console.error('Error parsing stored user:', err);
+        console.error('Erreur lors de l\'analyse de l\'utilisateur stocké:', err);
         localStorage.removeItem('hydrachim_user');
       }
     }
@@ -85,7 +85,7 @@ const useAuth = () => {
     try {
       const users = JSON.parse(localStorage.getItem('hydrachim_users') || '[]');
       const foundUser = users.find(u => u.username === username && u.password === password);
-      
+
       if (foundUser) {
         const userData = {
           username: foundUser.username,
@@ -98,26 +98,26 @@ const useAuth = () => {
         return { success: true, user: userData };
       }
     } catch (err) {
-      console.error('Error reading users:', err);
+      console.error('Erreur de lecture des utilisateurs:', err);
     }
 
-    return { success: false, error: 'Invalid credentials' };
+    return { success: false, error: 'Identifiants invalides' };
   };
 
   const signup = (username, password) => {
     try {
       // Get existing users
       const users = JSON.parse(localStorage.getItem('hydrachim_users') || '[]');
-      
+
       // Check if username already exists (including admin)
       if (username === 'rihemjaziri24' || users.some(u => u.username === username)) {
-        return { success: false, error: 'Username already exists' };
+        return { success: false, error: 'Ce nom d\'utilisateur existe déjà' };
       }
 
       // Create new user
       const newUser = {
         username,
-        password,
+        password, // In a real app, hash the password
         role: 'user',
         createdAt: new Date().toISOString()
       };
@@ -128,8 +128,8 @@ const useAuth = () => {
 
       return { success: true };
     } catch (err) {
-      console.error('Error creating user:', err);
-      return { success: false, error: 'Failed to create user' };
+      console.error('Erreur lors de la création de l\'utilisateur:', err);
+      return { success: false, error: 'Échec de la création de l\'utilisateur' };
     }
   };
 
@@ -148,10 +148,9 @@ const useAuth = () => {
   };
 };
 
-// Login Component - FIXED
+// Login Component
 const AuthPage = () => {
-  const { isDark, language, login } = useContext(AppContext);
-  const t = translations[language];
+  const { isDark, login } = useContext(AppContext);
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -159,7 +158,7 @@ const AuthPage = () => {
 
   const handleSubmit = async () => {
     if (!formData.username || !formData.password) {
-      setError('Please fill in all fields');
+      setError('Veuillez remplir tous les champs');
       return;
     }
 
@@ -169,10 +168,11 @@ const AuthPage = () => {
     try {
       const result = login(formData.username, formData.password);
       if (!result.success) {
-        setError(t.loginFailed);
+        setError(result.error || 'Échec de la connexion. Vérifiez vos identifiants.');
       }
+      // Successful login is handled by AppContext redirecting
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('Une erreur s\'est produite. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -188,18 +188,16 @@ const AuthPage = () => {
     <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
       isDark ? 'bg-slate-900' : 'bg-slate-50'
     }`}>
-      {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute inset-0 ${
-          isDark 
-            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+          isDark
+            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
             : 'bg-gradient-to-br from-slate-50 via-white to-slate-100'
         }`} />
         <div className="absolute inset-0 bg-grid-pattern opacity-5" />
       </div>
 
       <div className="relative w-full max-w-md px-6">
-        {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
             <span className="text-white font-bold text-2xl">H</span>
@@ -208,38 +206,34 @@ const AuthPage = () => {
             Hydrachim
           </h1>
           <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            KPI Dashboard System
+            Système de Tableau de Bord KPI
           </p>
         </div>
 
-        {/* Auth Card */}
         <div className={`relative p-8 rounded-2xl border backdrop-blur-sm shadow-xl ${
-          isDark 
-            ? 'bg-slate-800/90 border-slate-700/50' 
+          isDark
+            ? 'bg-slate-800/90 border-slate-700/50'
             : 'bg-white/90 border-slate-200/50'
         }`}>
           <div className="text-center mb-6">
             <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.signInToAccount}
+              Connectez-vous à votre compte
             </h2>
             <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.welcomeBack}
+              Content de vous revoir ! Veuillez saisir vos identifiants.
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
 
-          {/* Form */}
           <div className="space-y-4">
-            {/* Username Field */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.username}
+                Nom d'utilisateur
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -251,19 +245,18 @@ const AuthPage = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                   onKeyPress={handleKeyPress}
                   className={`w-full pl-10 pr-3 py-3 rounded-lg border transition-colors ${
-                    isDark 
-                      ? 'bg-slate-900/50 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500' 
+                    isDark
+                      ? 'bg-slate-900/50 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500'
                       : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:border-indigo-500'
                   } focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
-                  placeholder="Enter your username"
+                  placeholder="Entrez votre nom d'utilisateur"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
             <div>
               <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {t.password}
+                Mot de passe
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -275,11 +268,11 @@ const AuthPage = () => {
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   onKeyPress={handleKeyPress}
                   className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors ${
-                    isDark 
-                      ? 'bg-slate-900/50 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500' 
+                    isDark
+                      ? 'bg-slate-900/50 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500'
                       : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:border-indigo-500'
                   } focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
-                  placeholder="Enter your password"
+                  placeholder="Entrez votre mot de passe"
                 />
                 <button
                   type="button"
@@ -293,7 +286,6 @@ const AuthPage = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               onClick={handleSubmit}
               disabled={loading}
@@ -306,10 +298,10 @@ const AuthPage = () => {
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Loading...</span>
+                  <span>Chargement...</span>
                 </div>
               ) : (
-                t.login
+                'Connexion'
               )}
             </button>
           </div>
@@ -319,10 +311,9 @@ const AuthPage = () => {
   );
 };
 
-// User Management Component (Admin Only) - FIXED
+// User Management Component (Admin Only)
 const UserManagement = ({ onClose }) => {
-  const { isDark, language, signup } = useContext(AppContext);
-  const t = translations[language];
+  const { isDark, signup } = useContext(AppContext);
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -330,18 +321,17 @@ const UserManagement = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
 
-  // Load users on component mount
   useEffect(() => {
     const loadUsers = () => {
       try {
         const storedUsers = JSON.parse(localStorage.getItem('hydrachim_users') || '[]');
         setUsers(storedUsers);
       } catch (err) {
-        console.error('Error loading users from localStorage:', err);
+        console.error('Erreur de chargement des utilisateurs depuis localStorage:', err);
         setUsers([]);
       }
     };
-    
+
     loadUsers();
     const syncInterval = setInterval(loadUsers, 5000);
     return () => clearInterval(syncInterval);
@@ -349,7 +339,7 @@ const UserManagement = ({ onClose }) => {
 
   const handleCreateUser = async () => {
     if (!formData.username || !formData.password) {
-      setError(t.fillAllFields);
+      setError('Veuillez remplir tous les champs.');
       return;
     }
 
@@ -360,32 +350,32 @@ const UserManagement = ({ onClose }) => {
     try {
       const result = signup(formData.username, formData.password);
       if (result.success) {
-        setSuccess(t.userCreatedSuccess);
+        setSuccess('Utilisateur créé avec succès.');
         setFormData({ username: '', password: '' });
         const updatedUsers = JSON.parse(localStorage.getItem('hydrachim_users') || '[]');
         setUsers(updatedUsers);
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError(result.error === 'Username already exists' ? t.usernameExists : result.error);
+        setError(result.error || 'Une erreur s\'est produite.');
       }
     } catch (err) {
-      setError(t.errorOccurred);
+      setError('Une erreur s\'est produite lors de la création.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteUser = (username) => {
-    if (window.confirm(`${t.confirmDeleteUser} "${username}"?`)) {
+    if (window.confirm(`Confirmer la suppression de l'utilisateur "${username}" ?`)) {
       try {
         const currentUsers = JSON.parse(localStorage.getItem('hydrachim_users') || '[]');
         const updatedUsers = currentUsers.filter(u => u.username !== username);
         localStorage.setItem('hydrachim_users', JSON.stringify(updatedUsers));
         setUsers(updatedUsers);
-        setSuccess(t.userDeletedSuccess);
+        setSuccess('Utilisateur supprimé avec succès.');
         setTimeout(() => setSuccess(''), 3000);
       } catch (err) {
-        setError(t.failedDeleteUser);
+        setError('Échec de la suppression de l\'utilisateur.');
       }
     }
   };
@@ -401,7 +391,6 @@ const UserManagement = ({ onClose }) => {
       <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-xl ${
         isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
       }`}>
-        {/* Header */}
         <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -412,10 +401,10 @@ const UserManagement = ({ onClose }) => {
               </div>
               <div>
                 <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {t.userManagement}
+                  Gestion des Utilisateurs
                 </h3>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {t.createManageUsers}
+                  Créer et gérer les comptes utilisateurs.
                 </p>
               </div>
             </div>
@@ -428,13 +417,11 @@ const UserManagement = ({ onClose }) => {
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Left Side - Create User */}
           <div className={`flex-1 p-6 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
             <h4 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.createNewUser}
+              Créer un Nouvel Utilisateur
             </h4>
 
-            {/* Messages */}
             {error && (
               <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                 <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -447,11 +434,10 @@ const UserManagement = ({ onClose }) => {
               </div>
             )}
 
-            {/* Create User Form */}
             <div className="space-y-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t.username}
+                  Nom d'utilisateur
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -463,18 +449,18 @@ const UserManagement = ({ onClose }) => {
                     onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                     onKeyPress={handleKeyPress}
                     className={`w-full pl-10 pr-3 py-3 rounded-lg border transition-colors ${
-                      isDark 
-                        ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500' 
+                      isDark
+                        ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500'
                         : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:border-indigo-500'
                     } focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
-                    placeholder={t.enterUsername}
+                    placeholder="Entrez le nom d'utilisateur"
                   />
                 </div>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t.password}
+                  Mot de passe
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -486,11 +472,11 @@ const UserManagement = ({ onClose }) => {
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                     onKeyPress={handleKeyPress}
                     className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors ${
-                      isDark 
-                        ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500' 
+                      isDark
+                        ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400 focus:border-indigo-500'
                         : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:border-indigo-500'
                     } focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
-                    placeholder={t.enterPassword}
+                    placeholder="Entrez le mot de passe"
                   />
                   <button
                     type="button"
@@ -516,22 +502,20 @@ const UserManagement = ({ onClose }) => {
                 {loading ? (
                   <div className="flex items-center justify-center space-x-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>{t.creating}</span>
+                    <span>Création...</span>
                   </div>
                 ) : (
-                  t.createUser
+                  'Créer l\'Utilisateur'
                 )}
               </button>
             </div>
           </div>
 
-          {/* Right Side - Users List */}
           <div className="flex-1 p-6">
             <h4 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.existingUsers}
+              Utilisateurs Existants
             </h4>
 
-            {/* Admin User */}
             <div className={`p-4 rounded-lg border mb-3 ${
               isDark ? 'border-slate-600 bg-slate-800/50' : 'border-slate-200 bg-slate-50'
             }`}>
@@ -545,19 +529,18 @@ const UserManagement = ({ onClose }) => {
                       rihemjaziri24
                     </p>
                     <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {t.administratorSystem}
+                      Administrateur (Système)
                     </p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
                   isDark ? 'bg-yellow-900/20 text-yellow-400' : 'bg-yellow-100 text-yellow-800'
                 }`}>
-                  {t.admin}
+                  Admin
                 </span>
               </div>
             </div>
 
-            {/* Regular Users */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {users.length > 0 ? (
                 users.map((user) => (
@@ -574,7 +557,7 @@ const UserManagement = ({ onClose }) => {
                             {user.username}
                           </p>
                           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            {t.created}: {new Date(user.createdAt).toLocaleDateString()}
+                            Créé le: {new Date(user.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -582,7 +565,7 @@ const UserManagement = ({ onClose }) => {
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
                           isDark ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {t.user}
+                          Utilisateur
                         </span>
                         <button
                           onClick={() => handleDeleteUser(user.username)}
@@ -602,10 +585,10 @@ const UserManagement = ({ onClose }) => {
                     <Users className={`w-8 h-8 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                   </div>
                   <p className={`text-base font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {t.noUsersCreated}
+                    Aucun utilisateur n'a été créé.
                   </p>
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {t.createFirstUser}
+                    Créez votre premier utilisateur via le formulaire.
                   </p>
                 </div>
               )}
@@ -613,13 +596,12 @@ const UserManagement = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Footer */}
         <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
           <div className="flex justify-end">
             <button onClick={onClose} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
             }`}>
-              {t.close}
+              Fermer
             </button>
           </div>
         </div>
@@ -628,77 +610,50 @@ const UserManagement = ({ onClose }) => {
   );
 };
 
-// Language Switch Component
-const LanguageSwitch = () => {
-  const { language = 'en', setLanguage, isDark } = useContext(AppContext);
-     
-  return (
-    <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors ${
-      isDark 
-        ? 'bg-slate-800/50 hover:bg-slate-800'
-        : 'bg-slate-100 hover:bg-slate-200'
-    }`}>
-      <Globe className="w-3 h-3 text-indigo-500" />
-      <select
-        value={language}
-        onChange={(e) => setLanguage?.(e.target.value)}
-        className={`bg-transparent border-0 text-xs font-medium focus:outline-none cursor-pointer ${
-          isDark ? 'text-slate-200' : 'text-slate-700'
-        }`}
-      >
-        <option value="en" className={isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-700'}>
-          EN
-        </option>
-        <option value="fr" className={isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-700'}>
-          FR
-        </option>
-      </select>
-    </div>
-  );
-};
+// LanguageSwitch Component - REMOVED
+// const LanguageSwitch = () => { ... }
 
 // Layout Component
 const Layout = ({ children, currentPage, setCurrentPage }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
-  const { isDark = false, setIsDark, user, logout, language } = useContext(AppContext);
-  const t = translations[language];
+  const { isDark = false, setIsDark, user, logout } = useContext(AppContext);
 
   const navItems = [
-    { 
-      id: 'dashboard', 
-      icon: LayoutDashboard, 
-      label: 'Dashboard',
+    {
+      id: 'dashboard',
+      icon: LayoutDashboard,
+      label: 'Tableau de Bord',
       iconBg: 'bg-gradient-to-br from-indigo-600 to-purple-600'
     },
-    { 
-      id: 'rnd', 
-      icon: FlaskConical, 
-      label: 'R&D Innovation',
+    {
+      id: 'rnd',
+      icon: FlaskConical,
+      label: 'R&D et Innovation',
       iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600'
     },
-    { 
-      id: 'quality', 
-      icon: ShieldCheck, 
-      label: 'Quality Assurance',
+    {
+      id: 'quality',
+      icon: ShieldCheck,
+      label: 'Assurance Qualité',
       iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-600'
     },
-    { 
-      id: 'production', 
-      icon: Factory, 
+    {
+      id: 'production',
+      icon: Factory,
       label: 'Production',
       iconBg: 'bg-gradient-to-br from-orange-600 to-red-600'
     },
-    { 
-      id: 'warehouses', 
-      icon: Package, 
-      label: 'Warehouses',
+    {
+      id: 'warehouses',
+      icon: Package,
+      label: 'Entrepôts',
       iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600'
     },
-    { 
-      id: 'team', 
-      icon: Users, 
-      label: 'Team Management',
+    {
+      id: 'team',
+      icon: Users,
+      label: 'Gestion d\'Équipe',
       iconBg: 'bg-gradient-to-br from-pink-600 to-rose-600'
     }
   ];
@@ -707,13 +662,11 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
     <div className={`min-h-screen transition-colors duration-300 ${
       isDark ? 'bg-slate-900' : 'bg-slate-50'
     }`}>
-      
-      {/* User Management Modal */}
+
       {showUserManagement && user?.role === 'admin' && (
         <UserManagement onClose={() => setShowUserManagement(false)} />
       )}
-      
-      {/* Mobile Header */}
+
       <div className={`lg:hidden sticky top-0 z-50 backdrop-blur-sm border-b ${
         isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'
       }`}>
@@ -726,7 +679,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           >
             <Menu className="w-4 h-4" />
           </button>
-          
+
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-sm">H</span>
@@ -735,7 +688,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
               Hydrachim
             </h1>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button className={`p-2 rounded-lg transition-colors relative ${
               isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
@@ -745,7 +698,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                 <span className="text-xs font-bold text-white">3</span>
               </span>
             </button>
-            <button 
+            <button
               onClick={() => setIsDark?.(!isDark)}
               className={`p-2 rounded-lg transition-colors ${
                 isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
@@ -757,14 +710,12 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
         </div>
       </div>
 
-      {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-all duration-300 ease-in-out lg:translate-x-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } ${
         isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
       } border-r`}>
-        
-        {/* Sidebar Header */}
+
         <div className={`p-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -776,7 +727,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                   Hydrachim
                 </h1>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  KPI Dashboard
+                  Tableau de Bord KPI
                 </p>
               </div>
             </div>
@@ -791,7 +742,6 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         </div>
 
-        {/* User Info */}
         {user && (
           <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="flex items-center space-x-3">
@@ -805,14 +755,13 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                   {user.username}
                 </p>
                 <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {user.role === 'admin' ? 'Administrator' : 'User'}
+                  {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Navigation */}
         <nav className="p-4 flex-1">
           <div className="space-y-2">
             {navItems.map((item) => {
@@ -844,68 +793,62 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         </nav>
 
-        {/* Admin Controls */}
         {user?.role === 'admin' && (
           <div className="p-4 border-t border-slate-800 dark:border-slate-700">
             <button
               onClick={() => setShowUserManagement(true)}
               className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transition-all ${
-                isDark 
-                  ? 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/30 border border-yellow-800/30' 
+                isDark
+                  ? 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/30 border border-yellow-800/30'
                   : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border border-yellow-200'
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>{t.manageUsers}</span>
+              <span>Gérer les Utilisateurs</span>
             </button>
           </div>
         )}
 
-        {/* Logout Button */}
         <div className="p-4">
-          <button 
+          <button
             onClick={logout}
             className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transition-all ${
-              isDark 
-                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700' 
+              isDark
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
             }`}
           >
             <LogOut className="w-4 h-4" />
-            <span>{t.logout}</span>
+            <span>Déconnexion</span>
           </button>
         </div>
 
-        {/* Status Widget */}
         <div className="p-4">
           <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} border`}>
             <div className="flex items-center justify-between mb-2">
               <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                System Status
+                État du Système
               </span>
               <div className="flex items-center space-x-1">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-medium text-emerald-600">Online</span>
+                <span className="text-xs font-medium text-emerald-600">En Ligne</span>
               </div>
             </div>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              All systems operational
+              Tous les systèmes sont opérationnels.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Main Content */}
       <div className="lg:ml-64">
-        {/* Desktop Header */}
         <header className={`hidden lg:block sticky top-0 z-30 backdrop-blur-sm border-b ${
           isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'
         }`}>
@@ -919,10 +862,10 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                   <span className="text-xs font-bold text-white">3</span>
                 </span>
               </button>
-              
-              <LanguageSwitch />
-              
-              <button 
+
+              {/* LanguageSwitch removed from here */}
+
+              <button
                 onClick={() => setIsDark?.(!isDark)}
                 className={`p-2 rounded-lg transition-all ${
                   isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
@@ -930,7 +873,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
               >
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
-              
+
               <button className={`p-2 rounded-lg transition-all ${
                 isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-800'
               }`}>
@@ -940,7 +883,6 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="p-6 lg:p-8">
           {children}
         </main>
@@ -952,30 +894,27 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
 // Main App Component
 export default function HydrachimKPIApp() {
   const [isDark, setIsDark] = useState(false);
-  const [language, setLanguage] = useState('en');
+  // const [language, setLanguage] = useState('en'); // REMOVED
   const [currentPage, setCurrentPage] = useState('dashboard');
 
-  // Initialize auth and KPI data
   const auth = useAuth();
-  const kpiData = useKPIData();
+  const kpiData = useKPIData(); // Assuming this remains for actual KPI data
 
-  // Load preferences from localStorage
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('hydrachim_language');
+    // const savedLanguage = localStorage.getItem('hydrachim_language'); // REMOVED
     const savedDarkMode = localStorage.getItem('hydrachim_dark_mode');
-    
-    if (savedLanguage) {
-      setLanguage(savedLanguage);
-    }
+
+    // if (savedLanguage) { // REMOVED
+    //   setLanguage(savedLanguage); // REMOVED
+    // } // REMOVED
     if (savedDarkMode) {
       setIsDark(JSON.parse(savedDarkMode));
     }
   }, []);
 
-  // Save preferences
-  useEffect(() => {
-    localStorage.setItem('hydrachim_language', language);
-  }, [language]);
+  // useEffect(() => { // REMOVED
+  //   localStorage.setItem('hydrachim_language', language); // REMOVED
+  // }, [language]); // REMOVED
 
   useEffect(() => {
     localStorage.setItem('hydrachim_dark_mode', JSON.stringify(isDark));
@@ -984,19 +923,18 @@ export default function HydrachimKPIApp() {
   const contextValue = {
     isDark,
     setIsDark,
-    language,
-    setLanguage,
+    // language, // REMOVED
+    // setLanguage, // REMOVED
     ...auth,
     ...kpiData
   };
 
-  // Render the appropriate page component
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
         return <DashboardPage />;
       case 'rnd':
-  return <RnDPage />; // Make sure this matches the imported component name
+        return <RnDPage />;
       case 'quality':
         return <QualityPage />;
       case 'production':
