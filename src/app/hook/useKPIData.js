@@ -46,15 +46,15 @@ export const useKPIData = () => {
     }
   }, [kpiData, isInitialized]);
 
-  // FIXED: Enhanced updateKPIValue to handle team-specific data structures properly
+  // Enhanced updateKPIValue to handle team-specific data structures properly
   const updateKPIValue = useCallback((departmentId, kpiId, dataObject, notes = '') => {
     console.log('Updating KPI:', { departmentId, kpiId, dataObject, notes });
     setIsLoading(true);
     
-    // FIXED: Create a properly structured entry with the main value extracted
+    // Create a properly structured entry with the main value extracted
     const newEntry = {
       value: dataObject.value || 0, // Main KPI number value for calculations
-      data: dataObject, // Full data object including employees, targets, etc.
+      data: dataObject, // Full data object including products, formulas, etc.
       date: new Date().toISOString(),
       notes,
       id: Date.now()
@@ -97,7 +97,7 @@ export const useKPIData = () => {
     return kpiData[departmentId]?.[kpiId] || [];
   }, [kpiData]);
 
-  // FIXED: Enhanced KPI status calculation for team KPIs with proper data structure
+  // Enhanced KPI status calculation for different KPI types
   const getKPIStatus = useCallback((departmentId, kpiId) => {
     const latestEntry = getLatestKPIValue(departmentId, kpiId);
     if (!latestEntry || !latestEntry.data) return 'no-data';
@@ -105,8 +105,14 @@ export const useKPIData = () => {
     const kpiDefinition = kpiDefinitions[departmentId]?.kpis.find(k => k.id === kpiId);
     if (!kpiDefinition) return 'no-data';
 
-    // Handle team-specific KPI types
-    if (kpiDefinition.trackingType === 'attendance') {
+    // Handle different R&D KPI types
+    if (kpiId === 'product_quality_validation') {
+      return getProductQualityStatus(latestEntry, kpiDefinition);
+    } else if (kpiId === 'formulation_builder') {
+      return getFormulationStatus(latestEntry, kpiDefinition);
+    } else if (kpiId === 'live_kpi_dashboard') {
+      return getDashboardStatus(latestEntry, kpiDefinition);
+    } else if (kpiDefinition.trackingType === 'attendance') {
       return getAttendanceStatus(latestEntry, kpiDefinition);
     } else if (kpiDefinition.trackingType === 'safety') {
       return getSafetyStatus(latestEntry, kpiDefinition);
@@ -137,46 +143,246 @@ export const useKPIData = () => {
     return 'good';
   }, [getLatestKPIValue]);
 
-  // FIXED: Calculate attendance status using the correct data structure
+  // Product Quality Validation status calculation
+  const getProductQualityStatus = (entry, kpiDefinition) => {
+    if (!entry.data || !entry.data.products) return 'no-data';
+    
+    const { products, categoryKPIs } = entry.data;
+    const target = kpiDefinition.target || 90;
+    const globalKPI = entry.value;
+    
+    // Calculate weighted status based on category performance
+    const matiereKPI = categoryKPIs?.matiere_premiere || 0;
+    const produitKPI = categoryKPIs?.produit_fini || 0;
+    const emballageKPI = categoryKPIs?.emballage || 0;
+    
+    const avgKPI = (matiereKPI + produitKPI + emballageKPI) / 3;
+    
+    if (avgKPI >= target) return 'excellent';
+    if (avgKPI >= target * 0.8) return 'good';
+    if (avgKPI >= target * 0.6) return 'fair';
+    return 'needs-attention';
+  };
+
+  // Formulation Builder status calculation
+  const getFormulationStatus = (entry, kpiDefinition) => {
+    if (!entry.data || !entry.data.formulas) return 'no-data';
+    
+    const { formulas } = entry.data;
+    const target = kpiDefinition.target || 80;
+    const globalKPI = entry.value;
+    
+    // Check formula performance
+    const highPerformingFormulas = formulas.filter(f => (f.kpi || 0) >= target).length;
+    const performanceRatio = formulas.length > 0 ? highPerformingFormulas / formulas.length : 0;
+    
+    if (performanceRatio >= 0.8) return 'excellent';
+    if (performanceRatio >= 0.6) return 'good';
+    if (performanceRatio >= 0.4) return 'fair';
+    return 'needs-attention';
+  };
+
+  // Dashboard status calculation
+  const getDashboardStatus = (entry, kpiDefinition) => {
+    if (!entry.data || !entry.data.metrics) return 'no-data';
+    
+    const { metrics, globalTarget } = entry.data;
+    const target = globalTarget || kpiDefinition.target || 80;
+    const globalSuccessRate = metrics.globalSuccessRate || entry.value;
+    
+    if (globalSuccessRate >= target) return 'excellent';
+    if (globalSuccessRate >= target * 0.8) return 'good';
+    if (globalSuccessRate >= target * 0.6) return 'fair';
+    return 'needs-attention';
+  };
+
+  // Attendance status calculation
   const getAttendanceStatus = (entry, kpiDefinition) => {
     if (!entry.data || !entry.data.employees) return 'no-data';
     
     const { employees, weeklyTarget } = entry.data;
     const target = weeklyTarget || kpiDefinition.target;
-    const averageProductivity = entry.value; // Main KPI value
+    const averageProductivity = entry.value;
     
     if (averageProductivity >= target) return 'excellent';
     if (averageProductivity >= target * 0.9) return 'good';
+    if (averageProductivity >= target * 0.7) return 'fair';
     return 'needs-attention';
   };
 
-  // FIXED: Calculate safety status using the correct data structure
+  // Safety status calculation
   const getSafetyStatus = (entry, kpiDefinition) => {
     if (!entry.data || !entry.data.employees) return 'no-data';
     
     const { weeklyTarget } = entry.data;
     const target = weeklyTarget || kpiDefinition.target || 0;
-    const totalIncidents = entry.value; // Main KPI value
+    const totalIncidents = entry.value;
     
     if (totalIncidents <= target) return 'excellent';
     if (totalIncidents <= target * 1.5) return 'good';
+    if (totalIncidents <= target * 2) return 'fair';
     return 'needs-attention';
   };
 
-  // FIXED: Calculate efficiency status using the correct data structure
+  // Efficiency status calculation
   const getEfficiencyStatus = (entry, kpiDefinition) => {
     if (!entry.data || !entry.data.employees) return 'no-data';
     
     const { weeklyTarget } = entry.data;
     const target = weeklyTarget || kpiDefinition.target;
-    const averageEfficiency = entry.value; // Main KPI value
+    const averageEfficiency = entry.value;
     
     if (averageEfficiency >= target) return 'excellent';
     if (averageEfficiency >= target * 0.9) return 'good';
+    if (averageEfficiency >= target * 0.7) return 'fair';
     return 'needs-attention';
   };
 
-  // FIXED: Get team-specific analytics with corrected data processing
+  // Get R&D specific analytics
+  const getRnDAnalytics = useCallback((departmentId) => {
+    if (departmentId !== 'rnd') return null;
+    
+    const rndData = kpiData[departmentId] || {};
+    const analytics = {
+      quality: [],
+      formulation: [],
+      dashboard: [],
+      weeklyReports: [],
+      monthlyReports: [],
+      alerts: []
+    };
+
+    // Process product quality validation data
+    const qualityEntries = rndData['product_quality_validation'] || [];
+    qualityEntries.forEach(entry => {
+      if (entry.data && entry.data.products) {
+        const date = new Date(entry.date);
+        
+        analytics.quality.push({
+          date: entry.date,
+          week: getWeekNumber(date),
+          month: date.getMonth(),
+          value: entry.value,
+          products: entry.data.products,
+          categoryKPIs: entry.data.categoryKPIs,
+          
+          // Calculate detailed metrics for new structure
+          matierePremiereTests: calculateMatierePremiereMetrics(entry.data.products.matiere_premiere),
+          produitFiniTests: calculateProduitFiniMetrics(entry.data.products.produit_fini),
+          emballageAvailability: calculateEmballageMetrics(entry.data.products.emballage)
+        });
+      }
+    });
+
+    // Process formulation builder data
+    const formulationEntries = rndData['formulation_builder'] || [];
+    formulationEntries.forEach(entry => {
+      if (entry.data && entry.data.formulas) {
+        const date = new Date(entry.date);
+        
+        analytics.formulation.push({
+          date: entry.date,
+          week: getWeekNumber(date),
+          month: date.getMonth(),
+          value: entry.value,
+          formulas: entry.data.formulas,
+          totalFormulas: entry.data.formulas.length,
+          averageKPI: entry.value
+        });
+      }
+    });
+
+    // Process dashboard data
+    const dashboardEntries = rndData['live_kpi_dashboard'] || [];
+    dashboardEntries.forEach(entry => {
+      if (entry.data && entry.data.metrics) {
+        const date = new Date(entry.date);
+        
+        analytics.dashboard.push({
+          date: entry.date,
+          week: getWeekNumber(date),
+          month: date.getMonth(),
+          value: entry.value,
+          metrics: entry.data.metrics,
+          globalTarget: entry.data.globalTarget
+        });
+      }
+    });
+
+    // Sort by date (most recent first)
+    analytics.quality.sort((a, b) => new Date(b.date) - new Date(a.date));
+    analytics.formulation.sort((a, b) => new Date(b.date) - new Date(a.date));
+    analytics.dashboard.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Generate reports and alerts
+    analytics.weeklyReports = generateRnDWeeklyReports(analytics);
+    analytics.monthlyReports = generateRnDMonthlyReports(analytics);
+    analytics.alerts = generateRnDAlerts(analytics);
+
+    return analytics;
+  }, [kpiData]);
+
+  // Calculate matiere premiere test metrics
+  const calculateMatierePremiereMetrics = (products) => {
+    if (!products || products.length === 0) return { totalTests: 0, passedTests: 0, byTestType: {} };
+    
+    let totalTests = 0;
+    let passedTests = 0;
+    const byTestType = { density: { total: 0, passed: 0 }, ph: { total: 0, passed: 0 }, dosage: { total: 0, passed: 0 } };
+    
+    products.forEach(product => {
+      if (product.tests) {
+        Object.entries(product.tests).forEach(([testType, test]) => {
+          totalTests++;
+          if (test.passed) passedTests++;
+          
+          if (byTestType[testType]) {
+            byTestType[testType].total++;
+            if (test.passed) byTestType[testType].passed++;
+          }
+        });
+      }
+    });
+    
+    return { totalTests, passedTests, byTestType };
+  };
+
+  // Calculate produit fini test metrics
+  const calculateProduitFiniMetrics = (products) => {
+    if (!products || products.length === 0) return { totalTests: 0, passedTests: 0, byTestType: {} };
+    
+    let totalTests = 0;
+    let passedTests = 0;
+    const byTestType = { density: { total: 0, passed: 0 }, ph: { total: 0, passed: 0 }, dosage: { total: 0, passed: 0 } };
+    
+    products.forEach(product => {
+      if (product.tests) {
+        Object.entries(product.tests).forEach(([testType, test]) => {
+          totalTests++;
+          if (test.passed) passedTests++;
+          
+          if (byTestType[testType]) {
+            byTestType[testType].total++;
+            if (test.passed) byTestType[testType].passed++;
+          }
+        });
+      }
+    });
+    
+    return { totalTests, passedTests, byTestType };
+  };
+
+  // Calculate emballage availability metrics
+  const calculateEmballageMetrics = (products) => {
+    if (!products || products.length === 0) return { totalProducts: 0, availableProducts: 0 };
+    
+    const totalProducts = products.length;
+    const availableProducts = products.filter(p => p.available).length;
+    
+    return { totalProducts, availableProducts };
+  };
+
+  // Get team-specific analytics with corrected data processing
   const getTeamAnalytics = useCallback((departmentId) => {
     const teamData = kpiData[departmentId] || {};
     const analytics = {
@@ -253,17 +459,18 @@ export const useKPIData = () => {
     return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
   };
 
-  const generateWeeklyReports = (analytics) => {
+  // Generate R&D specific weekly reports
+  const generateRnDWeeklyReports = (analytics) => {
     const reports = [];
     const currentWeek = getWeekNumber(new Date());
     
     // Group data by week
     const weeklyData = {};
     
-    ['attendance', 'safety', 'efficiency'].forEach(type => {
+    ['quality', 'formulation', 'dashboard'].forEach(type => {
       analytics[type].forEach(entry => {
         if (!weeklyData[entry.week]) {
-          weeklyData[entry.week] = { attendance: [], safety: [], efficiency: [] };
+          weeklyData[entry.week] = { quality: [], formulation: [], dashboard: [] };
         }
         weeklyData[entry.week][type].push(entry);
       });
@@ -275,13 +482,229 @@ export const useKPIData = () => {
       const report = {
         week: parseInt(week),
         isCurrent: parseInt(week) === currentWeek,
+        quality: calculateWeeklyQuality(weekData.quality),
+        formulation: calculateWeeklyFormulation(weekData.formulation),
+        dashboard: calculateWeeklyDashboard(weekData.dashboard),
+        status: 'good'
+      };
+      
+      // Determine overall week status
+      const statuses = [report.quality.status, report.formulation.status, report.dashboard.status];
+      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
+      else if (statuses.includes('good')) report.status = 'good';
+      else report.status = 'excellent';
+      
+      reports.push(report);
+    });
+    
+    return reports.sort((a, b) => b.week - a.week);
+  };
+
+  // Generate R&D specific monthly reports
+  const generateRnDMonthlyReports = (analytics) => {
+    const reports = [];
+    const currentMonth = new Date().getMonth();
+    
+    const monthlyData = {};
+    
+    ['quality', 'formulation', 'dashboard'].forEach(type => {
+      analytics[type].forEach(entry => {
+        if (!monthlyData[entry.month]) {
+          monthlyData[entry.month] = { quality: [], formulation: [], dashboard: [] };
+        }
+        monthlyData[entry.month][type].push(entry);
+      });
+    });
+    
+    Object.keys(monthlyData).forEach(month => {
+      const monthData = monthlyData[month];
+      const report = {
+        month: parseInt(month),
+        isCurrent: parseInt(month) === currentMonth,
+        quality: calculateMonthlyQuality(monthData.quality),
+        formulation: calculateMonthlyFormulation(monthData.formulation),
+        dashboard: calculateMonthlyDashboard(monthData.dashboard),
+        status: 'good'
+      };
+      
+      const statuses = [report.quality.status, report.formulation.status, report.dashboard.status];
+      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
+      else if (statuses.includes('good')) report.status = 'good';
+      else report.status = 'excellent';
+      
+      reports.push(report);
+    });
+    
+    return reports.sort((a, b) => b.month - a.month);
+  };
+
+  // Generate R&D specific alerts
+  const generateRnDAlerts = (analytics) => {
+    const alerts = [];
+    const now = new Date();
+    const currentWeek = getWeekNumber(now);
+    
+    // Check quality alerts
+    const currentWeekQuality = analytics.quality.filter(entry => entry.week === currentWeek);
+    currentWeekQuality.forEach(entry => {
+      if (entry.value < 80) {
+        alerts.push({
+          id: `quality_${entry.date}`,
+          type: 'quality',
+          severity: entry.value < 60 ? 'high' : 'medium',
+          message: `Qualité produits en dessous du seuil: ${entry.value}%`,
+          date: entry.date,
+          kpiId: 'product_quality_validation'
+        });
+      }
+      
+      // Check specific test type failures
+      if (entry.matierePremiereTests && entry.matierePremiereTests.totalTests > 0) {
+        const failureRate = (entry.matierePremiereTests.totalTests - entry.matierePremiereTests.passedTests) / entry.matierePremiereTests.totalTests;
+        if (failureRate > 0.3) {
+          alerts.push({
+            id: `matiere_premiere_${entry.date}`,
+            type: 'quality',
+            severity: failureRate > 0.5 ? 'high' : 'medium',
+            message: `Taux d'échec élevé pour matières premières: ${Math.round(failureRate * 100)}%`,
+            date: entry.date,
+            kpiId: 'product_quality_validation'
+          });
+        }
+      }
+    });
+    
+    // Check formulation alerts
+    const currentWeekFormulation = analytics.formulation.filter(entry => entry.week === currentWeek);
+    currentWeekFormulation.forEach(entry => {
+      if (entry.value < 70) {
+        alerts.push({
+          id: `formulation_${entry.date}`,
+          type: 'formulation',
+          severity: entry.value < 50 ? 'high' : 'medium',
+          message: `Performance formulations faible: ${entry.value}%`,
+          date: entry.date,
+          kpiId: 'formulation_builder'
+        });
+      }
+    });
+    
+    return alerts.sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
+  // Weekly calculation helpers for R&D
+  const calculateWeeklyQuality = (data) => {
+    if (!data.length) return { average: 0, target: 90, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 90;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateWeeklyFormulation = (data) => {
+    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 80;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateWeeklyDashboard = (data) => {
+    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 75;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
+    };
+  };
+
+  // Monthly calculation helpers for R&D
+  const calculateMonthlyQuality = (data) => {
+    if (!data.length) return { average: 0, target: 90, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 90;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateMonthlyFormulation = (data) => {
+    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 80;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateMonthlyDashboard = (data) => {
+    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 75;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
+    };
+  };
+
+  // Original team functions (kept for compatibility)
+  const generateWeeklyReports = (analytics) => {
+    const reports = [];
+    const currentWeek = getWeekNumber(new Date());
+    
+    const weeklyData = {};
+    
+    ['attendance', 'safety', 'efficiency'].forEach(type => {
+      analytics[type].forEach(entry => {
+        if (!weeklyData[entry.week]) {
+          weeklyData[entry.week] = { attendance: [], safety: [], efficiency: [] };
+        }
+        weeklyData[entry.week][type].push(entry);
+      });
+    });
+    
+    Object.keys(weeklyData).forEach(week => {
+      const weekData = weeklyData[week];
+      const report = {
+        week: parseInt(week),
+        isCurrent: parseInt(week) === currentWeek,
         attendance: calculateWeeklyAttendance(weekData.attendance),
         safety: calculateWeeklySafety(weekData.safety),
         efficiency: calculateWeeklyEfficiency(weekData.efficiency),
         status: 'good'
       };
       
-      // Determine overall week status
       const statuses = [report.attendance.status, report.safety.status, report.efficiency.status];
       if (statuses.includes('needs-attention')) report.status = 'needs-attention';
       else if (statuses.includes('good')) report.status = 'good';
@@ -377,7 +800,6 @@ export const useKPIData = () => {
     return alerts.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
-  // Weekly calculation helpers
   const calculateWeeklyAttendance = (data) => {
     if (!data.length) return { average: 0, target: 95, status: 'no-data' };
     
@@ -419,7 +841,6 @@ export const useKPIData = () => {
     };
   };
 
-  // Monthly calculation helpers
   const calculateMonthlyAttendance = (data) => {
     if (!data.length) return { average: 0, target: 95, status: 'no-data' };
     
@@ -461,7 +882,7 @@ export const useKPIData = () => {
     };
   };
 
-  // FIXED: Enhanced department summary with stable function reference
+  // Enhanced department summary with stable function reference
   const getDepartmentSummary = useCallback((departmentId) => {
     const department = kpiDefinitions[departmentId];
     if (!department) {
@@ -480,7 +901,6 @@ export const useKPIData = () => {
       console.log(`KPI ${kpi.id}:`, {
         hasLatestValue: !!latestValue,
         latestValueStructure: latestValue ? Object.keys(latestValue) : 'none',
-        employeesCount: latestValue?.data?.employees?.length || 0,
         status,
         historyLength: history.length
       });
@@ -512,9 +932,10 @@ export const useKPIData = () => {
       ...department,
       kpis,
       efficiency,
-      analytics: departmentId === 'team' ? getTeamAnalytics(departmentId) : null
+      analytics: departmentId === 'team' ? getTeamAnalytics(departmentId) : 
+                 departmentId === 'rnd' ? getRnDAnalytics(departmentId) : null
     };
-  }, [kpiData, getLatestKPIValue, getKPIStatus, getKPIHistory, getTeamAnalytics]);
+  }, [kpiData, getLatestKPIValue, getKPIStatus, getKPIHistory, getTeamAnalytics, getRnDAnalytics]);
 
   // Get overall dashboard summary
   const getDashboardSummary = useMemo(() => {
@@ -649,8 +1070,9 @@ export const useKPIData = () => {
     getDepartmentSummary,
     getDashboardSummary,
     
-    // Team-specific functions
+    // Specific analytics functions
     getTeamAnalytics,
+    getRnDAnalytics,
     
     // Utility functions
     deleteKPIEntry,

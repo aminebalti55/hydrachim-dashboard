@@ -7,6 +7,59 @@ export const kpiDefinitions = {
       fr: 'Laboratoire de Recherche & Développement'
     },
     kpis: [
+      // NEW INTERACTIVE R&D KPIs
+      {
+        id: 'product_quality_validation',
+        name: {
+          en: 'Product Quality Validation',
+          fr: 'Validation Qualité Produits'
+        },
+        description: {
+          en: 'Quality testing tracking (pH, density, visual aspect) for raw materials, finished products and packaging',
+          fr: 'Suivi des tests qualité (pH, densité, aspect) pour matières premières, produits finis et emballages'
+        },
+        unit: '%',
+        type: 'percentage',
+        target: 95,
+        category: 'quality',
+        trackingType: 'interactive',
+        features: ['tabbed_interface', 'test_tracking', 'auto_validation', 'chart_per_tab']
+      },
+      {
+        id: 'formulation_builder',
+        name: {
+          en: 'Formulation Builder',
+          fr: 'Constructeur de Formulations'
+        },
+        description: {
+          en: 'Drag & drop formula creation with trial tracking and automatic success rate calculation',
+          fr: 'Création de formules par glisser-déposer avec suivi des essais et calcul automatique du taux de réussite'
+        },
+        unit: '%',
+        type: 'percentage',
+        target: 80,
+        category: 'development',
+        trackingType: 'interactive',
+        features: ['drag_drop', 'trial_tracking', 'success_calculation', 'ingredient_library']
+      },
+      {
+        id: 'live_kpi_dashboard',
+        name: {
+          en: 'Live KPI Dashboard',
+          fr: 'Tableau de Bord KPI en Temps Réel'
+        },
+        description: {
+          en: 'Real-time synchronized overview of all formulation performances with trend analysis',
+          fr: 'Vue d\'ensemble synchronisée en temps réel des performances de toutes les formulations avec analyse de tendances'
+        },
+        unit: '%',
+        type: 'percentage',
+        target: 85,
+        category: 'efficiency',
+        trackingType: 'interactive',
+        features: ['auto_sync', 'real_time_updates', 'trend_analysis', 'global_kpi_view']
+      },
+      // TRADITIONAL R&D KPIs
       {
         id: 'new_product_dev_time',
         name: {
@@ -295,7 +348,7 @@ export const kpiDefinitions = {
         },
         unit: '%',
         type: 'attendance',
-        target: 95, // Default target, can be overridden
+        target: 95,
         category: 'productivity',
         trackingType: 'employee-based',
         fields: ['employeeName', 'clockIn', 'clockOut', 'productivity', 'notes']
@@ -312,7 +365,7 @@ export const kpiDefinitions = {
         },
         unit: 'incidents',
         type: 'safety',
-        target: 0, // Default target, can be overridden
+        target: 0,
         category: 'safety',
         trackingType: 'employee-incidents',
         fields: ['employeeName', 'incidentCount', 'incidentType', 'severity', 'notes']
@@ -329,7 +382,7 @@ export const kpiDefinitions = {
         },
         unit: '%',
         type: 'efficiency',
-        target: 85, // Default target, can be overridden
+        target: 85,
         category: 'efficiency',
         trackingType: 'task-based',
         fields: ['employeeName', 'tasks', 'completedTasks', 'workHours', 'efficiency', 'notes']
@@ -459,4 +512,174 @@ export const getKPIPerformanceStatus = (value, target, kpiType, kpiId) => {
     if (value >= target - tolerance) return 'good';
     return 'needs-attention';
   }
+};
+
+// NEW HELPER FUNCTIONS FOR R&D INTERACTIVE KPIs
+
+// Product Quality Validation helpers
+export const calculateQualityTestSuccess = (products) => {
+  if (!products || Object.keys(products).length === 0) return 0;
+  
+  let totalTests = 0;
+  let passedTests = 0;
+  
+  Object.values(products).forEach(categoryProducts => {
+    categoryProducts.forEach(product => {
+      Object.values(product.tests || {}).forEach(test => {
+        if (test.value && test.target) {
+          totalTests++;
+          if (test.status === 'pass') passedTests++;
+        }
+      });
+    });
+  });
+  
+  return totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
+};
+
+export const getProductsByCategory = (products, category) => {
+  return products[category] || [];
+};
+
+export const validateTestResult = (testType, value, target) => {
+  if (!value || !target) return null;
+  
+  if (testType === 'aspect') {
+    return value.toLowerCase() === target.toLowerCase() ? 'pass' : 'fail';
+  } else {
+    const testValue = parseFloat(value);
+    const targetValue = parseFloat(target);
+    const tolerance = targetValue * 0.05; // 5% tolerance
+    return Math.abs(testValue - targetValue) <= tolerance ? 'pass' : 'fail';
+  }
+};
+
+// Formulation Builder helpers
+export const calculateFormulaSuccessRate = (formula) => {
+  if (!formula.essais || formula.essais.length === 0) return 0;
+  const passed = formula.essais.filter(e => e.result === 'passed').length;
+  return Math.round((passed / formula.essais.length) * 100);
+};
+
+export const getGlobalFormulationKPI = (formulas) => {
+  if (!formulas || formulas.length === 0) return 0;
+  const totalSuccessRate = formulas.reduce((sum, formula) => 
+    sum + calculateFormulaSuccessRate(formula), 0);
+  return Math.round(totalSuccessRate / formulas.length);
+};
+
+export const canAddEssai = (formula) => {
+  return formula.essais.length < formula.maxEssais;
+};
+
+export const getFormulaStatus = (formula, target = 80) => {
+  const successRate = calculateFormulaSuccessRate(formula);
+  if (successRate >= target) return 'success';
+  if (successRate >= 60) return 'warning';
+  return 'danger';
+};
+
+// Live Dashboard helpers
+export const calculateDashboardMetrics = (formulas) => {
+  if (!formulas || formulas.length === 0) {
+    return {
+      globalSuccessRate: 0,
+      totalFormulas: 0,
+      activeFormulas: 0,
+      totalEssais: 0,
+      successfulEssais: 0,
+      formulasAboveTarget: 0,
+      averageEssaisPerFormula: 0
+    };
+  }
+
+  const totalFormulas = formulas.length;
+  let totalEssais = 0;
+  let successfulEssais = 0;
+  let formulasAboveTarget = 0;
+  const globalTarget = 80; // Default target
+
+  formulas.forEach(formula => {
+    const essaisCount = formula.essais?.length || 0;
+    const successCount = formula.essais?.filter(e => e.result === 'passed').length || 0;
+    const successRate = calculateFormulaSuccessRate(formula);
+
+    totalEssais += essaisCount;
+    successfulEssais += successCount;
+    
+    if (successRate >= globalTarget) {
+      formulasAboveTarget++;
+    }
+  });
+
+  const globalSuccessRate = totalEssais > 0 ? Math.round((successfulEssais / totalEssais) * 100) : 0;
+  const activeFormulas = formulas.filter(f => (f.essais?.length || 0) > 0).length;
+  const averageEssaisPerFormula = totalFormulas > 0 ? Math.round(totalEssais / totalFormulas) : 0;
+
+  return {
+    globalSuccessRate,
+    totalFormulas,
+    activeFormulas,
+    totalEssais,
+    successfulEssais,
+    formulasAboveTarget,
+    averageEssaisPerFormula
+  };
+};
+
+export const generateTrendData = (baseRate, days = 7) => {
+  const trends = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    
+    // Simulate trend with some variation
+    const variation = (Math.random() - 0.5) * 20; // ±10% variation
+    const dayRate = Math.max(0, Math.min(100, baseRate + variation));
+    
+    trends.push({
+      date: date.toLocaleDateString('fr-FR'),
+      successRate: Math.round(dayRate)
+    });
+  }
+  return trends;
+};
+
+// Cross-KPI integration helpers
+export const syncFormulationWithDashboard = (formulationData, dashboardData) => {
+  if (!formulationData || !formulationData.formulas) return dashboardData;
+  
+  const metrics = calculateDashboardMetrics(formulationData.formulas);
+  
+  return {
+    ...dashboardData,
+    value: metrics.globalSuccessRate,
+    metrics: {
+      ...metrics,
+      trendsData: generateTrendData(metrics.globalSuccessRate),
+      formulaStats: formulationData.formulas.map(formula => ({
+        name: formula.name,
+        successRate: calculateFormulaSuccessRate(formula),
+        essaisCount: formula.essais?.length || 0,
+        status: getFormulaStatus(formula),
+        createdAt: formula.createdAt
+      }))
+    }
+  };
+};
+
+export const getIngredientCategories = () => {
+  return {
+    matiere_premiere: [
+      'Acide citrique', 'Bicarbonate de sodium', 'Tensioactif anionique', 
+      'Eau déminéralisée', 'Glycérine', 'Parfum lavande', 'Colorant bleu'
+    ],
+    produit_fini: [
+      'Dégraissant alimentaire', 'Nettoyant multi-surfaces', 'Désinfectant',
+      'Liquide vaisselle', 'Détergent lessive'
+    ],
+    emballage: [
+      'Flacon spray 500ml', 'Bidon 5L', 'Sachet dosette', 'Étiquette waterproof'
+    ]
+  };
 };
