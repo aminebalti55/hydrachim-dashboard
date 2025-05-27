@@ -398,10 +398,10 @@ const ProductQualityValidation = ({ onSave, onCancel, existingData = null, isDar
               </div>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Validation Qualité Produits
+                  Temps de Développement de Nouveaux Produits
                 </h3>
                 <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Tests individuels (Densité, pH, Dosage) et vérification disponibilité emballage
+                  Suivi du temps de développement optimisé de l'idée à la validation laboratoire
                 </p>
               </div>
             </div>

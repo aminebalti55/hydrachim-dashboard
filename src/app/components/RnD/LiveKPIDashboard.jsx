@@ -391,10 +391,10 @@ const LiveKPIDashboard = ({ onSave, onCancel, existingData = null, isDark = fals
               </div>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Tableau de Bord KPI en Temps Réel
+Taux de Réussite des Essais de Laboratoire
                 </h3>
                 <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Synchronisation automatique avec les formulations et tests qualité
+Vue d'ensemble synchronisée en temps réel des performances de tous les essais laboratoire avec analyse de tendances
                 </p>
               </div>
               {autoRefresh && (

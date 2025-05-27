@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { 
+import {
   Target,
   Activity,
   TrendingUp,
@@ -13,7 +13,7 @@ import {
   Factory,
   FlaskConical,
   Package,
-  Droplets,
+  // Droplets, // Removed as Water Treatment department is removed
   ShieldCheck,
   CheckCircle,
   Clock,
@@ -22,25 +22,25 @@ import {
   TrendingDown,
   Plus
 } from 'lucide-react';
-import { translations } from '../utils/translations';
+// Removed: import { translations } from '../utils/translations';
 import { useKPIData } from '../hook/useKPIData';
 import { ChartDisplay } from '../components/ChartDisplay';
 import { AppContext } from '../context/AppContext';
 
 // Enhanced Stat Card Component
-const StatCard = ({ stat, isDark, onClick, t }) => (
-  <div 
+const StatCard = ({ stat, isDark, onClick }) => (
+  <div
     onClick={onClick}
     className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer ${
-      isDark 
-        ? 'bg-slate-800/60 border-slate-700/50' 
+      isDark
+        ? 'bg-slate-800/60 border-slate-700/50'
         : 'bg-white border-slate-200/80 shadow-sm'
     } border`}
   >
     <div className={`absolute inset-0 bg-gradient-to-br opacity-50 ${
       isDark ? `from-${stat.color}-500/10 to-${stat.color}-600/5` : `from-${stat.color}-50 to-${stat.color}-100/50`
     }`} />
-    
+
     <div className="relative">
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-xl shadow-lg`} style={{ backgroundColor: stat.bgColor }}>
@@ -48,7 +48,7 @@ const StatCard = ({ stat, isDark, onClick, t }) => (
         </div>
         <ChevronRight className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'} group-hover:translate-x-1 transition-transform`} />
       </div>
-      
+
       <div>
         <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
           {stat.name}
@@ -63,8 +63,8 @@ const StatCard = ({ stat, isDark, onClick, t }) => (
             <ArrowDown className="w-4 h-4 text-red-500" />
           ) : null}
           <span className={`text-sm font-medium ${
-            stat.trend === 'up' ? 'text-emerald-600' : 
-            stat.trend === 'down' ? 'text-red-600' : 
+            stat.trend === 'up' ? 'text-emerald-600' :
+            stat.trend === 'down' ? 'text-red-600' :
             isDark ? 'text-slate-400' : 'text-slate-500'
           }`}>
             {stat.change}
@@ -79,33 +79,33 @@ const StatCard = ({ stat, isDark, onClick, t }) => (
 );
 
 // Department Quick View Card
-const DepartmentQuickView = ({ dept, isDark, onNavigate, t }) => {
+const DepartmentQuickView = ({ dept, isDark, onNavigate }) => {
   const getStatusConfig = (status) => {
     switch (status) {
       case 'excellent':
-        return { color: 'text-emerald-600', bgColor: 'bg-emerald-500', text: t.excellent };
+        return { color: 'text-emerald-600', bgColor: 'bg-emerald-500', text: 'Excellent' };
       case 'good':
-        return { color: 'text-blue-600', bgColor: 'bg-blue-500', text: t.good };
+        return { color: 'text-blue-600', bgColor: 'bg-blue-500', text: 'Bon' };
       case 'needs-attention':
-        return { color: 'text-amber-600', bgColor: 'bg-amber-500', text: t.needsAttention };
+        return { color: 'text-amber-600', bgColor: 'bg-amber-500', text: 'Nécessite Attention' };
       default:
-        return { color: 'text-slate-500', bgColor: 'bg-slate-400', text: t.noData };
+        return { color: 'text-slate-500', bgColor: 'bg-slate-400', text: 'Pas de Données' };
     }
   };
 
   const statusConfig = getStatusConfig(dept.status);
 
   return (
-    <div 
+    <div
       onClick={() => onNavigate(dept.id)}
       className={`group relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl cursor-pointer ${
-        isDark 
-          ? 'bg-slate-800/60 border-slate-700/50' 
+        isDark
+          ? 'bg-slate-800/60 border-slate-700/50'
           : 'bg-white border-slate-200/80 shadow-sm'
       } border`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${dept.gradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
-      
+
       <div className="relative">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -134,7 +134,7 @@ const DepartmentQuickView = ({ dept, isDark, onNavigate, t }) => {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.kpisTracked}
+              KPIs Suivis
             </span>
             <span className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
               {dept.kpisWithData}/{dept.totalKpis}
@@ -143,7 +143,7 @@ const DepartmentQuickView = ({ dept, isDark, onNavigate, t }) => {
 
           <div className="flex justify-between items-center">
             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.efficiency_label}
+              Efficacité
             </span>
             <span className={`text-sm font-bold ${statusConfig.color}`}>
               {dept.efficiency}%
@@ -166,10 +166,10 @@ const DepartmentQuickView = ({ dept, isDark, onNavigate, t }) => {
 };
 
 // Analytics Card Component
-const AnalyticsCard = ({ title, children, isDark, icon: Icon, action, onActionClick, t }) => (
+const AnalyticsCard = ({ title, children, isDark, icon: Icon, action, onActionClick }) => (
   <div className={`rounded-2xl border p-6 transition-all duration-300 hover:shadow-lg ${
-    isDark 
-      ? 'bg-slate-800/60 border-slate-700/50' 
+    isDark
+      ? 'bg-slate-800/60 border-slate-700/50'
       : 'bg-white border-slate-200/80 shadow-sm'
   }`}>
     <div className="flex items-center justify-between mb-6">
@@ -184,7 +184,7 @@ const AnalyticsCard = ({ title, children, isDark, icon: Icon, action, onActionCl
         </h3>
       </div>
       {action && (
-        <button 
+        <button
           onClick={onActionClick}
           className={`text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors flex items-center space-x-1`}
         >
@@ -198,48 +198,48 @@ const AnalyticsCard = ({ title, children, isDark, icon: Icon, action, onActionCl
 );
 
 // Enhanced Recent Activity Card
-const RecentActivityCard = ({ activity, isDark, t }) => {
+const RecentActivityCard = ({ activity, isDark }) => {
   const getActivityConfig = (type) => {
     switch (type) {
       case 'kpi_added':
-        return { 
-          icon: Plus, 
-          bgColor: isDark ? 'bg-blue-600/20' : 'bg-blue-100', 
+        return {
+          icon: Plus,
+          bgColor: isDark ? 'bg-blue-600/20' : 'bg-blue-100',
           iconColor: 'text-blue-600',
           borderColor: isDark ? 'border-blue-500/30' : 'border-blue-200'
         };
       case 'target_achieved':
-        return { 
-          icon: CheckCircle, 
-          bgColor: isDark ? 'bg-emerald-600/20' : 'bg-emerald-100', 
+        return {
+          icon: CheckCircle,
+          bgColor: isDark ? 'bg-emerald-600/20' : 'bg-emerald-100',
           iconColor: 'text-emerald-600',
           borderColor: isDark ? 'border-emerald-500/30' : 'border-emerald-200'
         };
       case 'performance_improved':
-        return { 
-          icon: TrendingUp, 
-          bgColor: isDark ? 'bg-green-600/20' : 'bg-green-100', 
+        return {
+          icon: TrendingUp,
+          bgColor: isDark ? 'bg-green-600/20' : 'bg-green-100',
           iconColor: 'text-green-600',
           borderColor: isDark ? 'border-green-500/30' : 'border-green-200'
         };
       case 'alert_generated':
-        return { 
-          icon: AlertTriangle, 
-          bgColor: isDark ? 'bg-amber-600/20' : 'bg-amber-100', 
+        return {
+          icon: AlertTriangle,
+          bgColor: isDark ? 'bg-amber-600/20' : 'bg-amber-100',
           iconColor: 'text-amber-600',
           borderColor: isDark ? 'border-amber-500/30' : 'border-amber-200'
         };
       case 'data_quality':
-        return { 
-          icon: ShieldCheck, 
-          bgColor: isDark ? 'bg-purple-600/20' : 'bg-purple-100', 
+        return {
+          icon: ShieldCheck,
+          bgColor: isDark ? 'bg-purple-600/20' : 'bg-purple-100',
           iconColor: 'text-purple-600',
           borderColor: isDark ? 'border-purple-500/30' : 'border-purple-200'
         };
       default:
-        return { 
-          icon: Activity, 
-          bgColor: isDark ? 'bg-slate-600/20' : 'bg-slate-100', 
+        return {
+          icon: Activity,
+          bgColor: isDark ? 'bg-slate-600/20' : 'bg-slate-100',
           iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
           borderColor: isDark ? 'border-slate-500/30' : 'border-slate-200'
         };
@@ -275,7 +275,7 @@ const RecentActivityCard = ({ activity, isDark, t }) => {
 };
 
 // Top KPI Performance Card
-const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
+const TopKPICard = ({ kpi, dept, isDark, rank }) => {
   const getPerformanceColor = (efficiency) => {
     if (efficiency >= 95) return 'text-emerald-600';
     if (efficiency >= 85) return 'text-blue-600';
@@ -292,80 +292,55 @@ const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
     }
   };
 
-  // Extract the appropriate numeric value from the KPI value object
   const getKPIValue = (kpi) => {
     if (!kpi.latestValue || !kpi.latestValue.value) return null;
-    
-    // If the value is already a number, return it
     if (typeof kpi.latestValue.value === 'number') {
       return kpi.latestValue.value;
     }
-    
-    // If the value is an object, extract the most relevant numeric value based on the KPI type
     const value = kpi.latestValue.value;
-    
-    // Check if value is an object with expected structure
     if (typeof value === 'object') {
-      // For team KPIs
       if (value.employees && Array.isArray(value.employees)) {
         if (kpi.id === 'team_productivity_attendance' || kpi.id.includes('attendance')) {
-          // For attendance, use average productivity
-          const avgProductivity = value.employees.length > 0 
+          const avgProductivity = value.employees.length > 0
             ? Math.round(value.employees.reduce((sum, emp) => sum + (emp.productivity || 0), 0) / value.employees.length)
             : 0;
           return avgProductivity;
         } else if (kpi.id === 'safety_incidents' || kpi.id.includes('safety')) {
-          // For safety, use total incidents
           const totalIncidents = value.employees.reduce((sum, emp) => sum + (emp.incidentCount || 0), 0);
           return totalIncidents;
         } else if (kpi.id === 'operator_efficiency' || kpi.id.includes('efficiency')) {
-          // For efficiency, use average efficiency
-          const avgEfficiency = value.employees.length > 0 
+          const avgEfficiency = value.employees.length > 0
             ? Math.round(value.employees.reduce((sum, emp) => sum + (emp.efficiency || 0), 0) / value.employees.length)
             : 0;
           return avgEfficiency;
         }
       }
-      
-      // Try to get a numeric property
       if (value.averageValue !== undefined) return value.averageValue;
       if (value.total !== undefined) return value.total;
       if (value.count !== undefined) return value.count;
       if (value.weeklyTarget !== undefined) return value.weeklyTarget;
-      
-      // If no numeric property found, return null
       return null;
     }
-    
-    // Default case - return null if we can't extract a value
     return null;
   };
 
-  // Get the actual numeric value to display and use for calculations
   const kpiValue = getKPIValue(kpi);
-  
-  // Calculate performance percentage based on the extracted value
-  const performancePercentage = kpiValue !== null && kpi.target 
-    ? Math.min(100, (kpiValue / kpi.target) * 100) 
+  const performancePercentage = kpiValue !== null && kpi.target
+    ? Math.min(100, (kpiValue / kpi.target) * 100)
     : 0;
 
-  // Format the KPI value for display
   const formatKPIValue = () => {
     if (kpiValue === null) return '--';
-    
-    // Check if it's a percentage value KPI
     if (kpi.id.includes('productivity') || kpi.id.includes('efficiency') || kpi.unit === '%') {
       return `${kpiValue}%`;
     }
-    
-    // Otherwise just return the number
     return kpiValue.toString();
   };
 
   return (
     <div className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-lg ${
-      isDark 
-        ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60' 
+      isDark
+        ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60'
         : 'bg-white border-slate-200 hover:shadow-xl'
     }`}>
       <div className="flex items-start justify-between mb-3">
@@ -380,7 +355,7 @@ const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
           </div>
           <div className="flex-1">
             <h4 className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {typeof kpi.name === 'object' ? kpi.name.en : kpi.name}
+              {typeof kpi.name === 'object' ? kpi.name.en : kpi.name} {/* Assuming kpi.name is the string or object with .en as fallback */}
             </h4>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               {dept.name}
@@ -392,7 +367,7 @@ const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
             {performancePercentage.toFixed(0)}%
           </p>
           <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-            {t.performance}
+            Performance
           </p>
         </div>
       </div>
@@ -400,14 +375,14 @@ const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
       <div className="space-y-2">
         <div className="flex justify-between items-center text-xs">
           <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-            {t.value}: {formatKPIValue()}
+            Valeur: {formatKPIValue()}
           </span>
           <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
-            {t.target}: {kpi.target}
+            Cible: {kpi.target}
           </span>
         </div>
         <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-          <div 
+          <div
             className={`h-2 rounded-full bg-gradient-to-r ${dept.gradient} transition-all duration-700`}
             style={{ width: `${Math.min(performancePercentage, 100)}%` }}
           />
@@ -427,30 +402,28 @@ const TopKPICard = ({ kpi, dept, isDark, t, rank }) => {
 
 // Main Dashboard Component
 export const DashboardPage = () => {
-  const { isDark, language } = useContext(AppContext);
-  const t = translations[language] || translations.en;
-  
-  // KPI Data Hook with proper state management
+  const { isDark } = useContext(AppContext); // Removed language from context
+  // Removed: const t = translations[language] || translations.en;
+
   const {
     kpiData,
-    updateKPIValue,
-    getLatestKPIValue,
-    getKPIHistory,
-    getKPIStatus,
+    // updateKPIValue, // Not used in this component
+    // getLatestKPIValue, // Not used directly in this component
+    // getKPIHistory, // Not used in this component
+    // getKPIStatus, // Not used directly in this component
     getDepartmentSummary,
-    getKPITrend,
-    isLoading
+    // getKPITrend, // Not used in this component
+    // isLoading // Not used in this component
   } = useKPIData();
 
-  // Calculate dashboard data from real KPI data
   const dashboardData = useMemo(() => {
     const departments = [
-      { id: 'rnd', name: t.researchDevelopment || 'R&D Laboratory', icon: FlaskConical, gradient: 'from-indigo-600 to-purple-600' },
-      { id: 'team', name: t.humanResources || 'Team Performance', icon: Users, gradient: 'from-pink-600 to-rose-600' },
-      { id: 'warehouses', name: t.warehousesLogistics || 'Warehouses & Logistics', icon: Package, gradient: 'from-violet-600 to-purple-600' },
-      { id: 'waterTreatment', name: t.waterTreatmentWashing || 'Water Treatment', icon: Droplets, gradient: 'from-cyan-600 to-blue-600' },
-      { id: 'quality', name: t.qualityControl || 'Quality Control', icon: ShieldCheck, gradient: 'from-emerald-600 to-teal-600' },
-      { id: 'production', name: t.productionMixing || 'Production & Mixing', icon: Factory, gradient: 'from-orange-600 to-red-600' }
+      { id: 'rnd', name: 'Laboratoire R&D', icon: FlaskConical, gradient: 'from-indigo-600 to-purple-600' },
+      { id: 'team', name: "Performance de l'Équipe", icon: Users, gradient: 'from-pink-600 to-rose-600' },
+      { id: 'warehouses', name: 'Entrepôts & Logistique', icon: Package, gradient: 'from-violet-600 to-purple-600' },
+      // Removed: { id: 'waterTreatment', name: 'Traitement de l'Eau & Lavage', icon: Droplets, gradient: 'from-cyan-600 to-blue-600' },
+      { id: 'quality', name: 'Contrôle Qualité', icon: ShieldCheck, gradient: 'from-emerald-600 to-teal-600' },
+      { id: 'production', name: 'Production & Mélange', icon: Factory, gradient: 'from-orange-600 to-red-600' }
     ];
 
     let totalKPIs = 0;
@@ -464,10 +437,10 @@ export const DashboardPage = () => {
       const summary = getDepartmentSummary(dept.id);
       const kpisWithDataCount = summary?.kpis?.filter(kpi => kpi.latestValue).length || 0;
       const efficiency = summary?.efficiency || 0;
-      
+
       totalKPIs += summary?.kpis?.length || 0;
       kpisWithData += kpisWithDataCount;
-      
+
       if (kpisWithDataCount > 0) {
         activeDepartments++;
         totalEfficiency += efficiency;
@@ -475,7 +448,7 @@ export const DashboardPage = () => {
 
       const excellent = summary?.kpis?.filter(kpi => kpi.status === 'excellent').length || 0;
       const needsAttention = summary?.kpis?.filter(kpi => kpi.status === 'needs-attention').length || 0;
-      
+
       excellentKPIs += excellent;
       needsAttentionKPIs += needsAttention;
 
@@ -502,12 +475,10 @@ export const DashboardPage = () => {
       excellentKPIs,
       activeDepartments
     };
-  }, [getDepartmentSummary, kpiData, t]);
+  }, [getDepartmentSummary, kpiData]);
 
-  // Get top performing KPIs
   const topPerformingKPIs = useMemo(() => {
     const allKPIsWithPerformance = [];
-    
     dashboardData.departments.forEach(dept => {
       if (dept.summary?.kpis) {
         dept.summary.kpis.forEach(kpi => {
@@ -521,54 +492,37 @@ export const DashboardPage = () => {
       }
     });
 
-    // Extract and transform KPI values for proper sorting
     const extractKPIValue = (kpi) => {
       if (!kpi.latestValue || !kpi.latestValue.value) return 0;
-      
-      // If the value is a number, use it directly
       if (typeof kpi.latestValue.value === 'number') {
         return (kpi.latestValue.value / kpi.target) * 100;
       }
-      
-      // If the value is an object, extract the most relevant numeric value
       const value = kpi.latestValue.value;
-      
       if (typeof value === 'object') {
-        // For team KPIs
         if (value.employees && Array.isArray(value.employees)) {
           if (kpi.id === 'team_productivity_attendance' || kpi.id.includes('attendance')) {
-            // For attendance, use average productivity
-            const avgProductivity = value.employees.length > 0 
+            const avgProductivity = value.employees.length > 0
               ? Math.round(value.employees.reduce((sum, emp) => sum + (emp.productivity || 0), 0) / value.employees.length)
               : 0;
             return (avgProductivity / kpi.target) * 100;
           } else if (kpi.id === 'safety_incidents' || kpi.id.includes('safety')) {
-            // For safety, use total incidents (lower is better, so invert the ratio)
             const totalIncidents = value.employees.reduce((sum, emp) => sum + (emp.incidentCount || 0), 0);
             return kpi.target > 0 ? Math.max(0, 100 - (totalIncidents / kpi.target) * 100) : (totalIncidents === 0 ? 100 : 0);
           } else if (kpi.id === 'operator_efficiency' || kpi.id.includes('efficiency')) {
-            // For efficiency, use average efficiency
-            const avgEfficiency = value.employees.length > 0 
+            const avgEfficiency = value.employees.length > 0
               ? Math.round(value.employees.reduce((sum, emp) => sum + (emp.efficiency || 0), 0) / value.employees.length)
               : 0;
             return (avgEfficiency / kpi.target) * 100;
           }
         }
-        
-        // Try to get a numeric property
         if (value.averageValue !== undefined) return (value.averageValue / kpi.target) * 100;
         if (value.total !== undefined) return (value.total / kpi.target) * 100;
         if (value.count !== undefined) return (value.count / kpi.target) * 100;
-        
-        // If no numeric property found, return 0
         return 0;
       }
-      
-      // Default case
       return 0;
     };
 
-    // Calculate performance percentage for each KPI and sort by it
     return allKPIsWithPerformance
       .map(kpi => ({
         ...kpi,
@@ -578,11 +532,8 @@ export const DashboardPage = () => {
       .slice(0, 6);
   }, [dashboardData]);
 
-  // Generate recent activities based on real data
   const recentActivities = useMemo(() => {
     const activities = [];
-    
-    // Add activities based on actual KPI data
     dashboardData.departments.forEach(dept => {
       if (dept.summary?.kpis) {
         dept.summary.kpis.forEach(kpi => {
@@ -590,15 +541,15 @@ export const DashboardPage = () => {
             if (kpi.status === 'excellent') {
               activities.push({
                 type: 'target_achieved',
-                title: t.targetAchieved || 'Target achieved',
-                description: `${typeof kpi.name === 'object' ? kpi.name.en : kpi.name} in ${dept.name}`,
+                title: 'Cible atteinte',
+                description: `${typeof kpi.name === 'object' ? kpi.name.en : kpi.name} dans ${dept.name}`,
                 time: new Date(kpi.latestValue.date).toLocaleTimeString()
               });
             } else {
               activities.push({
                 type: 'kpi_added',
-                title: t.kpiDataAdded || 'KPI data added',
-                description: `${typeof kpi.name === 'object' ? kpi.name.en : kpi.name} in ${dept.name}`,
+                title: 'Données KPI ajoutées',
+                description: `${typeof kpi.name === 'object' ? kpi.name.en : kpi.name} dans ${dept.name}`,
                 time: new Date(kpi.latestValue.date).toLocaleTimeString()
               });
             }
@@ -607,20 +558,18 @@ export const DashboardPage = () => {
       }
     });
 
-    // Add system activities
     if (dashboardData.overallEfficiency > 80) {
       activities.push({
         type: 'performance_improved',
-        title: t.performanceImproved || 'Performance improved',
-        description: t.dashboardCalculated || 'Overall system efficiency improved',
+        title: 'Performance améliorée',
+        description: "L'efficacité globale du système s'est améliorée",
         time: new Date().toLocaleTimeString()
       });
     }
 
     return activities.slice(0, 5);
-  }, [dashboardData, t]);
+  }, [dashboardData]);
 
-  // Generate chart data
   const chartData = useMemo(() => {
     const departmentEfficiency = dashboardData.departments
       .filter(d => d.kpisWithData > 0)
@@ -638,45 +587,44 @@ export const DashboardPage = () => {
     return { departmentEfficiency, kpiDistribution };
   }, [dashboardData]);
 
-  // Get quick stats
   const getQuickStats = () => [
     {
-      name: t.totalKpis || 'Total KPIs',
+      name: 'KPIs Totaux',
       value: dashboardData.totalKPIs.toString(),
       change: `${dashboardData.kpisWithData}`,
       trend: dashboardData.kpisWithData > 0 ? 'up' : 'neutral',
       icon: Target,
-      subtitle: t.withData || 'with data',
+      subtitle: 'avec données',
       bgColor: '#6366F1',
       textColor: '#6366F1'
     },
     {
-      name: t.activeDepartments || 'Active Departments',
+      name: 'Départements Actifs',
       value: dashboardData.activeDepartments.toString(),
       change: `${dashboardData.departments.length}`,
       trend: dashboardData.activeDepartments > 0 ? 'up' : 'neutral',
       icon: Users,
-      subtitle: t.total || 'total',
+      subtitle: 'total',
       bgColor: '#10B981',
       textColor: '#10B981'
     },
     {
-      name: t.overallEfficiency || 'Overall Efficiency',
+      name: 'Efficacité Globale',
       value: `${dashboardData.overallEfficiency}%`,
       change: `${dashboardData.dataCompleteness}%`,
       trend: dashboardData.overallEfficiency > 80 ? 'up' : dashboardData.overallEfficiency > 50 ? 'neutral' : 'down',
       icon: TrendingUp,
-      subtitle: t.completeness || 'completeness',
+      subtitle: 'complétude',
       bgColor: '#8B5CF6',
       textColor: '#8B5CF6'
     },
     {
-      name: t.qualityScore || 'Quality Score',
+      name: 'Score de Qualité',
       value: dashboardData.excellentKPIs.toString(),
       change: dashboardData.needsAttentionKPIs.toString(),
       trend: dashboardData.needsAttentionKPIs === 0 ? 'up' : 'down',
       icon: CheckCircle,
-      subtitle: t.needAttention || 'need attention',
+      subtitle: 'nécessitent attention',
       bgColor: '#059669',
       textColor: '#059669'
     }
@@ -685,14 +633,12 @@ export const DashboardPage = () => {
   const quickStats = getQuickStats();
 
   const handleNavigateToDepartment = (deptId) => {
-    // Navigate to department page - this would be handled by your router
     window.location.href = `/${deptId}`;
   };
 
   return (
     <div className={`min-h-screen space-y-8 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
 
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -700,10 +646,10 @@ export const DashboardPage = () => {
           </div>
           <div>
             <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {t.dashboard || 'Dashboard'}
+              Tableau de Bord
             </h1>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
+              {new Date().toLocaleDateString('fr-FR', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -714,27 +660,23 @@ export const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {quickStats.map((stat, index) => (
-          <StatCard 
-            key={index} 
-            stat={stat} 
-            isDark={isDark} 
+          <StatCard
+            key={index}
+            stat={stat}
+            isDark={isDark}
             onClick={() => {}}
-            t={t}
           />
         ))}
       </div>
 
-      {/* Department Quick Views */}
-      <AnalyticsCard 
-        title={t.departmentOverview || 'Department Overview'}
+      <AnalyticsCard
+        title="Aperçu des Départements"
         isDark={isDark}
         icon={Users}
-        action={t.viewAll || 'View All'}
+        action="Voir Tout"
         onActionClick={() => {}}
-        t={t}
       >
         {dashboardData.activeDepartments > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -746,7 +688,6 @@ export const DashboardPage = () => {
                   dept={dept}
                   isDark={isDark}
                   onNavigate={handleNavigateToDepartment}
-                  t={t}
                 />
               ))}
           </div>
@@ -758,33 +699,28 @@ export const DashboardPage = () => {
               <Users className="w-8 h-8 text-slate-400" />
             </div>
             <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {t.noDepartmentsActive || 'No Active Departments'}
+              Aucun Département Actif
             </h4>
             <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {t.startAddingKPIs || 'Navigate to department pages to add KPI data and see performance metrics'}
+              Accédez aux pages des départements pour ajouter des données KPI et voir les métriques de performance.
             </p>
           </div>
         )}
       </AnalyticsCard>
 
-      {/* Charts Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
-        {/* Department Efficiency Chart */}
         <ChartDisplay
           data={chartData.departmentEfficiency}
-          title={t.departmentEfficiency || 'Department Efficiency'}
+          title="Efficacité des Départements"
           height={300}
           dataKey="efficiency"
           xAxisKey="name"
           color="#6366F1"
           className={isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80'}
         />
-
-        {/* KPI Distribution Chart */}
         <ChartDisplay
           data={chartData.kpiDistribution}
-          title={t.kpiDistribution || 'KPI Distribution'}
+          title="Distribution des KPIs"
           type="bar"
           height={300}
           dataKey="value"
@@ -794,15 +730,11 @@ export const DashboardPage = () => {
         />
       </div>
 
-      {/* Performance Analytics */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        
-        {/* Top Performing KPIs */}
-        <AnalyticsCard 
-          title={t.topPerformingKpis || 'Top Performing KPIs'}
+        <AnalyticsCard
+          title="KPIs les Plus Performants"
           isDark={isDark}
           icon={Award}
-          t={t}
         >
           {topPerformingKPIs.length > 0 ? (
             <div className="space-y-4">
@@ -812,7 +744,6 @@ export const DashboardPage = () => {
                   kpi={kpi}
                   dept={kpi.department}
                   isDark={isDark}
-                  t={t}
                   rank={index + 1}
                 />
               ))}
@@ -821,19 +752,17 @@ export const DashboardPage = () => {
             <div className="text-center py-8">
               <Award className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {t.noKPIData || 'No KPI performance data yet'}
+                Aucune donnée de performance KPI pour le moment.
               </p>
             </div>
           )}
         </AnalyticsCard>
 
-        {/* Recent Activity */}
-        <AnalyticsCard 
-          title={t.recentUpdates || 'Recent Updates'}
+        <AnalyticsCard
+          title="Mises à Jour Récentes"
           isDark={isDark}
           icon={Activity}
-          action={t.viewAll || 'View All'}
-          t={t}
+          action="Voir Tout"
         >
           {recentActivities.length > 0 ? (
             <div className="space-y-3">
@@ -842,7 +771,6 @@ export const DashboardPage = () => {
                   key={index}
                   activity={activity}
                   isDark={isDark}
-                  t={t}
                 />
               ))}
             </div>
@@ -850,19 +778,17 @@ export const DashboardPage = () => {
             <div className="text-center py-8">
               <Activity className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {t.noRecentActivity || 'No recent activity yet'}
+                Aucune activité récente pour le moment.
               </p>
             </div>
           )}
         </AnalyticsCard>
       </div>
 
-      {/* All Departments Grid */}
-      <AnalyticsCard 
-        title={t.allDepartments || 'All Departments'}
+      <AnalyticsCard
+        title="Tous les Départements"
         isDark={isDark}
         icon={Factory}
-        t={t}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {dashboardData.departments.map((dept) => (
@@ -871,7 +797,6 @@ export const DashboardPage = () => {
               dept={dept}
               isDark={isDark}
               onNavigate={handleNavigateToDepartment}
-              t={t}
             />
           ))}
         </div>

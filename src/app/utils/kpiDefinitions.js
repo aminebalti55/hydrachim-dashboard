@@ -11,8 +11,8 @@ export const kpiDefinitions = {
       {
         id: 'product_quality_validation',
         name: {
-          en: 'Product Quality Validation',
-          fr: 'Validation Qualité Produits'
+          en: 'New Product Development Time',
+          fr: 'Temps de Développement de Nouveaux Produits'
         },
         description: {
           en: 'Quality testing tracking (pH, density, visual aspect) for raw materials, finished products and packaging',
@@ -28,8 +28,8 @@ export const kpiDefinitions = {
       {
         id: 'formulation_builder',
         name: {
-          en: 'Formulation Builder',
-          fr: 'Constructeur de Formulations'
+          en: 'New Products Developed',
+          fr: 'Nouveaux Produits Développés'
         },
         description: {
           en: 'Drag & drop formula creation with trial tracking and automatic success rate calculation',
@@ -45,8 +45,8 @@ export const kpiDefinitions = {
       {
         id: 'live_kpi_dashboard',
         name: {
-          en: 'Live KPI Dashboard',
-          fr: 'Tableau de Bord KPI en Temps Réel'
+          en: 'Laboratory Trial Success Rate',
+          fr: 'Taux de Réussite des Essais de Laboratoire'
         },
         description: {
           en: 'Real-time synchronized overview of all formulation performances with trend analysis',

@@ -169,10 +169,10 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
-                    <TestTube className="w-5 h-5 text-white" />
+                    <Clock className="w-5 h-5 text-white" />
                   </div>
                   <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Qualité Moyenne
+                    Temps de Développement
                   </h4>
                 </div>
                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
@@ -188,17 +188,17 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-white" />
+                    <Package className="w-5 h-5 text-white" />
                   </div>
                   <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Formulation
+                    Nouvelles Formules
                   </h4>
                 </div>
                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {weeklyData.avgFormulation}%
                 </div>
                 <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {weeklyData.totalFormulas} formules créées
+                  {weeklyData.totalFormulas} formules développées
                 </div>
               </div>
 
@@ -207,17 +207,17 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-white" />
+                    <TestTube className="w-5 h-5 text-white" />
                   </div>
                   <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Dashboard Temps Réel
+                    Taux de Réussite Essais
                   </h4>
                 </div>
                 <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {weeklyData.avgDashboard}%
                 </div>
                 <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  performance globale
+                  réussite laboratoire
                 </div>
               </div>
 
@@ -253,9 +253,9 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                     Réussites
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {weeklyData.avgQuality >= 90 && <li>• Excellente qualité produits</li>}
-                    {weeklyData.avgFormulation >= 80 && <li>• Formulations performantes</li>}
-                    {weeklyData.avgDashboard >= 75 && <li>• Dashboard optimisé</li>}
+                    {weeklyData.avgQuality >= 90 && <li>• Temps développement optimal</li>}
+                    {weeklyData.avgFormulation >= 80 && <li>• Nouvelles formules performantes</li>}
+                    {weeklyData.avgDashboard >= 75 && <li>• Excellent taux réussite essais</li>}
                     {weeklyData.totalFormulas > 0 && <li>• Nouvelles formules développées</li>}
                     {weeklyData.totalProducts > 0 && <li>• Tests qualité effectués</li>}
                   </ul>
@@ -265,9 +265,9 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                     Points d'Attention
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {weeklyData.avgQuality < 80 && <li>• Qualité à améliorer</li>}
-                    {weeklyData.avgFormulation < 70 && <li>• Formulations à optimiser</li>}
-                    {weeklyData.avgDashboard < 60 && <li>• Dashboard à ajuster</li>}
+                    {weeklyData.avgQuality < 80 && <li>• Temps développement à accélérer</li>}
+                    {weeklyData.avgFormulation < 70 && <li>• Développement formules à améliorer</li>}
+                    {weeklyData.avgDashboard < 60 && <li>• Taux réussite essais à optimiser</li>}
                     {weeklyData.totalFormulas === 0 && <li>• Aucune nouvelle formule</li>}
                     {weeklyData.totalTests === 0 && <li>• Aucun test effectué</li>}
                   </ul>
@@ -277,10 +277,10 @@ const RnDWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                     Actions Recommandées
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    <li>• Continuer l'innovation</li>
-                    <li>• Optimiser les tests individuels</li>
-                    <li>• Réviser les formules</li>
-                    <li>• Vérifier disponibilité emballages</li>
+                    <li>• Accélérer développement formules</li>
+                    <li>• Optimiser processus essais</li>
+                    <li>• Améliorer méthodologies</li>
+                    <li>• Renforcer équipe laboratoire</li>
                   </ul>
                 </div>
               </div>
@@ -399,7 +399,7 @@ const RnDMonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'
                 }`}>
                   <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Qualité Produits
+                    Temps de Développement
                   </h4>
                   <div className={`text-3xl font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
                     {monthlyData.avgQuality}%
@@ -409,7 +409,7 @@ const RnDMonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'
                 }`}>
                   <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Formulations
+                    Nouvelles Formules
                   </h4>
                   <div className={`text-3xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>
                     {monthlyData.avgFormulation}%
@@ -419,7 +419,7 @@ const RnDMonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'
                 }`}>
                   <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Dashboard Temps Réel
+                    Taux de Réussite Essais
                   </h4>
                   <div className={`text-3xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
                     {monthlyData.avgDashboard}%
@@ -500,9 +500,9 @@ export const RnDPage = () => {
     if (!departmentSummary?.kpis) {
       return [
         { title: 'KPIs Interactifs', value: '0/3', change: 0, changeText: 'configurés', icon: Target, color: 'blue' },
-        { title: 'Performance Globale', value: '0%', change: 0, changeText: 'efficacité', icon: TrendingUp, color: 'emerald' },
-        { title: 'Qualité Produits', value: '0%', change: 0, changeText: 'validés', icon: TestTube, color: 'indigo' },
-        { title: 'Formulations', value: '0%', change: 0, changeText: 'réussies', icon: Zap, color: 'green' }
+        { title: 'Temps de Développement', value: '0%', change: 0, changeText: 'efficacité', icon: Clock, color: 'emerald' },
+        { title: 'Nouvelles Formules', value: '0%', change: 0, changeText: 'développées', icon: Package, color: 'indigo' },
+        { title: 'Taux de Réussite', value: '0%', change: 0, changeText: 'essais réussis', icon: TestTube, color: 'green' }
       ];
     }
 
@@ -524,27 +524,27 @@ export const RnDPage = () => {
         color: 'blue'
       },
       {
-        title: 'Performance Globale',
-        value: `${dashboardKPI?.latestValue?.value || 0}%`,
-        change: dashboardKPI?.latestValue?.value || 0,
+        title: 'Temps de Développement',
+        value: `${qualityKPI?.latestValue?.value || 0}%`,
+        change: qualityKPI?.latestValue?.value || 0,
         changeText: 'efficacité',
-        icon: TrendingUp,
+        icon: Clock,
         color: 'emerald'
       },
       {
-        title: 'Qualité Produits',
-        value: `${qualityKPI?.latestValue?.value || 0}%`,
-        change: qualityKPI?.latestValue?.value || 0,
-        changeText: 'validés',
-        icon: TestTube,
+        title: 'Nouvelles Formules',
+        value: `${formulationKPI?.latestValue?.value || 0}%`,
+        change: formulationKPI?.latestValue?.value || 0,
+        changeText: 'développées',
+        icon: Package,
         color: 'indigo'
       },
       {
-        title: 'Formulations',
-        value: `${formulationKPI?.latestValue?.value || 0}%`,
-        change: formulationKPI?.latestValue?.value || 0,
-        changeText: 'réussies',
-        icon: Zap,
+        title: 'Taux de Réussite',
+        value: `${dashboardKPI?.latestValue?.value || 0}%`,
+        change: dashboardKPI?.latestValue?.value || 0,
+        changeText: 'essais réussis',
+        icon: TestTube,
         color: 'green'
       }
     ];
@@ -607,9 +607,9 @@ export const RnDPage = () => {
 
     const getKPIIcon = (kpiId) => {
       switch (kpiId) {
-        case 'product_quality_validation': return TestTube;
-        case 'formulation_builder': return Zap;
-        case 'live_kpi_dashboard': return Activity;
+        case 'product_quality_validation': return Clock;
+        case 'formulation_builder': return Package;
+        case 'live_kpi_dashboard': return TestTube;
         default: return Target;
       }
     };
@@ -625,18 +625,18 @@ export const RnDPage = () => {
 
     const getKPIName = (kpiId) => {
       switch (kpiId) {
-        case 'product_quality_validation': return 'Validation Qualité Produits';
-        case 'formulation_builder': return 'Constructeur de Formulations';
-        case 'live_kpi_dashboard': return 'Tableau de Bord KPI en Temps Réel';
+        case 'product_quality_validation': return 'Temps de Développement de Nouveaux Produits';
+        case 'formulation_builder': return 'Nouvelles Formules Développées';
+        case 'live_kpi_dashboard': return 'Taux de Réussite des Essais de Laboratoire';
         default: return kpi.name?.fr || kpi.name?.en;
       }
     };
 
     const getKPIDescription = (kpiId) => {
       switch (kpiId) {
-        case 'product_quality_validation': return 'Tests individuels (Densité, pH, Dosage) et vérification disponibilité emballage';
-        case 'formulation_builder': return 'Création de formules par glisser-déposer avec KPI individuels et suivi d\'essais';
-        case 'live_kpi_dashboard': return 'Synchronisation temps réel avec analyses de tendances et rapports automatiques';
+        case 'product_quality_validation': return 'Temps de développement optimisé de l\'idée à la validation laboratoire';
+        case 'formulation_builder': return 'Création et développement de nouvelles formules innovantes';
+        case 'live_kpi_dashboard': return 'Suivi du taux de réussite des essais et validation laboratoire';
         default: return kpi.description?.fr || kpi.description?.en;
       }
     };
@@ -660,16 +660,16 @@ export const RnDPage = () => {
         return (
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="flex items-center space-x-1">
-              <Beaker className="w-3 h-3 text-blue-500" />
-              <span>MP: {latestValue.data.categoryKPIs.matiere_premiere}%</span>
+              <Clock className="w-3 h-3 text-blue-500" />
+              <span>Temps: {latestValue.data.categoryKPIs.matiere_premiere}j</span>
             </div>
             <div className="flex items-center space-x-1">
               <TestTube className="w-3 h-3 text-green-500" />
-              <span>PF: {latestValue.data.categoryKPIs.produit_fini}%</span>
+              <span>Tests: {latestValue.data.categoryKPIs.produit_fini}%</span>
             </div>
             <div className="flex items-center space-x-1">
               <Package className="w-3 h-3 text-purple-500" />
-              <span>EMB: {latestValue.data.categoryKPIs.emballage}%</span>
+              <span>Valid: {latestValue.data.categoryKPIs.emballage}%</span>
             </div>
           </div>
         );
@@ -687,8 +687,8 @@ export const RnDPage = () => {
       if (kpi.id === 'live_kpi_dashboard' && latestValue.data.metrics) {
         return (
           <div className="text-xs">
-            <span>{latestValue.data.metrics.totalFormulas} formules • </span>
-            <span>{latestValue.data.metrics.totalEssais} essais</span>
+            <span>{latestValue.data.metrics.totalFormulas} essais • </span>
+            <span>{latestValue.data.metrics.totalEssais} réussis</span>
           </div>
         );
       }
@@ -960,7 +960,7 @@ export const RnDPage = () => {
               {deptName}
             </h1>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Validation qualité avec tests individuels, formulations avancées et tableau de bord synchronisé
+              Développement de nouvelles formules avec suivi temps réel et optimisation des essais
             </p>
           </div>
         </div>
@@ -1052,7 +1052,7 @@ export const RnDPage = () => {
               KPIs Interactifs R&D
             </h3>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Validation qualité avec tests individuels, construction de formules et tableau de bord synchronisé
+              Suivi du développement formules avec temps, innovation et réussite des essais
             </p>
           </div>
         </div>
@@ -1093,26 +1093,26 @@ export const RnDPage = () => {
             Prêt à Démarrer l'Innovation R&D
           </h4>
           <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-            Cliquez sur n'importe quelle carte KPI ci-dessus pour commencer la validation qualité avec tests individuels, la création de formules ou l'analyse en temps réel
+            Cliquez sur n'importe quelle carte KPI ci-dessus pour commencer le suivi du développement formules et l'optimisation des processus
           </p>
           <div className="flex justify-center space-x-3">
             <button 
               onClick={() => handleAddData(interactiveKPIs.find(k => k.id === 'product_quality_validation'))}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
             >
-              Tests Qualité
+              Temps Développement
             </button>
             <button 
               onClick={() => handleAddData(interactiveKPIs.find(k => k.id === 'formulation_builder'))}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
             >
-              Créer Formule
+              Nouvelles Formules
             </button>
             <button 
               onClick={() => handleAddData(interactiveKPIs.find(k => k.id === 'live_kpi_dashboard'))}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
             >
-              Tableau de Bord
+              Taux Réussite
             </button>
           </div>
         </div>

@@ -300,19 +300,19 @@ const UserManagement = ({ onClose }) => {
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {users.length > 0 ? (
-                users.map((user) => (
-                  <div key={user.username} className={`p-4 rounded-lg border ${isDark ? 'border-slate-600 bg-slate-800/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                users.map((userObj) => ( // Renamed user to userObj to avoid conflict with outer scope user
+                  <div key={userObj.username} className={`p-4 rounded-lg border ${isDark ? 'border-slate-600 bg-slate-800/30' : 'border-slate-200 bg-slate-50/50'}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center"><User className="w-4 h-4 text-white" /></div>
                         <div>
-                          <p className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{user.username}</p>
-                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Créé le: {new Date(user.createdAt).toLocaleDateString()}</p>
+                          <p className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{userObj.username}</p>
+                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Créé le: {new Date(userObj.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${isDark ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-100 text-blue-800'}`}>Utilisateur</span>
-                        <button onClick={() => handleDeleteUser(user.username)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-red-900/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}><X className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteUser(userObj.username)} className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-red-900/20 text-red-400' : 'hover:bg-red-50 text-red-600'}`}><X className="w-4 h-4" /></button>
                       </div>
                     </div>
                   </div>
@@ -370,9 +370,10 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
         </div>
       </div>
 
-      {/* Sidebar: Added flex flex-col here */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-all duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border-r flex flex-col`}>
-        <div className={`p-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}> {/* Sidebar Header */}
+      {/* Sidebar: Main container with overflow-y-auto */}
+      <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-all duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border-r flex flex-col overflow-y-auto`}>
+        {/* Sidebar Header */}
+        <div className={`p-6 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg"><span className="text-white font-bold">H</span></div>
@@ -385,8 +386,8 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         </div>
 
-        {user && ( /* User Info */
-          <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+        {user && ( /* User Info: Reduced padding */
+          <div className={`p-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="flex items-center space-x-3">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${user.role === 'admin' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}><User className="w-4 h-4 text-white" /></div>
               <div className="flex-1">
@@ -397,18 +398,18 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         )}
 
-        {/* Navigation: Added overflow-y-auto and kept flex-1 */}
-        <nav className="p-4 flex-1 overflow-y-auto">
-          <div className="space-y-2">
+        {/* Navigation: Removed flex-1 and overflow-y-auto, reduced padding and spacing */}
+        <nav className="p-3"> {/* p-4 to p-3 */}
+          <div className="space-y-1"> {/* space-y-2 to space-y-1 */}
             {navItems.map((item) => {
               const isActive = currentPage === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => { setCurrentPage(item.id); setSidebarOpen(false); }}
-                  className={`w-full flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all ${isActive ? (isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-slate-100 text-slate-900 border border-slate-200') : (isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50')}`}
-                >
-                  <div className={`p-2 rounded-lg mr-3 ${item.iconBg}`}><item.icon className="w-4 h-4 text-white" /></div>
+                  className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all ${isActive ? (isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-slate-100 text-slate-900 border border-slate-200') : (isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50')}`}
+                > {/* py-3 to py-2.5 */}
+                  <div className={`p-1.5 rounded-lg mr-2 ${item.iconBg}`}><item.icon className="w-4 h-4 text-white" /></div> {/* p-2 to p-1.5, mr-3 to mr-2 */}
                   <span className="flex-1 text-left">{item.label}</span>
                 </button>
               );
@@ -416,32 +417,32 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         </nav>
 
-        {/* Footer section of sidebar: Admin, Logout, Status. These are not flex-1 */}
-        <div>
-            {user?.role === 'admin' && ( /* Admin Controls */
-            <div className={`p-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}> {/* Added dark mode border for consistency */}
+        {/* Footer section: mt-auto to push to bottom, border-t for separation, reduced paddings */}
+        <div className={`mt-auto border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+            {user?.role === 'admin' && ( /* Admin Controls: Reduced padding */
+            <div className="p-3"> {/* p-4 to p-3, removed internal border-t */}
                 <button
                 onClick={() => setShowUserManagement(true)}
-                className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/30 border border-yellow-800/30' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border border-yellow-200'}`}
-                >
+                className={`w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/30 border border-yellow-800/30' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border border-yellow-200'}`}
+                > {/* px-4 py-3 to px-3 py-2.5 */}
                 <Users className="w-4 h-4" />
                 <span>Gérer les Utilisateurs</span>
                 </button>
             </div>
             )}
 
-            <div className="p-4"> {/* Logout Button */}
+            <div className="p-3"> {/* Logout Button: Reduced padding */}
             <button
                 onClick={logout}
-                className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'}`}
-            >
+                className={`w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-medium transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'}`}
+            > {/* px-4 py-3 to px-3 py-2.5 */}
                 <LogOut className="w-4 h-4" />
                 <span>Déconnexion</span>
             </button>
             </div>
 
-            <div className="p-4"> {/* Status Widget */}
-            <div className={`p-4 rounded-xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} border`}>
+            <div className="p-3"> {/* Status Widget: Reduced padding */}
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} border`}> {/* inner p-4 to p-3 */}
                 <div className="flex items-center justify-between mb-2">
                 <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>État du Système</span>
                 <div className="flex items-center space-x-1">

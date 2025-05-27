@@ -531,10 +531,10 @@ const FormulationBuilder = ({ onSave, onCancel, existingData = null, isDark = fa
               </div>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Constructeur de Formulations
+Nouvelles Formules Développées
                 </h3>
                 <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Création de formules par glisser-déposer et suivi des essais avec KPI individuels
+Développement de nouvelles formules avec suivi des essais et calcul automatique du taux de réussite
                 </p>
               </div>
             </div>
