@@ -26,7 +26,7 @@ import { DashboardPage } from './components/Dashboard';
 import { TeamPage } from './components/Team';
 import { ProductionPage } from './components/Production';
 import { QualityPage } from './components/Quality';
-import { RnDPage } from './components/Rnd'; // FIXED: Changed to named import
+import { RnDPage } from './components/RnD'; // FIXED: Changed to named import
 import { WarehousesPage } from './components/Warehouses';
 
 // Import utilities and context
