@@ -380,33 +380,33 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
         </div>
       </div>
 
-      {/* Sidebar: Removed overflow-y-auto and made more compact */}
+      {/* Sidebar: Better sized elements without scroll */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-all duration-300 ease-in-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border-r flex flex-col`}>
         
-        {/* Sidebar Header - More compact */}
-        <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+        {/* Sidebar Header - Better sized */}
+        <div className={`p-5 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-sm">H</span>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">H</span>
               </div>
               <div>
-                <h1 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim</h1>
-                <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tableau de Bord KPI</p>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim</h1>
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tableau de Bord KPI</p>
               </div>
             </div>
-            <button onClick={() => setSidebarOpen(false)} className={`lg:hidden p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
+            <button onClick={() => setSidebarOpen(false)} className={`lg:hidden p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}>
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* User Info - More compact */}
+        {/* User Info - Better sized */}
         {user && (
-          <div className={`p-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-            <div className="flex items-center space-x-2">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${user.role === 'admin' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
-                <User className="w-3.5 h-3.5 text-white" />
+          <div className={`p-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+            <div className="flex items-center space-x-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${user.role === 'admin' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' : 'bg-gradient-to-br from-blue-500 to-indigo-500'}`}>
+                <User className="w-4 h-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{user.username}</p>
@@ -416,66 +416,66 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
           </div>
         )}
 
-        {/* Navigation - More compact */}
-        <nav className="p-2 flex-1">
-          <div className="space-y-0.5">
+        {/* Navigation - Better sized */}
+        <nav className="p-3 flex-1">
+          <div className="space-y-1">
             {navItems.map((item) => {
               const isActive = currentPage === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => { setCurrentPage(item.id); setSidebarOpen(false); }}
-                  className={`w-full flex items-center px-2.5 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all ${
                     isActive 
                       ? (isDark ? 'bg-slate-800 text-white border border-slate-700' : 'bg-slate-100 text-slate-900 border border-slate-200') 
                       : (isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50')
                   }`}
                 >
-                  <div className={`p-1 rounded-md mr-2 ${item.iconBg}`}>
-                    <item.icon className="w-3.5 h-3.5 text-white" />
+                  <div className={`p-1.5 rounded-lg mr-3 ${item.iconBg}`}>
+                    <item.icon className="w-4 h-4 text-white" />
                   </div>
-                  <span className="flex-1 text-left text-xs font-medium">{item.label}</span>
+                  <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
                 </button>
               );
             })}
           </div>
         </nav>
 
-        {/* Footer section - Much more compact */}
+        {/* Footer section - Better sized */}
         <div className={`border-t ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           {user?.role === 'admin' && (
-            <div className="p-2">
+            <div className="p-3">
               <button
                 onClick={() => setShowUserManagement(true)}
-                className={`w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   isDark ? 'bg-yellow-900/20 text-yellow-400 hover:bg-yellow-900/30 border border-yellow-800/30' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100 border border-yellow-200'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" />
+                <Users className="w-4 h-4" />
                 <span>Utilisateurs</span>
               </button>
             </div>
           )}
 
-          <div className="p-2">
+          <div className="p-3">
             <button
               onClick={logout}
-              className={`w-full flex items-center justify-center space-x-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                 isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
               }`}
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" />
               <span>Déconnexion</span>
             </button>
           </div>
 
-          {/* Status Widget - Very compact */}
-          <div className="p-2">
-            <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} border`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Système</span>
+          {/* Status Widget - Better sized */}
+          <div className="p-3">
+            <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'} border`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Système</span>
                 <div className="flex items-center space-x-1">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                   <span className="text-xs font-medium text-emerald-600">En Ligne</span>
                 </div>
               </div>

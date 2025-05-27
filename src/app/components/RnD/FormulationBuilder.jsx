@@ -8,6 +8,9 @@ import {
   useSensors,
   DragOverlay,
   useDroppable,
+  useDraggable,
+  pointerWithin,
+  rectIntersection,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -42,20 +45,18 @@ import {
 } from 'lucide-react';
 import ReactECharts from 'echarts-for-react';
 
-// Draggable ingredient tag - for ingredient library
+// Fixed: Use useDraggable for library ingredients (no reordering needed in library)
 const DraggableIngredient = ({ ingredient, category, isDark, id }) => {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({ id });
+  } = useDraggable({ id });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
   };
 
   const getCategoryColor = (cat) => {
@@ -82,7 +83,7 @@ const DraggableIngredient = ({ ingredient, category, isDark, id }) => {
   );
 };
 
-// Formula ingredient item (for ingredients already in the formula)
+// Formula ingredient item (for ingredients already in the formula) - still sortable within formula
 const FormulaIngredient = ({ ingredient, index, onRemove, isDark, id }) => {
   const {
     attributes,
@@ -230,6 +231,12 @@ const FormulationBuilder = ({ onSave, onCancel, existingData = null, isDark = fa
     })
   );
 
+  // Fixed: Custom collision detection strategy (pointer-biased)
+  const collisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    return pointerCollisions.length ? pointerCollisions : rectIntersection(args);
+  };
+
   const addFormula = () => {
     if (!currentFormula.name.trim()) {
       setErrors({ formulaName: 'Nom de formule requis' });
@@ -313,43 +320,68 @@ const FormulationBuilder = ({ onSave, onCancel, existingData = null, isDark = fa
 
     if (!over || !active.id) return;
 
-    // Handle drop on formula zone
-    if (over.id === 'formula-dropzone') {
-      const activeIdStr = active.id.toString();
-      
-      // Check if it's from available ingredients (not already in formula)
-      if (activeIdStr.startsWith('matiere_premiere_') || activeIdStr.startsWith('produit_fini_')) {
-        const [category, ...ingredientParts] = activeIdStr.split('_');
-        // Remove the index part from the end
-        const ingredientPartsWithoutIndex = ingredientParts.slice(0, -1);
-        const ingredientKey = ingredientPartsWithoutIndex.join('_');
-        
-        // Find the actual ingredient name
-        const fullIngredient = availableIngredients[category]?.find(ing => 
-          ing.replace(/\s+/g, '_') === ingredientKey
-        );
+    const activeIdStr = active.id.toString();
+    const overIdStr = over.id.toString();
 
-        if (fullIngredient && !currentFormula.ingredients.includes(fullIngredient)) {
-          setCurrentFormula(prev => ({
-            ...prev,
-            ingredients: [...prev.ingredients, fullIngredient]
-          }));
-          console.log('✅ Added ingredient to formula:', fullIngredient);
-        }
+    console.log('🔍 Drag end - Active:', activeIdStr, 'Over:', overIdStr);
+
+    // Fixed: Check if dropping from library ingredients to formula area (either container or existing ingredients)
+    const isLibraryItem = activeIdStr.startsWith('matiere_premiere_') || activeIdStr.startsWith('produit_fini_');
+    const isFormulaArea = overIdStr === 'formula-dropzone' || overIdStr.startsWith('formula_');
+
+    console.log('📋 Is library item:', isLibraryItem, 'Is formula area:', isFormulaArea);
+
+    if (isLibraryItem && isFormulaArea) {
+      // Fixed: Better parsing of category and ingredient
+      let category, ingredientKey;
+      
+      if (activeIdStr.startsWith('matiere_premiere_')) {
+        // Remove 'matiere_premiere_' prefix and '_index' suffix
+        const withoutPrefix = activeIdStr.substring('matiere_premiere_'.length);
+        const parts = withoutPrefix.split('_');
+        const withoutIndex = parts.slice(0, -1).join('_');
+        category = 'matiere_premiere';
+        ingredientKey = withoutIndex;
+      } else if (activeIdStr.startsWith('produit_fini_')) {
+        // Remove 'produit_fini_' prefix and '_index' suffix
+        const withoutPrefix = activeIdStr.substring('produit_fini_'.length);
+        const parts = withoutPrefix.split('_');
+        const withoutIndex = parts.slice(0, -1).join('_');
+        category = 'produit_fini';
+        ingredientKey = withoutIndex;
+      }
+
+      console.log('🔑 Category:', category, 'Ingredient key:', ingredientKey);
+      
+      // Find the actual ingredient name
+      const fullIngredient = availableIngredients[category]?.find(ing => 
+        ing.replace(/\s+/g, '_') === ingredientKey
+      );
+
+      console.log('🔍 Found ingredient:', fullIngredient);
+      console.log('📝 Current formula ingredients:', currentFormula.ingredients);
+
+      if (fullIngredient && !currentFormula.ingredients.includes(fullIngredient)) {
+        setCurrentFormula(prev => ({
+          ...prev,
+          ingredients: [...prev.ingredients, fullIngredient]
+        }));
+        console.log('✅ Added ingredient to formula:', fullIngredient);
+      } else if (!fullIngredient) {
+        console.log('❌ Could not find ingredient for key:', ingredientKey, 'in category:', category);
+      } else {
+        console.log('⚠️ Ingredient already exists in formula:', fullIngredient);
       }
       return;
     }
 
-    // Handle reordering within formula
-    if (activeId && over.id && 
-        activeId.toString().startsWith('formula_') && 
-        over.id.toString().startsWith('formula_')) {
-      
+    // Handle reordering within formula (both items must be formula ingredients)
+    if (activeIdStr.startsWith('formula_') && overIdStr.startsWith('formula_')) {
       const activeIndex = currentFormula.ingredients.findIndex((_, index) => 
-        `formula_${currentFormula.ingredients[index].replace(/\s+/g, '_')}_${index}` === activeId
+        `formula_${currentFormula.ingredients[index].replace(/\s+/g, '_')}_${index}` === activeIdStr
       );
       const overIndex = currentFormula.ingredients.findIndex((_, index) => 
-        `formula_${currentFormula.ingredients[index].replace(/\s+/g, '_')}_${index}` === over.id
+        `formula_${currentFormula.ingredients[index].replace(/\s+/g, '_')}_${index}` === overIdStr
       );
 
       if (activeIndex !== -1 && overIndex !== -1) {
@@ -531,10 +563,10 @@ const FormulationBuilder = ({ onSave, onCancel, existingData = null, isDark = fa
               </div>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-Nouvelles Formules Développées
+                  Nouvelles Formules Développées
                 </h3>
                 <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-Développement de nouvelles formules avec suivi des essais et calcul automatique du taux de réussite
+                  Développement de nouvelles formules avec suivi des essais et calcul automatique du taux de réussite
                 </p>
               </div>
             </div>
@@ -570,7 +602,7 @@ Développement de nouvelles formules avec suivi des essais et calcul automatique
 
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={collisionDetection}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
@@ -676,7 +708,7 @@ Développement de nouvelles formules avec suivi des essais et calcul automatique
                 </div>
               </div>
 
-              {/* Ingredients Library - Each category in its own SortableContext */}
+              {/* Ingredients Library - Simple draggables (no SortableContext needed) */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h4 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
@@ -698,11 +730,6 @@ Développement de nouvelles formules avec suivi des essais et calcul automatique
                   
                   const Icon = categoryIcons[category];
                   
-                  // Create separate IDs for each category
-                  const categoryItemIds = ingredients.map((ingredient, index) => 
-                    `${category}_${ingredient.replace(/\s+/g, '_')}_${index}`
-                  );
-                  
                   return (
                     <div key={category} className={`p-6 rounded-xl border ${
                       isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
@@ -716,23 +743,18 @@ Développement de nouvelles formules avec suivi des essais et calcul automatique
                         </h5>
                       </div>
                       
-                      {/* Separate SortableContext for each category */}
-                      <SortableContext 
-                        items={categoryItemIds}
-                        strategy={rectSortingStrategy}
-                      >
-                        <div className="flex flex-wrap gap-3 max-h-40 overflow-y-auto">
-                          {ingredients.map((ingredient, index) => (
-                            <DraggableIngredient
-                              key={`${category}_${ingredient.replace(/\s+/g, '_')}_${index}`}
-                              id={`${category}_${ingredient.replace(/\s+/g, '_')}_${index}`}
-                              ingredient={ingredient}
-                              category={category}
-                              isDark={isDark}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
+                      {/* No SortableContext - just simple draggables */}
+                      <div className="flex flex-wrap gap-3 max-h-40 overflow-y-auto">
+                        {ingredients.map((ingredient, index) => (
+                          <DraggableIngredient
+                            key={`${category}_${ingredient.replace(/\s+/g, '_')}_${index}`}
+                            id={`${category}_${ingredient.replace(/\s+/g, '_')}_${index}`}
+                            ingredient={ingredient}
+                            category={category}
+                            isDark={isDark}
+                          />
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
