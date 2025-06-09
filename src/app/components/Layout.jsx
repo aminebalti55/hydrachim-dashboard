@@ -9,7 +9,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
     { id: 'rnd', icon: FlaskConical, label: 'R&D et Innovation', iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600' },
     { id: 'quality', icon: ShieldCheck, label: 'Assurance Qualité', iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-600' },
     { id: 'production', icon: Factory, label: 'Production', iconBg: 'bg-gradient-to-br from-orange-600 to-red-600' },
-    { id: 'warehouses', icon: Package, label: 'Entrepôts', iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600' },
+    { id: 'warehouses', icon: Package, label: 'Magasin', iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600' },
     { id: 'team', icon: Users, label: 'Gestion d\'Équipe', iconBg: 'bg-gradient-to-br from-pink-600 to-rose-600' }
   ];
 
@@ -27,7 +27,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-sm">H</span>
             </div>
-            <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim</h1>
+            <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim Tunisie</h1>
           </div>
           <div className="flex items-center space-x-2">
             <button className={`p-2 rounded-lg transition-colors relative ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'}`}>
@@ -54,7 +54,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                 <span className="text-white font-bold text-sm">H</span>
               </div>
               <div>
-                <h1 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim</h1>
+                <h1 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim Tunisie</h1>
                 <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tableau de Bord KPI</p>
               </div>
             </div>

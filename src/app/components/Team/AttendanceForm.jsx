@@ -1,28 +1,247 @@
-import { useState } from 'react';
-import { Clock, UserPlus, Calendar, Target, Save, X, Trash2, UserRound, ClipboardCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  Clock, UserPlus, Calendar, Target, Save, X, Trash2, UserRound, 
+  ClipboardCheck, Users, Edit3, Check, Search, Filter, MoreHorizontal, 
+  Copy, AlertCircle, Timer, Activity, TrendingUp, Award
+} from 'lucide-react';
+
+// Default team members
+const DEFAULT_EMPLOYEES = [
+  { name: 'Rihem', defaultClockIn: '08:00', defaultClockOut: '17:00' },
+  { name: 'Hamza', defaultClockIn: '08:00', defaultClockOut: '17:00' },
+  { name: 'Mohamed', defaultClockIn: '08:00', defaultClockOut: '17:00' },
+  { name: 'Nassim', defaultClockIn: '08:00', defaultClockOut: '17:00' },
+  { name: 'Tarek', defaultClockIn: '08:00', defaultClockOut: '17:00' },
+  { name: 'Youssef', defaultClockIn: '08:00', defaultClockOut: '17:00' }
+];
+
+// Employee Card Component
+const EmployeeCard = ({ employee, onUpdate, onDelete, weeklyTarget, isDark, selectedDate }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Calculate work hours and productivity
+  const calculateWorkMetrics = () => {
+    if (!employee.clockIn || !employee.clockOut) return { workHours: 0, productivity: 0 };
+    
+    const clockInTime = new Date(`${selectedDate}T${employee.clockIn}`);
+    const clockOutTime = new Date(`${selectedDate}T${employee.clockOut}`);
+    
+    if (clockOutTime <= clockInTime) return { workHours: 0, productivity: 0 };
+    
+    const workHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+    const expectedHours = 9;
+    const productivity = Math.min(100, Math.round((workHours / expectedHours) * 100));
+    
+    return { 
+      workHours: Math.round(workHours * 100) / 100, 
+      productivity 
+    };
+  };
+
+  const { workHours, productivity } = calculateWorkMetrics();
+  
+  // Status indicators
+  const isPresent = workHours > 0;
+  const isOnTime = employee.clockIn <= '08:00' && workHours >= 8;
+  const isHighPerformer = productivity >= weeklyTarget;
+
+  return (
+    <div className={`p-3 rounded-xl border transition-all duration-200 hover:shadow-lg group min-w-0 ${
+      isDark 
+        ? 'bg-slate-800/80 border-slate-700 hover:border-slate-600' 
+        : 'bg-white border-slate-200 hover:border-slate-300'
+    }`}>
+      
+      {/* Header */}
+      <div className="flex items-start justify-between mb-2 min-w-0">
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+            isHighPerformer
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+              : 'bg-gradient-to-r from-slate-400 to-slate-500 text-white'
+          }`}>
+            {employee.name.charAt(0).toUpperCase() || '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <input
+              type="text"
+              value={employee.name}
+              onChange={(e) => onUpdate(employee.id, 'name', e.target.value)}
+              placeholder="Nom employé"
+              className={`text-sm font-semibold bg-transparent border-none p-0 w-full min-w-0 ${
+                isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+              } focus:outline-none truncate`}
+            />
+            <div className="mt-1 min-w-0">
+              <div className="grid grid-cols-2 gap-1 text-xs">
+                <div className="min-w-0">
+                  <span className={`block ${isDark ? 'text-slate-400' : 'text-slate-500'} text-xs mb-0.5`}>In</span>
+                  <input
+                    type="time"
+                    value={employee.clockIn}
+                    onChange={(e) => onUpdate(employee.id, 'clockIn', e.target.value)}
+                    className={`w-full text-xs bg-transparent border border-slate-300 rounded px-1 py-0.5 min-w-0 ${
+                      isDark ? 'text-slate-300 border-slate-600' : 'text-slate-900 border-slate-300'
+                    } focus:outline-none focus:border-blue-500`}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <span className={`block ${isDark ? 'text-slate-400' : 'text-slate-500'} text-xs mb-0.5`}>Out</span>
+                  <input
+                    type="time"
+                    value={employee.clockOut}
+                    onChange={(e) => onUpdate(employee.id, 'clockOut', e.target.value)}
+                    className={`w-full text-xs bg-transparent border border-slate-300 rounded px-1 py-0.5 min-w-0 ${
+                      isDark ? 'text-slate-300 border-slate-600' : 'text-slate-900 border-slate-300'
+                    } focus:outline-none focus:border-blue-500`}
+                  />
+                </div>
+              </div>
+              <div className={`text-center text-xs font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'} truncate`}>
+                {workHours}h
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <button
+          onClick={() => onDelete(employee.id)}
+          className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
+            isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'
+          }`}
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Compact Stats Grid */}
+      <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+          <div 
+            className={`text-lg font-bold cursor-help ${
+              productivity >= weeklyTarget ? 'text-green-500' : 'text-red-500'
+            }`}
+            title={`Formule Productivité:
+
+Productivité = (Heures Travaillées / Heures Attendues) × 100
+
+Détail du calcul:
+• Heures Travaillées: ${workHours}h
+• Heures Attendues: 9h
+• Calcul: (${workHours} / 9) × 100 = ${productivity}%
+
+Note: La productivité est plafonnée à 100%
+Les heures sont calculées entre l'heure d'arrivée et de départ.`}
+          >
+            {productivity}%
+          </div>
+          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>
+            Productivité
+          </div>
+        </div>
+        
+        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+          <div className={`text-lg font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            {workHours}h
+          </div>
+          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>Travaillées</div>
+        </div>
+        
+        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+          <div className={`text-lg font-bold ${
+            isPresent ? 'text-green-500' : 'text-red-500'
+          }`}>
+            {isPresent ? '✓' : '✗'}
+          </div>
+          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>Présence</div>
+        </div>
+      </div>
+
+      {/* Status Bar */}
+      <div className={`mb-2 p-1.5 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
+        <div className="flex justify-between items-center mb-1">
+          <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} truncate`}>
+            Statut
+          </span>
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            {isPresent && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                isDark ? 'bg-green-900/50 text-green-400' : 'bg-green-100 text-green-700'
+              }`}>
+                Présent
+              </span>
+            )}
+          </div>
+        </div>
+        <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+          <div 
+            className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300"
+            style={{ width: `${Math.min(100, (workHours / 9) * 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Notes Section */}
+      <div>
+        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          Remarques
+        </label>
+        <textarea
+          value={employee.notes || ''}
+          onChange={(e) => onUpdate(employee.id, 'notes', e.target.value)}
+          placeholder="Notes..."
+          rows="1"
+          className={`w-full px-2 py-1 text-xs rounded-lg border resize-none min-w-0 ${
+            isDark 
+              ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
+              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500'
+          } focus:outline-none focus:border-blue-500`}
+        />
+      </div>
+    </div>
+  );
+};
 
 export default function AttendanceForm({ onSave, onCancel, existingData = null, isDark = false }) {
-  const [employees, setEmployees] = useState(existingData?.employees || []);
+  const [employees, setEmployees] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(existingData?.weeklyTarget || 95);
   const [monthlyTarget, setMonthlyTarget] = useState(existingData?.monthlyTarget || 95);
   const [selectedDate, setSelectedDate] = useState(existingData?.date || new Date().toISOString().split('T')[0]);
-  const [errors, setErrors] = useState({});
 
-  const addEmployee = () => {
+  // Initialize with default employees if no existing data
+  useEffect(() => {
+    if (existingData?.employees) {
+      setEmployees(existingData.employees);
+    }
+  }, [existingData]);
+
+  const addEmployee = (name = '') => {
     const newEmployee = {
       id: Date.now(),
-      name: '',
-      clockIn: '',
-      clockOut: '',
-      workHours: 0,
-      productivity: 0,
+      name: name,
+      clockIn: '08:00',
+      clockOut: '17:00',
+      workHours: 9,
+      productivity: 100,
       notes: ''
     };
     setEmployees([...employees, newEmployee]);
   };
 
-  const removeEmployee = (id) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+  const addQuickEmployee = (defaultEmp) => {
+    const exists = employees.some(emp => emp.name.toLowerCase() === defaultEmp.name.toLowerCase());
+    if (exists) return;
+    
+    const newEmployee = {
+      id: Date.now(),
+      name: defaultEmp.name,
+      clockIn: defaultEmp.defaultClockIn,
+      clockOut: defaultEmp.defaultClockOut,
+      workHours: 9,
+      productivity: 100,
+      notes: ''
+    };
+    setEmployees([...employees, newEmployee]);
   };
 
   const updateEmployee = (id, field, value) => {
@@ -30,6 +249,7 @@ export default function AttendanceForm({ onSave, onCancel, existingData = null, 
       if (emp.id === id) {
         const updated = { ...emp, [field]: value };
         
+        // Recalculate work hours and productivity when clock times change
         if (field === 'clockIn' || field === 'clockOut') {
           if (updated.clockIn && updated.clockOut) {
             const clockInTime = new Date(`${selectedDate}T${updated.clockIn}`);
@@ -39,7 +259,7 @@ export default function AttendanceForm({ onSave, onCancel, existingData = null, 
               const workHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
               updated.workHours = Math.round(workHours * 100) / 100;
               
-              const expectedHours = 8; // Supposons 8 heures de travail prévues
+              const expectedHours = 9;
               updated.productivity = Math.min(100, Math.round((workHours / expectedHours) * 100));
             } else {
               updated.workHours = 0;
@@ -57,429 +277,369 @@ export default function AttendanceForm({ onSave, onCancel, existingData = null, 
     }));
   };
 
-  const validateForm = () => {
-    const newErrors = {};
+  const removeEmployee = (id) => {
+    setEmployees(employees.filter(emp => emp.id !== id));
+  };
+
+  const calculateTeamAverage = () => {
+    if (employees.length === 0) return 0;
+    const validEmployees = employees.filter(emp => emp.name.trim());
+    if (validEmployees.length === 0) return 0;
     
-    if (employees.length === 0) {
-      newErrors.employees = "Veuillez ajouter au moins un employé.";
-    }
-    
-    employees.forEach((emp, index) => {
-      if (!emp.name.trim()) {
-        newErrors[`employee_${index}_name`] = "Ce champ est requis.";
-      }
+    // Calculate productivity for each employee
+    const productivities = validEmployees.map(emp => {
+      if (!emp.clockIn || !emp.clockOut) return 0;
       
-      if (emp.clockIn && emp.clockOut) {
-        const clockInTime = new Date(`${selectedDate}T${emp.clockIn}`);
-        const clockOutTime = new Date(`${selectedDate}T${emp.clockOut}`);
-        
-        if (clockOutTime <= clockInTime) {
-          newErrors[`employee_${index}_time`] = "L'heure de départ doit être ultérieure à l'heure d'arrivée.";
-        }
-      }
+      const clockInTime = new Date(`${selectedDate}T${emp.clockIn}`);
+      const clockOutTime = new Date(`${selectedDate}T${emp.clockOut}`);
+      
+      if (clockOutTime <= clockInTime) return 0;
+      
+      const workHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+      const expectedHours = 9;
+      return Math.min(100, Math.round((workHours / expectedHours) * 100));
     });
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const total = productivities.reduce((sum, prod) => sum + prod, 0);
+    return Math.round(total / productivities.length);
   };
 
   const handleSubmit = () => {
-    if (!validateForm()) return;
-    
-    // Calculate team average for the main KPI value
-    const calculateTeamAverage = () => {
-      if (employees.length === 0) return 0;
-      const validEmployees = employees.filter(emp => emp.productivity > 0 && emp.name.trim());
-      if (validEmployees.length === 0) return 0;
+    const processedEmployees = employees.filter(emp => emp.name.trim()).map(emp => {
+      // Ensure productivity is calculated
+      if (!emp.clockIn || !emp.clockOut) {
+        return { ...emp, workHours: 0, productivity: 0 };
+      }
       
-      const total = validEmployees.reduce((sum, emp) => sum + emp.productivity, 0);
-      return Math.round(total / validEmployees.length);
-    };
-
-    // FIXED: Create properly structured data object
+      const clockInTime = new Date(`${selectedDate}T${emp.clockIn}`);
+      const clockOutTime = new Date(`${selectedDate}T${emp.clockOut}`);
+      
+      if (clockOutTime <= clockInTime) {
+        return { ...emp, workHours: 0, productivity: 0 };
+      }
+      
+      const workHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+      const expectedHours = 9;
+      const productivity = Math.min(100, Math.round((workHours / expectedHours) * 100));
+      
+      return {
+        ...emp,
+        workHours: Math.round(workHours * 100) / 100,
+        productivity
+      };
+    });
+    
     const attendanceData = {
-      value: calculateTeamAverage(), // Main KPI value (number) for status calculations
+      value: calculateTeamAverage(),
       date: selectedDate,
-      employees: employees.filter(emp => emp.name.trim()),
+      employees: processedEmployees,
       weeklyTarget,
       monthlyTarget,
       type: 'attendance'
     };
     
-    // FIXED: Pass the full data object as the third parameter
     onSave('team', 'team_productivity_attendance', attendanceData, '');
   };
 
-  const calculateTeamAverage = () => {
-    if (employees.length === 0) return 0;
-    const validEmployees = employees.filter(emp => emp.productivity > 0 && emp.name.trim());
-    if (validEmployees.length === 0) return 0;
+  const getStats = () => {
+    const total = employees.filter(emp => emp.name.trim()).length;
+    let present = 0;
+    let onTime = 0;
+    let highPerformance = 0;
     
-    const total = validEmployees.reduce((sum, emp) => sum + emp.productivity, 0);
-    return Math.round(total / validEmployees.length);
+    employees.forEach(emp => {
+      if (!emp.clockIn || !emp.clockOut || !emp.name.trim()) return;
+      
+      const clockInTime = new Date(`${selectedDate}T${emp.clockIn}`);
+      const clockOutTime = new Date(`${selectedDate}T${emp.clockOut}`);
+      
+      if (clockOutTime > clockInTime) {
+        const workHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+        const productivity = Math.min(100, Math.round((workHours / 9) * 100));
+        
+        if (workHours > 0) present++;
+        if (emp.clockIn <= '08:00' && workHours >= 8) onTime++;
+        if (productivity >= weeklyTarget) highPerformance++;
+      }
+    });
+    
+    return {
+      total,
+      present,
+      onTime,
+      highPerformance,
+      presentRate: total > 0 ? Math.round((present / total) * 100) : 0
+    };
   };
 
   const teamAverage = calculateTeamAverage();
+  const stats = getStats();
+  const unusedEmployees = DEFAULT_EMPLOYEES.filter(defaultEmp => 
+    !employees.some(emp => emp.name.toLowerCase() === defaultEmp.name.toLowerCase())
+  );
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div className={`w-full max-w-5xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden border-0 ${
+      <div className={`w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${
         isDark ? 'bg-slate-900' : 'bg-white'
       }`}>
         
         {/* Header */}
-        <div className={`px-8 py-5 border-b ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
+        <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
                 <Clock className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Suivi des Présences
+                  Présence & Productivité
                 </h3>
-                <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Ajouter un enregistrement de présence
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Suivi moderne des horaires et performance équipe
                 </p>
               </div>
             </div>
-            <button 
-              onClick={onCancel} 
-              className={`p-2.5 rounded-xl transition-colors ${
-                isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
+            
+            {/* Team Stats */}
+            <div className="flex items-center space-x-6">
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${
+                  teamAverage >= weeklyTarget ? 'text-green-500' : 'text-red-500'
+                }`}>
+                  {teamAverage}%
+                </div>
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Productivité
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {stats.present}/{stats.total}
+                </div>
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Présents
+                </div>
+              </div>
+              
+              <button onClick={onCancel} className={`p-2 rounded-lg transition-colors ${
+                isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-900 hover:text-slate-800'
+              }`}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
-          <div className="p-8 space-y-8">
+        <div className="flex h-[calc(90vh-160px)]">
+          {/* Main Content */}
+          <div className="flex-1 overflow-y-auto p-6">
             
-            {/* Date and Targets */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>Sélectionner la date</span>
-                  </div>
+            {/* Quick Settings */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Date
                 </label>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className={`w-full px-4 py-3 rounded-xl border shadow-sm transition-colors focus:ring-2 focus:outline-none ${
-                    isDark 
-                      ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                      : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
               
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Target className="w-4 h-4" />
-                    <span>Objectif Hebdomadaire (%)</span>
-                  </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Objectif Hebdo (%)
                 </label>
                 <input
                   type="number"
-                  min="0"
-                  max="100"
                   value={weeklyTarget}
                   onChange={(e) => setWeeklyTarget(Number(e.target.value))}
-                  className={`w-full px-4 py-3 rounded-xl border shadow-sm transition-colors focus:ring-2 focus:outline-none ${
-                    isDark 
-                      ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                      : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
               
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Target className="w-4 h-4" />
-                    <span>Objectif Mensuel (%)</span>
-                  </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Objectif Mensuel (%)
                 </label>
                 <input
                   type="number"
-                  min="0"
-                  max="100"
                   value={monthlyTarget}
                   onChange={(e) => setMonthlyTarget(Number(e.target.value))}
-                  className={`w-full px-4 py-3 rounded-xl border shadow-sm transition-colors focus:ring-2 focus:outline-none ${
-                    isDark 
-                      ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                      : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
                 />
               </div>
             </div>
 
-            {/* Team Average Display */}
-            {employees.filter(emp => emp.name.trim()).length > 0 && (
-              <div className={`p-5 rounded-xl border ${
-                isDark 
-                  ? teamAverage >= weeklyTarget 
-                    ? 'bg-green-900/20 border-green-700/30' 
-                    : 'bg-red-900/20 border-red-700/30'
-                  : teamAverage >= weeklyTarget 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      teamAverage >= weeklyTarget 
-                        ? 'bg-green-600' 
-                        : 'bg-red-600'
-                    }`}>
-                      <ClipboardCheck className="w-5 h-5 text-white" />
-                    </div>
-                    <span className={`text-sm font-medium ${
-                      isDark 
-                        ? teamAverage >= weeklyTarget ? 'text-green-400' : 'text-red-400'
-                        : teamAverage >= weeklyTarget ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      Performance Globale de l'Équipe
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className={`text-2xl font-bold ${
-                      teamAverage >= weeklyTarget 
-                        ? isDark ? 'text-green-400' : 'text-green-600' 
-                        : isDark ? 'text-red-400' : 'text-red-600'
-                    }`}>
-                      {teamAverage}%
-                    </span>
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      teamAverage >= weeklyTarget 
-                        ? isDark ? 'bg-green-900/40 text-green-400' : 'bg-green-100 text-green-700'
-                        : isDark ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {teamAverage >= weeklyTarget ? 'Objectif Atteint' : 'Objectif Manqué'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Employee List */}
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
-                <h4 className={`text-lg font-bold flex items-center space-x-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  <UserRound className="w-5 h-5" />
-                  <span>Employés ({employees.length})</span>
-                </h4>
-                <button
-                  onClick={addEmployee}
-                  className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Ajouter un employé</span>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {employees.map((employee, index) => (
-                  <div 
-                    key={employee.id} 
-                    className={`p-5 rounded-xl border transition-all duration-200 hover:shadow-md ${
-                      isDark 
-                        ? 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600' 
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="space-y-4">
-                      {/* Employee Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            isDark ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600'
-                          }`}>
-                            <UserRound className="w-4 h-4" />
-                          </div>
-                          <h5 className={`font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                            {employee.name || 'Nouvel employé'}
-                          </h5>
-                        </div>
-                        <button
-                          onClick={() => removeEmployee(employee.id)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            isDark 
-                              ? 'text-red-400 hover:bg-red-900/30 hover:text-red-300' 
-                              : 'text-red-500 hover:bg-red-50 hover:text-red-600'
-                          }`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                      {/* Employee Info */}
-                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="md:col-span-2">
-                          <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Nom de l'employé
-                          </label>
-                          <input
-                            type="text"
-                            value={employee.name}
-                            onChange={(e) => updateEmployee(employee.id, 'name', e.target.value)}
-                            placeholder="Saisir le nom de l'employé"
-                            className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors focus:ring-2 focus:outline-none ${
-                              isDark 
-                                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                                : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
-                            } ${errors[`employee_${index}_name`] ? isDark ? 'border-red-500/70' : 'border-red-500' : ''}`}
-                          />
-                          {errors[`employee_${index}_name`] && (
-                            <span className="text-xs text-red-500 mt-1">{errors[`employee_${index}_name`]}</span>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Heure d'arrivée
-                          </label>
-                          <input
-                            type="time"
-                            value={employee.clockIn}
-                            onChange={(e) => updateEmployee(employee.id, 'clockIn', e.target.value)}
-                            className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors focus:ring-2 focus:outline-none ${
-                              isDark 
-                                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                                : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
-                            }`}
-                          />
-                        </div>
-
-                        <div>
-                          <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Heure de départ
-                          </label>
-                          <input
-                            type="time"
-                            value={employee.clockOut}
-                            onChange={(e) => updateEmployee(employee.id, 'clockOut', e.target.value)}
-                            className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors focus:ring-2 focus:outline-none ${
-                              isDark 
-                                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                                : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
-                            }`}
-                          />
-                          {errors[`employee_${index}_time`] && (
-                            <span className="text-xs text-red-500 mt-1">{errors[`employee_${index}_time`]}</span>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Productivité
-                          </label>
-                          <div className={`w-full px-4 py-2.5 rounded-lg border text-sm flex items-center justify-between ${
-                            isDark 
-                              ? 'bg-slate-800 border-slate-700' 
-                              : 'bg-slate-50 border-slate-200'
-                          }`}>
-                            <span className={`font-medium ${
-                              !employee.productivity ? (isDark ? 'text-slate-500' : 'text-slate-400') :
-                              employee.productivity >= weeklyTarget 
-                                ? (isDark ? 'text-green-400' : 'text-green-600') 
-                                : (isDark ? 'text-red-400' : 'text-red-600')
-                            }`}>
-                              {employee.productivity ? `${employee.productivity}%` : '--'}
-                            </span>
-                            
-                            {employee.workHours > 0 && (
-                              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                                {employee.workHours}h
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Notes */}
-                      <div className="mt-2">
-                        <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                          Remarques
-                        </label>
-                        <textarea
-                          value={employee.notes}
-                          onChange={(e) => updateEmployee(employee.id, 'notes', e.target.value)}
-                          placeholder="Ajoutez ici toutes les remarques pertinentes..."
-                          rows="2"
-                          className={`w-full px-4 py-2.5 rounded-lg border text-sm resize-none transition-colors focus:ring-2 focus:outline-none ${
-                            isDark 
-                              ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-500 focus:ring-blue-500/20' 
-                              : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500/30'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  </div>
+            {/* Employees Grid */}
+            {employees.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 min-w-0">
+                {employees.map(employee => (
+                  <EmployeeCard
+                    key={employee.id}
+                    employee={employee}
+                    onUpdate={updateEmployee}
+                    onDelete={removeEmployee}
+                    weeklyTarget={weeklyTarget}
+                    isDark={isDark}
+                    selectedDate={selectedDate}
+                  />
                 ))}
               </div>
+            ) : (
+              <div className={`text-center py-12 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <h4 className="text-lg font-semibold mb-2">Aucun employé ajouté</h4>
+                <p className="mb-6">Commencez par ajouter des employés à votre équipe</p>
+                <button
+                  onClick={() => addEmployee()}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700"
+                >
+                  Ajouter un Employé
+                </button>
+              </div>
+            )}
+          </div>
 
-              {employees.length === 0 && (
-                <div className={`p-8 rounded-xl border text-center ${
-                  isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200/80'
-                }`}>
-                  <div className={`w-16 h-16 rounded-full ${
-                    isDark ? 'bg-slate-700/80' : 'bg-white'
-                  } flex items-center justify-center mx-auto mb-4 shadow-sm`}>
-                    <UserPlus className={`w-8 h-8 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+          {/* Sidebar */}
+          <div className={`w-80 border-l ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+            <div className="p-4 space-y-4">
+              <h4 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                Gestion Rapide
+              </h4>
+
+              {/* Quick Add */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => addEmployee()}
+                  className="w-full p-2 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2 text-sm"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Nouvel Employé</span>
+                </button>
+
+                {unusedEmployees.length > 0 && (
+                  <div>
+                    <p className={`text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Équipe Prédéfinie:
+                    </p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {unusedEmployees.map(emp => (
+                        <button
+                          key={emp.name}
+                          onClick={() => addQuickEmployee(emp)}
+                          className={`p-1.5 text-xs rounded-lg transition-colors ${
+                            isDark 
+                              ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' 
+                              : 'bg-white text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          + {emp.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                    Aucun employé ajouté pour le moment
-                  </h4>
-                  <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Ajoutez des employés pour suivre leur présence et leur productivité
-                  </p>
-                  <button
-                    onClick={addEmployee}
-                    className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
-                  >
-                    <span>Ajouter le premier employé</span>
-                  </button>
+                )}
+              </div>
+
+              {/* Team Overview */}
+              {employees.length > 0 && (
+                <div className={`p-3 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                  <h5 className={`text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Aperçu de l'Équipe
+                  </h5>
+                  
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Employés:</span>
+                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{stats.total}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Présents:</span>
+                      <span className={`font-semibold ${stats.presentRate >= 90 ? 'text-green-500' : 'text-red-500'}`}>
+                        {stats.present}/{stats.total}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>À l'heure:</span>
+                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{stats.onTime}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Performants:</span>
+                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{stats.highPerformance}</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Productivité moy:</span>
+                      <span className={`font-semibold ${
+                        teamAverage >= weeklyTarget ? 'text-green-500' : 'text-red-500'
+                      }`}>
+                        {teamAverage}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* KPI Info */}
+              <div className={`p-2 rounded-lg border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
+                <h5 className={`text-xs font-medium mb-1 flex items-center ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                  <Award className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate">Formule</span>
+                </h5>
+                <div className={`text-xs leading-tight ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <div className="truncate">• Heures / 9h</div>
+                  <div className="truncate">• Auto calculé</div>
+                  <div className="truncate">• Max 100%</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className={`px-8 py-5 border-t ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={onCancel}
-              className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                isDark 
-                  ? 'text-slate-300 hover:bg-slate-800 hover:text-white' 
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={employees.filter(emp => emp.name.trim()).length === 0}
-              className={`px-6 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 ${
-                employees.filter(emp => emp.name.trim()).length === 0 
-                  ? 'bg-slate-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:shadow-md hover:from-blue-600 hover:to-blue-700'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Save className="w-4 h-4" />
-                <span>Enregistrer</span>
-              </div>
-            </button>
+        <div className={`px-6 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className="flex justify-between items-center">
+            <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Productivité Équipe: <span className={`text-lg font-bold ${
+                teamAverage >= weeklyTarget ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {teamAverage}%
+              </span> • {stats.present}/{stats.total} présent(s) • Objectif: ≥{weeklyTarget}%
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={onCancel}
+                className={`px-4 py-2 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={employees.filter(emp => emp.name.trim()).length === 0}
+                className={`px-6 py-2 rounded-lg font-medium ${
+                  employees.filter(emp => emp.name.trim()).length === 0
+                    ? 'bg-slate-400 text-white cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700'
+                }`}
+              >
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       </div>

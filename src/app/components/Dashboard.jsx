@@ -13,7 +13,6 @@ import {
   Factory,
   FlaskConical,
   Package,
-  // Droplets, // Removed as Water Treatment department is removed
   ShieldCheck,
   CheckCircle,
   Clock,
@@ -22,7 +21,6 @@ import {
   TrendingDown,
   Plus
 } from 'lucide-react';
-// Removed: import { translations } from '../utils/translations';
 import { useKPIData } from '../hook/useKPIData';
 import { ChartDisplay } from '../components/ChartDisplay';
 import { AppContext } from '../context/AppContext';
@@ -31,48 +29,42 @@ import { AppContext } from '../context/AppContext';
 const StatCard = ({ stat, isDark, onClick }) => (
   <div
     onClick={onClick}
-    className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer ${
+    className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-200 hover:shadow-lg cursor-pointer ${
       isDark
-        ? 'bg-slate-800/60 border-slate-700/50'
-        : 'bg-white border-slate-200/80 shadow-sm'
+        ? 'bg-slate-800 border-slate-700'
+        : 'bg-white border-slate-200 shadow-sm'
     } border`}
   >
-    <div className={`absolute inset-0 bg-gradient-to-br opacity-50 ${
-      isDark ? `from-${stat.color}-500/10 to-${stat.color}-600/5` : `from-${stat.color}-50 to-${stat.color}-100/50`
-    }`} />
-
-    <div className="relative">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 rounded-xl shadow-lg`} style={{ backgroundColor: stat.bgColor }}>
-          <stat.icon className="w-5 h-5 text-white" />
-        </div>
-        <ChevronRight className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'} group-hover:translate-x-1 transition-transform`} />
+    <div className="flex items-start justify-between mb-6">
+      <div className={`p-3 rounded-xl`} style={{ backgroundColor: stat.bgColor }}>
+        <stat.icon className="w-5 h-5 text-white" />
       </div>
+      <ChevronRight className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'} group-hover:translate-x-1 transition-transform`} />
+    </div>
 
-      <div>
-        <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          {stat.name}
-        </p>
-        <p className={`text-3xl font-bold mb-3`} style={{ color: stat.textColor }}>
-          {stat.value}
-        </p>
-        <div className="flex items-center space-x-2">
-          {stat.trend === 'up' ? (
-            <ArrowUp className="w-4 h-4 text-emerald-500" />
-          ) : stat.trend === 'down' ? (
-            <ArrowDown className="w-4 h-4 text-red-500" />
-          ) : null}
-          <span className={`text-sm font-medium ${
-            stat.trend === 'up' ? 'text-emerald-600' :
-            stat.trend === 'down' ? 'text-red-600' :
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            {stat.change}
-          </span>
-          <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            {stat.subtitle}
-          </span>
-        </div>
+    <div>
+      <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        {stat.name}
+      </p>
+      <p className={`text-3xl font-bold mb-3`} style={{ color: stat.textColor }}>
+        {stat.value}
+      </p>
+      <div className="flex items-center space-x-2">
+        {stat.trend === 'up' ? (
+          <ArrowUp className="w-4 h-4 text-emerald-500" />
+        ) : stat.trend === 'down' ? (
+          <ArrowDown className="w-4 h-4 text-red-500" />
+        ) : null}
+        <span className={`text-sm font-medium ${
+          stat.trend === 'up' ? 'text-emerald-600' :
+          stat.trend === 'down' ? 'text-red-600' :
+          isDark ? 'text-slate-400' : 'text-slate-500'
+        }`}>
+          {stat.change}
+        </span>
+        <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          {stat.subtitle}
+        </span>
       </div>
     </div>
   </div>
@@ -98,66 +90,65 @@ const DepartmentQuickView = ({ dept, isDark, onNavigate }) => {
   return (
     <div
       onClick={() => onNavigate(dept.id)}
-      className={`group relative rounded-2xl p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl cursor-pointer ${
+      className={`group relative rounded-2xl p-6 transition-all duration-200 hover:shadow-lg hover:scale-[1.01] cursor-pointer ${
         isDark
-          ? 'bg-slate-800/60 border-slate-700/50'
-          : 'bg-white border-slate-200/80 shadow-sm'
+          ? 'bg-slate-700/50 border-slate-600'
+          : 'bg-slate-50 border-slate-200'
       } border`}
     >
-      <div className={`absolute inset-0 bg-gradient-to-br ${dept.gradient} opacity-5 group-hover:opacity-10 transition-opacity`} />
-
-      <div className="relative">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${dept.gradient} flex items-center justify-center shadow-lg`}>
-              <dept.icon className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h4 className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                {dept.name}
-              </h4>
-              <div className="flex items-center space-x-2 mt-1">
-                <div className={`w-2 h-2 rounded-full ${statusConfig.bgColor}`} />
-                <span className={`text-xs font-medium ${statusConfig.color}`}>
-                  {statusConfig.text}
-                </span>
-              </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center`} style={{ backgroundColor: dept.color }}>
+            <dept.icon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h4 className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+              {dept.name}
+            </h4>
+            <div className="flex items-center space-x-2 mt-1">
+              <div className={`w-2 h-2 rounded-full ${statusConfig.bgColor}`} />
+              <span className={`text-xs font-medium ${statusConfig.color}`}>
+                {statusConfig.text}
+              </span>
             </div>
           </div>
-          <ChevronRight className={`w-5 h-5 transition-transform duration-300 group-hover:translate-x-1 ${
-            isDark ? 'text-slate-400' : 'text-slate-500'
-          }`} />
+        </div>
+        <ChevronRight className={`w-5 h-5 transition-transform duration-200 group-hover:translate-x-1 ${
+          isDark ? 'text-slate-400' : 'text-slate-500'
+        }`} />
+      </div>
+
+      {/* Metrics */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            KPIs Suivis
+          </span>
+          <span className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+            {dept.kpisWithData}/{dept.totalKpis}
+          </span>
         </div>
 
-        {/* Metrics */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              KPIs Suivis
-            </span>
-            <span className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {dept.kpisWithData}/{dept.totalKpis}
-            </span>
-          </div>
+        <div className="flex justify-between items-center">
+          <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            Efficacité
+          </span>
+          <span className={`text-sm font-bold ${statusConfig.color}`}>
+            {dept.efficiency}%
+          </span>
+        </div>
 
-          <div className="flex justify-between items-center">
-            <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Efficacité
-            </span>
-            <span className={`text-sm font-bold ${statusConfig.color}`}>
-              {dept.efficiency}%
-            </span>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="relative pt-2">
-            <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700/50' : 'bg-slate-200'}`}>
-              <div
-                className={`h-2 rounded-full bg-gradient-to-r ${dept.gradient} transition-all duration-700 ease-out`}
-                style={{ width: `${Math.min(dept.efficiency, 100)}%` }}
-              />
-            </div>
+        {/* Progress Bar */}
+        <div className="relative pt-2">
+          <div className={`w-full h-2.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
+            <div
+              className={`h-2.5 rounded-full transition-all duration-700 ease-out`}
+              style={{ 
+                width: `${Math.min(dept.efficiency, 100)}%`,
+                backgroundColor: dept.color
+              }}
+            />
           </div>
         </div>
       </div>
@@ -167,19 +158,19 @@ const DepartmentQuickView = ({ dept, isDark, onNavigate }) => {
 
 // Analytics Card Component
 const AnalyticsCard = ({ title, children, isDark, icon: Icon, action, onActionClick }) => (
-  <div className={`rounded-2xl border p-6 transition-all duration-300 hover:shadow-lg ${
+  <div className={`rounded-2xl border p-8 transition-all duration-200 hover:shadow-lg ${
     isDark
-      ? 'bg-slate-800/60 border-slate-700/50'
-      : 'bg-white border-slate-200/80 shadow-sm'
+      ? 'bg-slate-800 border-slate-700'
+      : 'bg-white border-slate-200'
   }`}>
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-8">
       <div className="flex items-center space-x-3">
         {Icon && (
-          <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+          <div className={`p-2.5 rounded-lg ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
             <Icon className="w-5 h-5 text-indigo-600" />
           </div>
         )}
-        <h3 className={`text-lg font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+        <h3 className={`text-xl font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
           {title}
         </h3>
       </div>
@@ -204,44 +195,44 @@ const RecentActivityCard = ({ activity, isDark }) => {
       case 'kpi_added':
         return {
           icon: Plus,
-          bgColor: isDark ? 'bg-blue-600/20' : 'bg-blue-100',
+          bgColor: isDark ? 'bg-blue-900/30' : 'bg-blue-100',
           iconColor: 'text-blue-600',
           borderColor: isDark ? 'border-blue-500/30' : 'border-blue-200'
         };
       case 'target_achieved':
         return {
           icon: CheckCircle,
-          bgColor: isDark ? 'bg-emerald-600/20' : 'bg-emerald-100',
+          bgColor: isDark ? 'bg-emerald-900/30' : 'bg-emerald-100',
           iconColor: 'text-emerald-600',
           borderColor: isDark ? 'border-emerald-500/30' : 'border-emerald-200'
         };
       case 'performance_improved':
         return {
           icon: TrendingUp,
-          bgColor: isDark ? 'bg-green-600/20' : 'bg-green-100',
+          bgColor: isDark ? 'bg-green-900/30' : 'bg-green-100',
           iconColor: 'text-green-600',
           borderColor: isDark ? 'border-green-500/30' : 'border-green-200'
         };
       case 'alert_generated':
         return {
           icon: AlertTriangle,
-          bgColor: isDark ? 'bg-amber-600/20' : 'bg-amber-100',
+          bgColor: isDark ? 'bg-amber-900/30' : 'bg-amber-100',
           iconColor: 'text-amber-600',
           borderColor: isDark ? 'border-amber-500/30' : 'border-amber-200'
         };
       case 'data_quality':
         return {
           icon: ShieldCheck,
-          bgColor: isDark ? 'bg-purple-600/20' : 'bg-purple-100',
+          bgColor: isDark ? 'bg-purple-900/30' : 'bg-purple-100',
           iconColor: 'text-purple-600',
           borderColor: isDark ? 'border-purple-500/30' : 'border-purple-200'
         };
       default:
         return {
           icon: Activity,
-          bgColor: isDark ? 'bg-slate-600/20' : 'bg-slate-100',
+          bgColor: isDark ? 'bg-slate-700/50' : 'bg-slate-100',
           iconColor: isDark ? 'text-slate-400' : 'text-slate-600',
-          borderColor: isDark ? 'border-slate-500/30' : 'border-slate-200'
+          borderColor: isDark ? 'border-slate-600' : 'border-slate-200'
         };
     }
   };
@@ -250,7 +241,7 @@ const RecentActivityCard = ({ activity, isDark }) => {
   const ActivityIcon = config.icon;
 
   return (
-    <div className={`relative p-4 rounded-xl border ${config.borderColor} ${config.bgColor} transition-all duration-300 hover:shadow-md`}>
+    <div className={`relative p-4 rounded-xl border ${config.borderColor} ${config.bgColor} transition-all duration-200 hover:shadow-md`}>
       <div className="flex items-start space-x-4">
         <div className={`w-10 h-10 rounded-lg ${config.bgColor} border ${config.borderColor} flex items-center justify-center flex-shrink-0`}>
           <ActivityIcon className={`w-5 h-5 ${config.iconColor}`} />
@@ -285,10 +276,10 @@ const TopKPICard = ({ kpi, dept, isDark, rank }) => {
 
   const getRankBadgeColor = (rank) => {
     switch (rank) {
-      case 1: return 'bg-gradient-to-r from-yellow-400 to-yellow-600';
-      case 2: return 'bg-gradient-to-r from-gray-300 to-gray-500';
-      case 3: return 'bg-gradient-to-r from-amber-600 to-amber-800';
-      default: return isDark ? 'bg-slate-600' : 'bg-slate-400';
+      case 1: return '#FFD700';
+      case 2: return '#C0C0C0';
+      case 3: return '#CD7F32';
+      default: return isDark ? '#64748B' : '#94A3B8';
     }
   };
 
@@ -338,24 +329,27 @@ const TopKPICard = ({ kpi, dept, isDark, rank }) => {
   };
 
   return (
-    <div className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-lg ${
+    <div className={`p-5 rounded-xl border transition-all duration-200 hover:shadow-lg ${
       isDark
-        ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/60'
-        : 'bg-white border-slate-200 hover:shadow-xl'
+        ? 'bg-slate-700/50 border-slate-600 hover:bg-slate-700/70'
+        : 'bg-slate-50 border-slate-200 hover:shadow-xl'
     }`}>
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${dept.gradient} flex items-center justify-center shadow-lg`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center`} style={{ backgroundColor: dept.color }}>
               <dept.icon className="w-5 h-5 text-white" />
             </div>
-            <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full ${getRankBadgeColor(rank)} flex items-center justify-center shadow-lg`}>
+            <div 
+              className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-lg`}
+              style={{ backgroundColor: getRankBadgeColor(rank) }}
+            >
               <span className="text-xs font-bold text-white">#{rank}</span>
             </div>
           </div>
           <div className="flex-1">
             <h4 className={`font-semibold text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              {typeof kpi.name === 'object' ? kpi.name.en : kpi.name} {/* Assuming kpi.name is the string or object with .en as fallback */}
+              {typeof kpi.name === 'object' ? kpi.name.en : kpi.name}
             </h4>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               {dept.name}
@@ -372,7 +366,7 @@ const TopKPICard = ({ kpi, dept, isDark, rank }) => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex justify-between items-center text-xs">
           <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>
             Valeur: {formatKPIValue()}
@@ -381,16 +375,19 @@ const TopKPICard = ({ kpi, dept, isDark, rank }) => {
             Cible: {kpi.target}
           </span>
         </div>
-        <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+        <div className={`w-full h-2.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
           <div
-            className={`h-2 rounded-full bg-gradient-to-r ${dept.gradient} transition-all duration-700`}
-            style={{ width: `${Math.min(performancePercentage, 100)}%` }}
+            className={`h-2.5 rounded-full transition-all duration-700`}
+            style={{ 
+              width: `${Math.min(performancePercentage, 100)}%`,
+              backgroundColor: dept.color
+            }}
           />
         </div>
       </div>
 
       {kpi.latestValue?.notes && (
-        <div className={`mt-3 p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-50'}`}>
+        <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-slate-600/30' : 'bg-slate-100'}`}>
           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             {kpi.latestValue.notes}
           </p>
@@ -402,28 +399,20 @@ const TopKPICard = ({ kpi, dept, isDark, rank }) => {
 
 // Main Dashboard Component
 export const DashboardPage = () => {
-  const { isDark } = useContext(AppContext); // Removed language from context
-  // Removed: const t = translations[language] || translations.en;
+  const { isDark } = useContext(AppContext);
 
   const {
     kpiData,
-    // updateKPIValue, // Not used in this component
-    // getLatestKPIValue, // Not used directly in this component
-    // getKPIHistory, // Not used in this component
-    // getKPIStatus, // Not used directly in this component
     getDepartmentSummary,
-    // getKPITrend, // Not used in this component
-    // isLoading // Not used in this component
   } = useKPIData();
 
   const dashboardData = useMemo(() => {
     const departments = [
-      { id: 'rnd', name: 'Laboratoire R&D', icon: FlaskConical, gradient: 'from-indigo-600 to-purple-600' },
-      { id: 'team', name: "Performance de l'Équipe", icon: Users, gradient: 'from-pink-600 to-rose-600' },
-      { id: 'warehouses', name: 'Entrepôts & Logistique', icon: Package, gradient: 'from-violet-600 to-purple-600' },
-      // Removed: { id: 'waterTreatment', name: 'Traitement de l'Eau & Lavage', icon: Droplets, gradient: 'from-cyan-600 to-blue-600' },
-      { id: 'quality', name: 'Contrôle Qualité', icon: ShieldCheck, gradient: 'from-emerald-600 to-teal-600' },
-      { id: 'production', name: 'Production & Mélange', icon: Factory, gradient: 'from-orange-600 to-red-600' }
+      { id: 'rnd', name: 'Laboratoire R&D', icon: FlaskConical, color: '#6366F1' },
+      { id: 'team', name: "Performance de l'Équipe", icon: Users, color: '#EC4899' },
+      { id: 'warehouses', name: 'Entrepôts & Logistique', icon: Package, color: '#8B5CF6' },
+      { id: 'quality', name: 'Contrôle Qualité', icon: ShieldCheck, color: '#059669' },
+      { id: 'production', name: 'Production & Mélange', icon: Factory, color: '#DC2626' }
     ];
 
     let totalKPIs = 0;
@@ -637,170 +626,178 @@ export const DashboardPage = () => {
   };
 
   return (
-    <div className={`min-h-screen space-y-8 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
 
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <BarChart3 className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Tableau de Bord
-            </h1>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {new Date().toLocaleDateString('fr-FR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </p>
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center">
+              <BarChart3 className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Tableau de Bord
+              </h1>
+              <p className={`text-base mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {new Date().toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {quickStats.map((stat, index) => (
-          <StatCard
-            key={index}
-            stat={stat}
-            isDark={isDark}
-            onClick={() => {}}
-          />
-        ))}
-      </div>
-
-      <AnalyticsCard
-        title="Aperçu des Départements"
-        isDark={isDark}
-        icon={Users}
-        action="Voir Tout"
-        onActionClick={() => {}}
-      >
-        {dashboardData.activeDepartments > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {dashboardData.departments
-              .filter(d => d.kpisWithData > 0)
-              .map((dept) => (
-                <DepartmentQuickView
-                  key={dept.id}
-                  dept={dept}
-                  isDark={isDark}
-                  onNavigate={handleNavigateToDepartment}
-                />
-              ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className={`w-16 h-16 rounded-2xl ${
-              isDark ? 'bg-slate-700/50' : 'bg-slate-100'
-            } flex items-center justify-center mx-auto mb-4`}>
-              <Users className="w-8 h-8 text-slate-400" />
-            </div>
-            <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-              Aucun Département Actif
-            </h4>
-            <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Accédez aux pages des départements pour ajouter des données KPI et voir les métriques de performance.
-            </p>
-          </div>
-        )}
-      </AnalyticsCard>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ChartDisplay
-          data={chartData.departmentEfficiency}
-          title="Efficacité des Départements"
-          height={300}
-          dataKey="efficiency"
-          xAxisKey="name"
-          color="#6366F1"
-          className={isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80'}
-        />
-        <ChartDisplay
-          data={chartData.kpiDistribution}
-          title="Distribution des KPIs"
-          type="bar"
-          height={300}
-          dataKey="value"
-          xAxisKey="name"
-          color="#10B981"
-          className={isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80'}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <AnalyticsCard
-          title="KPIs les Plus Performants"
-          isDark={isDark}
-          icon={Award}
-        >
-          {topPerformingKPIs.length > 0 ? (
-            <div className="space-y-4">
-              {topPerformingKPIs.map((kpi, index) => (
-                <TopKPICard
-                  key={`${kpi.department.id}-${kpi.id}`}
-                  kpi={kpi}
-                  dept={kpi.department}
-                  isDark={isDark}
-                  rank={index + 1}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Award className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Aucune donnée de performance KPI pour le moment.
-              </p>
-            </div>
-          )}
-        </AnalyticsCard>
-
-        <AnalyticsCard
-          title="Mises à Jour Récentes"
-          isDark={isDark}
-          icon={Activity}
-          action="Voir Tout"
-        >
-          {recentActivities.length > 0 ? (
-            <div className="space-y-3">
-              {recentActivities.map((activity, index) => (
-                <RecentActivityCard
-                  key={index}
-                  activity={activity}
-                  isDark={isDark}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Activity className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Aucune activité récente pour le moment.
-              </p>
-            </div>
-          )}
-        </AnalyticsCard>
-      </div>
-
-      <AnalyticsCard
-        title="Tous les Départements"
-        isDark={isDark}
-        icon={Factory}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {dashboardData.departments.map((dept) => (
-            <DepartmentQuickView
-              key={dept.id}
-              dept={dept}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {quickStats.map((stat, index) => (
+            <StatCard
+              key={index}
+              stat={stat}
               isDark={isDark}
-              onNavigate={handleNavigateToDepartment}
+              onClick={() => {}}
             />
           ))}
         </div>
-      </AnalyticsCard>
+
+        {/* Departments Overview */}
+        <AnalyticsCard
+          title="Aperçu des Départements"
+          isDark={isDark}
+          icon={Users}
+          action="Voir Tout"
+          onActionClick={() => {}}
+        >
+          {dashboardData.activeDepartments > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {dashboardData.departments
+                .filter(d => d.kpisWithData > 0)
+                .map((dept) => (
+                  <DepartmentQuickView
+                    key={dept.id}
+                    dept={dept}
+                    isDark={isDark}
+                    onNavigate={handleNavigateToDepartment}
+                  />
+                ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <div className={`w-20 h-20 rounded-2xl ${
+                isDark ? 'bg-slate-700' : 'bg-slate-100'
+              } flex items-center justify-center mx-auto mb-6`}>
+                <Users className="w-10 h-10 text-slate-400" />
+              </div>
+              <h4 className={`text-xl font-semibold mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                Aucun Département Actif
+              </h4>
+              <p className={`text-base mb-8 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Accédez aux pages des départements pour ajouter des données KPI et voir les métriques de performance.
+              </p>
+            </div>
+          )}
+        </AnalyticsCard>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <ChartDisplay
+            data={chartData.departmentEfficiency}
+            title="Efficacité des Départements"
+            height={300}
+            dataKey="efficiency"
+            xAxisKey="name"
+            color="#6366F1"
+            className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
+          />
+          <ChartDisplay
+            data={chartData.kpiDistribution}
+            title="Distribution des KPIs"
+            type="bar"
+            height={300}
+            dataKey="value"
+            xAxisKey="name"
+            color="#10B981"
+            className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
+          />
+        </div>
+
+        {/* Performance & Activity Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <AnalyticsCard
+            title="KPIs les Plus Performants"
+            isDark={isDark}
+            icon={Award}
+          >
+            {topPerformingKPIs.length > 0 ? (
+              <div className="space-y-4">
+                {topPerformingKPIs.map((kpi, index) => (
+                  <TopKPICard
+                    key={`${kpi.department.id}-${kpi.id}`}
+                    kpi={kpi}
+                    dept={kpi.department}
+                    isDark={isDark}
+                    rank={index + 1}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Award className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Aucune donnée de performance KPI pour le moment.
+                </p>
+              </div>
+            )}
+          </AnalyticsCard>
+
+          <AnalyticsCard
+            title="Mises à Jour Récentes"
+            isDark={isDark}
+            icon={Activity}
+            action="Voir Tout"
+          >
+            {recentActivities.length > 0 ? (
+              <div className="space-y-4">
+                {recentActivities.map((activity, index) => (
+                  <RecentActivityCard
+                    key={index}
+                    activity={activity}
+                    isDark={isDark}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Activity className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                <p className={`text-base ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Aucune activité récente pour le moment.
+                </p>
+              </div>
+            )}
+          </AnalyticsCard>
+        </div>
+
+        {/* All Departments Section */}
+        <AnalyticsCard
+          title="Tous les Départements"
+          isDark={isDark}
+          icon={Factory}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {dashboardData.departments.map((dept) => (
+              <DepartmentQuickView
+                key={dept.id}
+                dept={dept}
+                isDark={isDark}
+                onNavigate={handleNavigateToDepartment}
+              />
+            ))}
+          </div>
+        </AnalyticsCard>
+      </div>
     </div>
   );
 };

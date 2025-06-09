@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) => {
-  // Calculate comprehensive monthly statistics
+  // Calculate comprehensive monthly statistics from real KPI data
   const monthlyStats = useMemo(() => {
     if (!analytics) return null;
 
@@ -29,57 +29,55 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
     const currentMonth = monthNumber !== undefined ? monthNumber : new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    const monthData = {
-      attendance: (analytics.attendance || []).filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-      }),
-      safety: (analytics.safety || []).filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-      }),
-      efficiency: (analytics.efficiency || []).filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-      })
-    };
+    // Extract real data from KPI structure
+    const attendanceData = (analytics['team_productivity_attendance'] || []).filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+    });
+    
+    const safetyData = (analytics['safety_incidents'] || []).filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+    });
+    
+    const efficiencyData = (analytics['operator_efficiency'] || []).filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+    });
 
-    // Calculate metrics
-    const attendanceAvg = monthData.attendance.length > 0 
-      ? Math.round(monthData.attendance.reduce((sum, entry) => sum + entry.averageProductivity, 0) / monthData.attendance.length)
+    // Calculate metrics from real data
+    const attendanceAvg = attendanceData.length > 0 
+      ? Math.round(attendanceData.reduce((sum, entry) => sum + (entry.value || 0), 0) / attendanceData.length)
       : 0;
 
-    const totalIncidents = monthData.safety.reduce((sum, entry) => sum + entry.totalIncidents, 0);
+    const totalIncidents = safetyData.reduce((sum, entry) => sum + (entry.data?.totalIncidents || 0), 0);
+    const latestSafetyScore = safetyData.length > 0 ? safetyData[safetyData.length - 1].value : 100;
     
-    const efficiencyAvg = monthData.efficiency.length > 0
-      ? Math.round(monthData.efficiency.reduce((sum, entry) => sum + entry.averageEfficiency, 0) / monthData.efficiency.length)
+    const efficiencyAvg = efficiencyData.length > 0
+      ? Math.round(efficiencyData.reduce((sum, entry) => sum + (entry.value || 0), 0) / efficiencyData.length)
       : 0;
 
     // Get all unique employees from the month
     const allEmployees = new Map();
-    [...monthData.attendance, ...monthData.safety, ...monthData.efficiency].forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        if (!allEmployees.has(emp.name)) {
-          allEmployees.set(emp.name, {
-            name: emp.name,
-            productivity: [],
-            incidents: 0,
-            efficiency: [],
-            workHours: 0,
-            tasks: [],
-            daysActive: 0,
-            bestDay: { date: '', score: 0 },
-            worstDay: { date: '', score: 100 }
-          });
-        }
-      });
-    });
-
-    // Aggregate employee data
-    monthData.attendance.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
+    
+    // Process attendance data
+    attendanceData.forEach(entry => {
+      (entry.data?.employees || []).forEach(emp => {
+        if (emp.name?.trim()) {
+          if (!allEmployees.has(emp.name)) {
+            allEmployees.set(emp.name, {
+              name: emp.name,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              bestDay: { date: '', score: 0 },
+              worstDay: { date: '', score: 100 }
+            });
+          }
+          const employee = allEmployees.get(emp.name);
           employee.productivity.push(emp.productivity || 0);
           employee.workHours += emp.workHours || 0;
           employee.daysActive++;
@@ -95,19 +93,47 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
       });
     });
 
-    monthData.safety.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
-          employee.incidents += emp.incidentCount || 0;
+    // Process safety data
+    safetyData.forEach(entry => {
+      (entry.data?.incidents || []).forEach(incident => {
+        if (incident.employee?.trim()) {
+          if (!allEmployees.has(incident.employee)) {
+            allEmployees.set(incident.employee, {
+              name: incident.employee,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              bestDay: { date: '', score: 0 },
+              worstDay: { date: '', score: 100 }
+            });
+          }
+          const employee = allEmployees.get(incident.employee);
+          employee.incidents++;
         }
       });
     });
 
-    monthData.efficiency.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
+    // Process efficiency data
+    efficiencyData.forEach(entry => {
+      (entry.data?.employees || []).forEach(emp => {
+        if (emp.name?.trim()) {
+          if (!allEmployees.has(emp.name)) {
+            allEmployees.set(emp.name, {
+              name: emp.name,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              bestDay: { date: '', score: 0 },
+              worstDay: { date: '', score: 100 }
+            });
+          }
+          const employee = allEmployees.get(emp.name);
           employee.efficiency.push(emp.efficiency || 0);
           employee.tasks = [...employee.tasks, ...(emp.tasks || [])];
         }
@@ -145,17 +171,17 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
       weekEnd.setDate(weekEnd.getDate() + 6);
       if (weekEnd > endOfMonth) weekEnd.setTime(endOfMonth.getTime());
       
-      const weekAttendance = monthData.attendance.filter(entry => {
+      const weekAttendance = attendanceData.filter(entry => {
         const date = new Date(entry.date);
         return date >= currentWeekStart && date <= weekEnd;
       });
       
-      const weekSafety = monthData.safety.filter(entry => {
+      const weekSafety = safetyData.filter(entry => {
         const date = new Date(entry.date);
         return date >= currentWeekStart && date <= weekEnd;
       });
       
-      const weekEfficiency = monthData.efficiency.filter(entry => {
+      const weekEfficiency = efficiencyData.filter(entry => {
         const date = new Date(entry.date);
         return date >= currentWeekStart && date <= weekEnd;
       });
@@ -164,9 +190,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
         week: weekNumber,
         startDate: currentWeekStart.toLocaleDateString('fr-FR'),
         endDate: weekEnd.toLocaleDateString('fr-FR'),
-        attendance: weekAttendance.length > 0 ? Math.round(weekAttendance.reduce((sum, entry) => sum + entry.averageProductivity, 0) / weekAttendance.length) : 0,
-        incidents: weekSafety.reduce((sum, entry) => sum + entry.totalIncidents, 0),
-        efficiency: weekEfficiency.length > 0 ? Math.round(weekEfficiency.reduce((sum, entry) => sum + entry.averageEfficiency, 0) / weekEfficiency.length) : 0
+        attendance: weekAttendance.length > 0 ? Math.round(weekAttendance.reduce((sum, entry) => sum + (entry.value || 0), 0) / weekAttendance.length) : 0,
+        incidents: weekSafety.reduce((sum, entry) => sum + (entry.data?.totalIncidents || 0), 0),
+        efficiency: weekEfficiency.length > 0 ? Math.round(weekEfficiency.reduce((sum, entry) => sum + (entry.value || 0), 0) / weekEfficiency.length) : 0
       });
       
       currentWeekStart.setDate(currentWeekStart.getDate() + 7);
@@ -177,18 +203,18 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
     const trends = {
       attendance: {
         current: attendanceAvg,
-        trend: monthData.attendance.length > 1 ? 
-          (monthData.attendance[monthData.attendance.length - 1]?.averageProductivity || 0) - (monthData.attendance[0]?.averageProductivity || 0) : 0
+        trend: attendanceData.length > 1 ? 
+          (attendanceData[attendanceData.length - 1]?.value || 0) - (attendanceData[0]?.value || 0) : 0
       },
       safety: {
         current: totalIncidents,
-        trend: monthData.safety.length > 1 ? 
-          (monthData.safety[monthData.safety.length - 1]?.totalIncidents || 0) - (monthData.safety[0]?.totalIncidents || 0) : 0
+        trend: safetyData.length > 1 ? 
+          (safetyData[safetyData.length - 1]?.data?.totalIncidents || 0) - (safetyData[0]?.data?.totalIncidents || 0) : 0
       },
       efficiency: {
         current: efficiencyAvg,
-        trend: monthData.efficiency.length > 1 ? 
-          (monthData.efficiency[monthData.efficiency.length - 1]?.averageEfficiency || 0) - (monthData.efficiency[0]?.averageEfficiency || 0) : 0
+        trend: efficiencyData.length > 1 ? 
+          (efficiencyData[efficiencyData.length - 1]?.value || 0) - (efficiencyData[0]?.value || 0) : 0
       }
     };
 
@@ -197,6 +223,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
       monthName: new Date(currentYear, currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
       attendanceAvg,
       totalIncidents,
+      safetyScore: latestSafetyScore,
       efficiencyAvg,
       employees: employeeArray,
       weeklyBreakdown,
@@ -207,11 +234,12 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
       activeDays: Math.max(...employeeArray.map(emp => emp.daysActive), 0),
       bestPerformer: employeeArray[0] || null,
       trends,
-      daysInMonth: endOfMonth.getDate()
+      daysInMonth: endOfMonth.getDate(),
+      hasData: attendanceData.length > 0 || safetyData.length > 0 || efficiencyData.length > 0
     };
   }, [analytics, monthNumber]);
 
-  if (!monthlyStats) {
+  if (!monthlyStats || !monthlyStats.hasData) {
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div className={`w-full max-w-2xl p-8 rounded-xl border shadow-2xl ${
@@ -223,7 +251,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
               Aucune donnée disponible
             </h3>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée trouvée pour ce mois.
+              Aucune donnée d'équipe trouvée pour ce mois. Ajoutez des données via les formulaires KPI.
             </p>
             <button onClick={onClose} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               Fermer
@@ -277,7 +305,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
     },
     series: [
       {
-        name: 'Présence',
+        name: 'Productivité',
         type: 'line',
         data: monthlyStats.weeklyBreakdown.map(week => week.attendance),
         smooth: true,
@@ -308,6 +336,8 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
   // Employee performance radar chart
   const getTopPerformersOptions = () => {
     const topEmployees = monthlyStats.employees.slice(0, 5);
+    if (topEmployees.length === 0) return {};
+    
     return {
       backgroundColor: 'transparent',
       textStyle: {
@@ -324,10 +354,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
       },
       radar: {
         indicator: [
-          { name: 'Présence', max: 100 },
+          { name: 'Productivité', max: 100 },
           { name: 'Efficacité', max: 100 },
-          { name: 'Heures', max: 200 },
-          { name: 'Tâches', max: 50 },
+          { name: 'Heures', max: Math.max(200, Math.max(...topEmployees.map(e => e.workHours))) },
+          { name: 'Tâches', max: Math.max(50, Math.max(...topEmployees.map(e => e.completedTasks))) },
           { name: 'Sécurité', max: 100, inverse: true }
         ],
         radius: '70%',
@@ -459,7 +489,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                       Performance du Mois: {overallStatus.text}
                     </h3>
                     <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Score global: {Math.round((monthlyStats.attendanceAvg + monthlyStats.efficiencyAvg) / 2)}% • {monthlyStats.daysInMonth} jours
+                      Score global: {Math.round((monthlyStats.attendanceAvg + monthlyStats.efficiencyAvg) / 2)}% • {monthlyStats.daysInMonth} jours • Score sécurité: {monthlyStats.safetyScore}%
                     </p>
                   </div>
                 </div>
@@ -489,7 +519,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                     </div>
                     <div>
                       <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Taux de Présence
+                        Productivité Équipe
                       </h4>
                     </div>
                   </div>
@@ -513,7 +543,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                     </div>
                     <div>
                       <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Incidents de Sécurité
+                        Sécurité
                       </h4>
                     </div>
                   </div>
@@ -522,10 +552,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                 <div className={`text-2xl font-bold ${
                   monthlyStats.totalIncidents === 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {monthlyStats.totalIncidents}
+                  {monthlyStats.safetyScore}%
                 </div>
                 <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Ce mois
+                  {monthlyStats.totalIncidents} incidents
                 </div>
               </div>
 
@@ -604,29 +634,31 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
               </div>
 
               {/* Top Performers Radar */}
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center">
-                    <Star className="w-4 h-4 text-white" />
+              {monthlyStats.employees.length > 0 && (
+                <div className={`p-6 rounded-xl border ${
+                  isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Top 5 Performeurs
+                      </h3>
+                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Analyse multidimensionnelle
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      Top 5 Performeurs
-                    </h3>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Analyse multidimensionnelle
-                    </p>
-                  </div>
+                  
+                  <ReactECharts 
+                    option={getTopPerformersOptions()} 
+                    style={{ height: '300px' }}
+                    opts={{ renderer: 'svg' }}
+                  />
                 </div>
-                
-                <ReactECharts 
-                  option={getTopPerformersOptions()} 
-                  style={{ height: '300px' }}
-                  opts={{ renderer: 'svg' }}
-                />
-              </div>
+              )}
             </div>
 
             {/* Best Performer Highlight */}
@@ -661,116 +693,118 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
             )}
 
             {/* Employee Performance Table */}
-            <div className={`p-6 rounded-xl border ${
-              isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-            }`}>
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-white" />
+            {monthlyStats.employees.length > 0 && (
+              <div className={`p-6 rounded-xl border ${
+                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Classement Mensuel des Employés
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Performance détaillée et classement
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Classement Mensuel des Employés
-                  </h3>
-                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Performance détaillée et classement
-                  </p>
-                </div>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Rang
-                      </th>
-                      <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Employé
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Score Global
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Présence
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Efficacité
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Heures
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Tâches
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Incidents
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {monthlyStats.employees.map((employee, index) => (
-                      <tr key={index} className={`border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'} ${
-                        index === 0 ? (isDark ? 'bg-yellow-900/20' : 'bg-yellow-50') : ''
-                      }`}>
-                        <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          <div className="flex items-center space-x-2">
-                            {index === 0 && <Star className="w-4 h-4 text-yellow-500" />}
-                            <span className="font-bold">#{index + 1}</span>
-                          </div>
-                        </td>
-                        <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                              index === 0 ? 'bg-yellow-500 text-white' :
-                              isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {employee.name.charAt(0)}
-                            </div>
-                            <span className="font-medium">{employee.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                            employee.overallScore >= 90 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                            employee.overallScore >= 75 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                            employee.overallScore >= 60 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          }`}>
-                            {employee.overallScore}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                            {employee.avgProductivity}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                            {employee.avgEfficiency}%
-                          </span>
-                        </td>
-                        <td className={`py-3 px-4 text-center text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {employee.workHours}h
-                        </td>
-                        <td className={`py-3 px-4 text-center text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {employee.completedTasks}/{employee.totalTasks}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-2 py-1 rounded text-sm ${
-                            employee.incidents === 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                            employee.incidents <= 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          }`}>
-                            {employee.incidents}
-                          </span>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Rang
+                        </th>
+                        <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Employé
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Score Global
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Productivité
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Efficacité
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Heures
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Tâches
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Incidents
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {monthlyStats.employees.map((employee, index) => (
+                        <tr key={index} className={`border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'} ${
+                          index === 0 ? (isDark ? 'bg-yellow-900/20' : 'bg-yellow-50') : ''
+                        }`}>
+                          <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            <div className="flex items-center space-x-2">
+                              {index === 0 && <Star className="w-4 h-4 text-yellow-500" />}
+                              <span className="font-bold">#{index + 1}</span>
+                            </div>
+                          </td>
+                          <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                                index === 0 ? 'bg-yellow-500 text-white' :
+                                isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {employee.name.charAt(0)}
+                              </div>
+                              <span className="font-medium">{employee.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                              employee.overallScore >= 90 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                              employee.overallScore >= 75 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                              employee.overallScore >= 60 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {employee.overallScore}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {employee.avgProductivity}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {employee.avgEfficiency}%
+                            </span>
+                          </td>
+                          <td className={`py-3 px-4 text-center text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {employee.workHours}h
+                          </td>
+                          <td className={`py-3 px-4 text-center text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {employee.completedTasks}/{employee.totalTasks}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 rounded text-sm ${
+                              employee.incidents === 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                              employee.incidents <= 2 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {employee.incidents}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Monthly Summary */}
             <div className={`p-6 rounded-xl border ${
@@ -786,8 +820,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                     <span>Réussites</span>
                   </h4>
                   <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {monthlyStats.attendanceAvg >= 85 && <li>• Excellent taux de présence mensuel</li>}
+                    {monthlyStats.attendanceAvg >= 85 && <li>• Excellente productivité mensuelle</li>}
                     {monthlyStats.totalIncidents <= 2 && <li>• Maintien d'un environnement sûr</li>}
+                    {monthlyStats.safetyScore >= 90 && <li>• Score de sécurité optimal</li>}
                     {monthlyStats.efficiencyAvg >= 80 && <li>• Haute performance d'équipe</li>}
                     {monthlyStats.completedTasks / monthlyStats.totalTasks >= 0.8 && <li>• Objectifs de tâches atteints</li>}
                     {monthlyStats.bestPerformer && <li>• {monthlyStats.bestPerformer.name} a excellé ce mois</li>}
@@ -799,8 +834,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose, monthNumber }) 
                     <span>Points d'Attention</span>
                   </h4>
                   <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {monthlyStats.attendanceAvg < 75 && <li>• Taux de présence à améliorer</li>}
+                    {monthlyStats.attendanceAvg < 75 && <li>• Productivité à améliorer</li>}
                     {monthlyStats.totalIncidents > 3 && <li>• Nombre d'incidents préoccupant</li>}
+                    {monthlyStats.safetyScore < 80 && <li>• Score de sécurité à renforcer</li>}
                     {monthlyStats.efficiencyAvg < 70 && <li>• Efficacité en dessous des attentes</li>}
                     {monthlyStats.employees.filter(e => e.overallScore < 60).length > 0 && <li>• Certains employés nécessitent un accompagnement</li>}
                   </ul>

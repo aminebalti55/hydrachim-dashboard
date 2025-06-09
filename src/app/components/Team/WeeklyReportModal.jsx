@@ -27,87 +27,122 @@ const getWeekNumber = (date) => {
 };
 
 export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) => {
-  // Calculate comprehensive weekly statistics
+  // Calculate comprehensive weekly statistics from real KPI data
   const weeklyStats = useMemo(() => {
     if (!analytics) return null;
 
     // Get current week data
     const currentWeek = weekNumber || getWeekNumber(new Date());
-    const weekData = {
-      attendance: (analytics.attendance || []).filter(entry => 
-        getWeekNumber(new Date(entry.date)) === currentWeek
-      ),
-      safety: (analytics.safety || []).filter(entry => 
-        getWeekNumber(new Date(entry.date)) === currentWeek
-      ),
-      efficiency: (analytics.efficiency || []).filter(entry => 
-        getWeekNumber(new Date(entry.date)) === currentWeek
-      )
-    };
+    
+    // Extract real data from KPI structure
+    const attendanceData = (analytics['team_productivity_attendance'] || []).filter(entry => 
+      getWeekNumber(new Date(entry.date)) === currentWeek
+    );
+    
+    const safetyData = (analytics['safety_incidents'] || []).filter(entry => 
+      getWeekNumber(new Date(entry.date)) === currentWeek
+    );
+    
+    const efficiencyData = (analytics['operator_efficiency'] || []).filter(entry => 
+      getWeekNumber(new Date(entry.date)) === currentWeek
+    );
 
-    // Calculate metrics
-    const attendanceAvg = weekData.attendance.length > 0 
-      ? Math.round(weekData.attendance.reduce((sum, entry) => sum + entry.averageProductivity, 0) / weekData.attendance.length)
+    // Calculate metrics from real data
+    const attendanceAvg = attendanceData.length > 0 
+      ? Math.round(attendanceData.reduce((sum, entry) => sum + (entry.value || 0), 0) / attendanceData.length)
       : 0;
 
-    const totalIncidents = weekData.safety.reduce((sum, entry) => sum + entry.totalIncidents, 0);
+    const totalIncidents = safetyData.reduce((sum, entry) => sum + (entry.data?.totalIncidents || 0), 0);
+    const latestSafetyScore = safetyData.length > 0 ? safetyData[safetyData.length - 1].value : 100;
     
-    const efficiencyAvg = weekData.efficiency.length > 0
-      ? Math.round(weekData.efficiency.reduce((sum, entry) => sum + entry.averageEfficiency, 0) / weekData.efficiency.length)
+    const efficiencyAvg = efficiencyData.length > 0
+      ? Math.round(efficiencyData.reduce((sum, entry) => sum + (entry.value || 0), 0) / efficiencyData.length)
       : 0;
 
     // Get all unique employees from the week
     const allEmployees = new Map();
-    [...weekData.attendance, ...weekData.safety, ...weekData.efficiency].forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        if (!allEmployees.has(emp.name)) {
-          allEmployees.set(emp.name, {
-            name: emp.name,
-            productivity: 0,
-            incidents: 0,
-            efficiency: 0,
-            workHours: 0,
-            tasks: [],
-            daysActive: 0
-          });
-        }
-      });
-    });
-
-    // Aggregate employee data
-    weekData.attendance.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
-          employee.productivity = Math.max(employee.productivity, emp.productivity || 0);
+    
+    // Process attendance data
+    attendanceData.forEach(entry => {
+      (entry.data?.employees || []).forEach(emp => {
+        if (emp.name?.trim()) {
+          if (!allEmployees.has(emp.name)) {
+            allEmployees.set(emp.name, {
+              name: emp.name,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              attendanceDays: 0
+            });
+          }
+          const employee = allEmployees.get(emp.name);
+          employee.productivity.push(emp.productivity || 0);
           employee.workHours += emp.workHours || 0;
+          employee.attendanceDays++;
           employee.daysActive++;
         }
       });
     });
 
-    weekData.safety.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
-          employee.incidents += emp.incidentCount || 0;
+    // Process safety data
+    safetyData.forEach(entry => {
+      (entry.data?.incidents || []).forEach(incident => {
+        if (incident.employee?.trim()) {
+          if (!allEmployees.has(incident.employee)) {
+            allEmployees.set(incident.employee, {
+              name: incident.employee,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              attendanceDays: 0
+            });
+          }
+          const employee = allEmployees.get(incident.employee);
+          employee.incidents++;
         }
       });
     });
 
-    weekData.efficiency.forEach(entry => {
-      (entry.employees || []).forEach(emp => {
-        const employee = allEmployees.get(emp.name);
-        if (employee) {
-          employee.efficiency = Math.max(employee.efficiency, emp.efficiency || 0);
+    // Process efficiency data
+    efficiencyData.forEach(entry => {
+      (entry.data?.employees || []).forEach(emp => {
+        if (emp.name?.trim()) {
+          if (!allEmployees.has(emp.name)) {
+            allEmployees.set(emp.name, {
+              name: emp.name,
+              productivity: [],
+              incidents: 0,
+              efficiency: [],
+              workHours: 0,
+              tasks: [],
+              daysActive: 0,
+              attendanceDays: 0
+            });
+          }
+          const employee = allEmployees.get(emp.name);
+          employee.efficiency.push(emp.efficiency || 0);
           employee.tasks = [...employee.tasks, ...(emp.tasks || [])];
+          if (employee.attendanceDays === 0) employee.daysActive++;
         }
       });
     });
 
-    const employeeArray = Array.from(allEmployees.values());
+    // Calculate averages for employees
+    const employeeArray = Array.from(allEmployees.values()).map(emp => ({
+      ...emp,
+      avgProductivity: emp.productivity.length > 0 ? Math.round(emp.productivity.reduce((a, b) => a + b, 0) / emp.productivity.length) : 0,
+      avgEfficiency: emp.efficiency.length > 0 ? Math.round(emp.efficiency.reduce((a, b) => a + b, 0) / emp.efficiency.length) : 0,
+      completedTasks: emp.tasks.filter(t => t.completed).length,
+      totalTasks: emp.tasks.length
+    }));
 
-    // FIXED: Daily breakdown using consistent helper function
+    // Daily breakdown using real data
     const dailyBreakdown = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date();
@@ -118,15 +153,15 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
       const dayData = {
         date: date.toLocaleDateString('fr-FR'),
         dayName: date.toLocaleDateString('fr-FR', { weekday: 'short' }),
-        attendance: weekData.attendance.find(entry => 
+        attendance: attendanceData.find(entry => 
           new Date(entry.date).toDateString() === date.toDateString()
-        )?.averageProductivity || 0,
-        incidents: weekData.safety.find(entry => 
+        )?.value || 0,
+        incidents: safetyData.find(entry => 
           new Date(entry.date).toDateString() === date.toDateString()
-        )?.totalIncidents || 0,
-        efficiency: weekData.efficiency.find(entry => 
+        )?.data?.totalIncidents || 0,
+        efficiency: efficiencyData.find(entry => 
           new Date(entry.date).toDateString() === date.toDateString()
-        )?.averageEfficiency || 0
+        )?.value || 0
       };
       dailyBreakdown.push(dayData);
     }
@@ -135,18 +170,20 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
       weekNumber: currentWeek,
       attendanceAvg,
       totalIncidents,
+      safetyScore: latestSafetyScore,
       efficiencyAvg,
       employees: employeeArray,
       dailyBreakdown,
       totalEmployees: employeeArray.length,
       totalWorkHours: employeeArray.reduce((sum, emp) => sum + emp.workHours, 0),
-      totalTasks: employeeArray.reduce((sum, emp) => sum + emp.tasks.length, 0),
-      completedTasks: employeeArray.reduce((sum, emp) => sum + emp.tasks.filter(t => t.completed).length, 0),
-      activeDays: Math.max(...employeeArray.map(emp => emp.daysActive), 0)
+      totalTasks: employeeArray.reduce((sum, emp) => sum + emp.totalTasks, 0),
+      completedTasks: employeeArray.reduce((sum, emp) => sum + emp.completedTasks, 0),
+      activeDays: Math.max(...employeeArray.map(emp => emp.daysActive), 0),
+      hasData: attendanceData.length > 0 || safetyData.length > 0 || efficiencyData.length > 0
     };
   }, [analytics, weekNumber]);
 
-  if (!weeklyStats) {
+  if (!weeklyStats || !weeklyStats.hasData) {
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div className={`w-full max-w-2xl p-8 rounded-xl border shadow-2xl ${
@@ -158,7 +195,7 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
               Aucune donnée disponible
             </h3>
             <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée trouvée pour cette semaine.
+              Aucune donnée d'équipe trouvée pour cette semaine. Ajoutez des données via les formulaires KPI.
             </p>
             <button onClick={onClose} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               Fermer
@@ -307,7 +344,7 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                       Performance de la Semaine: {overallStatus.text}
                     </h3>
                     <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Score global: {Math.round((weeklyStats.attendanceAvg + weeklyStats.efficiencyAvg) / 2)}%
+                      Score global: {Math.round((weeklyStats.attendanceAvg + weeklyStats.efficiencyAvg) / 2)}% • Score sécurité: {weeklyStats.safetyScore}%
                     </p>
                   </div>
                 </div>
@@ -336,7 +373,7 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                   </div>
                   <div>
                     <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Taux de Présence
+                      Productivité Équipe
                     </h4>
                   </div>
                 </div>
@@ -357,17 +394,17 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                   </div>
                   <div>
                     <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Incidents de Sécurité
+                      Sécurité
                     </h4>
                   </div>
                 </div>
                 <div className={`text-2xl font-bold ${
                   weeklyStats.totalIncidents === 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {weeklyStats.totalIncidents}
+                  {weeklyStats.safetyScore}%
                 </div>
                 <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Cette semaine
+                  {weeklyStats.totalIncidents} incidents
                 </div>
               </div>
 
@@ -440,97 +477,99 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
             </div>
 
             {/* Employee Performance Table */}
-            <div className={`p-6 rounded-xl border ${
-              isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-            }`}>
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center">
-                  <Award className="w-4 h-4 text-white" />
+            {weeklyStats.employees.length > 0 && (
+              <div className={`p-6 rounded-xl border ${
+                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center">
+                    <Award className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Performance Individuelle
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Détail par employé
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Performance Individuelle
-                  </h3>
-                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Détail par employé
-                  </p>
-                </div>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-                      <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Employé
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Présence
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Efficacité
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Heures
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Tâches
-                      </th>
-                      <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Incidents
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weeklyStats.employees.map((employee, index) => (
-                      <tr key={index} className={`border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
-                        <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                              isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {employee.name.charAt(0)}
-                            </div>
-                            <span className="font-medium">{employee.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            employee.productivity >= 90 ? 'bg-green-600 text-white' :
-                            employee.productivity >= 75 ? 'bg-blue-600 text-white' :
-                            'bg-red-600 text-white'
-                          }`}>
-                            {employee.productivity}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            employee.efficiency >= 90 ? 'bg-green-600 text-white' :
-                            employee.efficiency >= 75 ? 'bg-blue-600 text-white' :
-                            'bg-red-600 text-white'
-                          }`}>
-                            {employee.efficiency}%
-                          </span>
-                        </td>
-                        <td className={`py-3 px-4 text-center ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {employee.workHours}h
-                        </td>
-                        <td className={`py-3 px-4 text-center ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          {employee.tasks.filter(t => t.completed).length}/{employee.tasks.length}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            employee.incidents === 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                          }`}>
-                            {employee.incidents}
-                          </span>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                        <th className={`text-left py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Employé
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Productivité
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Efficacité
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Heures
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Tâches
+                        </th>
+                        <th className={`text-center py-3 px-4 font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          Incidents
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {weeklyStats.employees.map((employee, index) => (
+                        <tr key={index} className={`border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
+                          <td className={`py-3 px-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                                isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {employee.name.charAt(0)}
+                              </div>
+                              <span className="font-medium">{employee.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              employee.avgProductivity >= 90 ? 'bg-green-600 text-white' :
+                              employee.avgProductivity >= 75 ? 'bg-blue-600 text-white' :
+                              'bg-red-600 text-white'
+                            }`}>
+                              {employee.avgProductivity}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              employee.avgEfficiency >= 90 ? 'bg-green-600 text-white' :
+                              employee.avgEfficiency >= 75 ? 'bg-blue-600 text-white' :
+                              'bg-red-600 text-white'
+                            }`}>
+                              {employee.avgEfficiency}%
+                            </span>
+                          </td>
+                          <td className={`py-3 px-4 text-center ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {employee.workHours}h
+                          </td>
+                          <td className={`py-3 px-4 text-center ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            {employee.completedTasks}/{employee.totalTasks}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              employee.incidents === 0 ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                            }`}>
+                              {employee.incidents}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Weekly Summary */}
             <div className={`p-6 rounded-xl border ${
@@ -545,9 +584,10 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                     Points Forts
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {weeklyStats.attendanceAvg >= 90 && <li>• Excellent taux de présence</li>}
+                    {weeklyStats.attendanceAvg >= 90 && <li>• Excellente productivité d'équipe</li>}
                     {weeklyStats.totalIncidents === 0 && <li>• Aucun incident de sécurité</li>}
-                    {weeklyStats.efficiencyAvg >= 85 && <li>• Haute efficacité d'équipe</li>}
+                    {weeklyStats.safetyScore >= 90 && <li>• Excellent score de sécurité</li>}
+                    {weeklyStats.efficiencyAvg >= 85 && <li>• Haute efficacité opérationnelle</li>}
                     {weeklyStats.completedTasks / weeklyStats.totalTasks >= 0.8 && <li>• Bon taux de completion des tâches</li>}
                   </ul>
                 </div>
@@ -556,9 +596,11 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                     Améliorations
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {weeklyStats.attendanceAvg < 75 && <li>• Améliorer la présence</li>}
+                    {weeklyStats.attendanceAvg < 75 && <li>• Améliorer la productivité</li>}
                     {weeklyStats.totalIncidents > 0 && <li>• Réduire les incidents</li>}
+                    {weeklyStats.safetyScore < 80 && <li>• Renforcer la sécurité</li>}
                     {weeklyStats.efficiencyAvg < 75 && <li>• Optimiser l'efficacité</li>}
+                    {weeklyStats.employees.length === 0 && <li>• Augmenter l'engagement</li>}
                   </ul>
                 </div>
                 <div>
@@ -566,9 +608,10 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
                     Actions Recommandées
                   </h4>
                   <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    <li>• Formation continue</li>
-                    <li>• Révision des processus</li>
-                    <li>• Feedback régulier</li>
+                    <li>• Formation continue équipe</li>
+                    <li>• Révision processus sécurité</li>
+                    <li>• Feedback régulier employés</li>
+                    <li>• Optimisation des tâches</li>
                   </ul>
                 </div>
               </div>

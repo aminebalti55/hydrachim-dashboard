@@ -346,7 +346,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
     { id: 'rnd', icon: FlaskConical, label: 'R&D et Innovation', iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600' },
     { id: 'quality', icon: ShieldCheck, label: 'Assurance Qualité', iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-600' },
     { id: 'production', icon: Factory, label: 'Production', iconBg: 'bg-gradient-to-br from-orange-600 to-red-600' },
-    { id: 'warehouses', icon: Package, label: 'Entrepôts', iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600' },
+    { id: 'warehouses', icon: Package, label: 'Magasin', iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600' },
     { id: 'team', icon: Users, label: 'Gestion d\'Équipe', iconBg: 'bg-gradient-to-br from-pink-600 to-rose-600' }
   ];
 
@@ -391,7 +391,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
                 <span className="text-white font-bold text-lg">H</span>
               </div>
               <div>
-                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim</h1>
+                <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Hydrachim Tunisie</h1>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tableau de Bord KPI</p>
               </div>
             </div>

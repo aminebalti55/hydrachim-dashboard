@@ -105,13 +105,11 @@ export const useKPIData = () => {
     const kpiDefinition = kpiDefinitions[departmentId]?.kpis.find(k => k.id === kpiId);
     if (!kpiDefinition) return 'no-data';
 
-    // Handle different R&D KPI types
-    if (kpiId === 'product_quality_validation') {
-      return getProductQualityStatus(latestEntry, kpiDefinition);
-    } else if (kpiId === 'formulation_builder') {
-      return getFormulationStatus(latestEntry, kpiDefinition);
-    } else if (kpiId === 'live_kpi_dashboard') {
-      return getDashboardStatus(latestEntry, kpiDefinition);
+    // Handle R&D KPI types with correct IDs
+    if (kpiId === 'product_development_time') {
+      return getProductDevelopmentStatus(latestEntry, kpiDefinition);
+    } else if (kpiId === 'formulation_development') {
+      return getFormulationDevelopmentStatus(latestEntry, kpiDefinition);
     } else if (kpiDefinition.trackingType === 'attendance') {
       return getAttendanceStatus(latestEntry, kpiDefinition);
     } else if (kpiDefinition.trackingType === 'safety') {
@@ -143,56 +141,56 @@ export const useKPIData = () => {
     return 'good';
   }, [getLatestKPIValue]);
 
-  // Product Quality Validation status calculation
-  const getProductQualityStatus = (entry, kpiDefinition) => {
-    if (!entry.data || !entry.data.products) return 'no-data';
+  // Product Development Time status calculation
+  const getProductDevelopmentStatus = (entry, kpiDefinition) => {
+    if (!entry.data || !entry.data.stats) return 'no-data';
     
-    const { products, categoryKPIs } = entry.data;
-    const target = kpiDefinition.target || 90;
-    const globalKPI = entry.value;
-    
-    // Calculate weighted status based on category performance
-    const matiereKPI = categoryKPIs?.matiere_premiere || 0;
-    const produitKPI = categoryKPIs?.produit_fini || 0;
-    const emballageKPI = categoryKPIs?.emballage || 0;
-    
-    const avgKPI = (matiereKPI + produitKPI + emballageKPI) / 3;
-    
-    if (avgKPI >= target) return 'excellent';
-    if (avgKPI >= target * 0.8) return 'good';
-    if (avgKPI >= target * 0.6) return 'fair';
-    return 'needs-attention';
-  };
-
-  // Formulation Builder status calculation
-  const getFormulationStatus = (entry, kpiDefinition) => {
-    if (!entry.data || !entry.data.formulas) return 'no-data';
-    
-    const { formulas } = entry.data;
+    const { stats } = entry.data;
     const target = kpiDefinition.target || 80;
     const globalKPI = entry.value;
     
-    // Check formula performance
-    const highPerformingFormulas = formulas.filter(f => (f.kpi || 0) >= target).length;
-    const performanceRatio = formulas.length > 0 ? highPerformingFormulas / formulas.length : 0;
+    // Check if there are overdue projects
+    const overdueProjects = stats.overdue || 0;
+    const totalProjects = stats.total || 0;
     
-    if (performanceRatio >= 0.8) return 'excellent';
-    if (performanceRatio >= 0.6) return 'good';
-    if (performanceRatio >= 0.4) return 'fair';
+    // Penalize heavily for overdue projects
+    if (overdueProjects > 0 && totalProjects > 0) {
+      const overdueRatio = overdueProjects / totalProjects;
+      if (overdueRatio > 0.3) return 'needs-attention';
+      if (overdueRatio > 0.1) return 'fair';
+    }
+    
+    // Evaluate based on global performance
+    if (globalKPI >= target) return 'excellent';
+    if (globalKPI >= target * 0.8) return 'good';
+    if (globalKPI >= target * 0.6) return 'fair';
     return 'needs-attention';
   };
 
-  // Dashboard status calculation
-  const getDashboardStatus = (entry, kpiDefinition) => {
-    if (!entry.data || !entry.data.metrics) return 'no-data';
+  // Formulation Development status calculation
+  const getFormulationDevelopmentStatus = (entry, kpiDefinition) => {
+    if (!entry.data || !entry.data.stats) return 'no-data';
     
-    const { metrics, globalTarget } = entry.data;
-    const target = globalTarget || kpiDefinition.target || 80;
-    const globalSuccessRate = metrics.globalSuccessRate || entry.value;
+    const { stats, monthlyGoal } = entry.data;
+    const target = kpiDefinition.target || 75;
+    const globalKPI = entry.value;
     
-    if (globalSuccessRate >= target) return 'excellent';
-    if (globalSuccessRate >= target * 0.8) return 'good';
-    if (globalSuccessRate >= target * 0.6) return 'fair';
+    // Check monthly goal achievement
+    const monthlyCompleted = stats.monthlyCompleted || 0;
+    const monthlyTarget = monthlyGoal || 0;
+    
+    if (monthlyTarget > 0) {
+      const monthlyAchievement = (monthlyCompleted / monthlyTarget) * 100;
+      
+      // If monthly goals are severely behind, lower the status
+      if (monthlyAchievement < 30) return 'needs-attention';
+      if (monthlyAchievement < 60) return 'fair';
+    }
+    
+    // Evaluate based on global performance
+    if (globalKPI >= target) return 'excellent';
+    if (globalKPI >= target * 0.8) return 'good';
+    if (globalKPI >= target * 0.6) return 'fair';
     return 'needs-attention';
   };
 
@@ -238,81 +236,59 @@ export const useKPIData = () => {
     return 'needs-attention';
   };
 
-  // Get R&D specific analytics
+  // Get R&D specific analytics with correct KPI IDs
   const getRnDAnalytics = useCallback((departmentId) => {
     if (departmentId !== 'rnd') return null;
     
     const rndData = kpiData[departmentId] || {};
     const analytics = {
-      quality: [],
-      formulation: [],
-      dashboard: [],
+      product_development_time: [],
+      formulation_development: [],
       weeklyReports: [],
       monthlyReports: [],
       alerts: []
     };
 
-    // Process product quality validation data
-    const qualityEntries = rndData['product_quality_validation'] || [];
-    qualityEntries.forEach(entry => {
-      if (entry.data && entry.data.products) {
+    // Process product development time data (correct KPI ID)
+    const productDevEntries = rndData['product_development_time'] || [];
+    productDevEntries.forEach(entry => {
+      if (entry.data) {
         const date = new Date(entry.date);
         
-        analytics.quality.push({
+        analytics.product_development_time.push({
           date: entry.date,
           week: getWeekNumber(date),
           month: date.getMonth(),
           value: entry.value,
-          products: entry.data.products,
-          categoryKPIs: entry.data.categoryKPIs,
-          
-          // Calculate detailed metrics for new structure
-          matierePremiereTests: calculateMatierePremiereMetrics(entry.data.products.matiere_premiere),
-          produitFiniTests: calculateProduitFiniMetrics(entry.data.products.produit_fini),
-          emballageAvailability: calculateEmballageMetrics(entry.data.products.emballage)
+          products: entry.data.products || [],
+          stats: entry.data.stats || {},
+          type: entry.data.type
         });
       }
     });
 
-    // Process formulation builder data
-    const formulationEntries = rndData['formulation_builder'] || [];
+    // Process formulation development data (correct KPI ID)
+    const formulationEntries = rndData['formulation_development'] || [];
     formulationEntries.forEach(entry => {
-      if (entry.data && entry.data.formulas) {
+      if (entry.data) {
         const date = new Date(entry.date);
         
-        analytics.formulation.push({
+        analytics.formulation_development.push({
           date: entry.date,
           week: getWeekNumber(date),
           month: date.getMonth(),
           value: entry.value,
-          formulas: entry.data.formulas,
-          totalFormulas: entry.data.formulas.length,
-          averageKPI: entry.value
-        });
-      }
-    });
-
-    // Process dashboard data
-    const dashboardEntries = rndData['live_kpi_dashboard'] || [];
-    dashboardEntries.forEach(entry => {
-      if (entry.data && entry.data.metrics) {
-        const date = new Date(entry.date);
-        
-        analytics.dashboard.push({
-          date: entry.date,
-          week: getWeekNumber(date),
-          month: date.getMonth(),
-          value: entry.value,
-          metrics: entry.data.metrics,
-          globalTarget: entry.data.globalTarget
+          formulas: entry.data.formulas || [],
+          stats: entry.data.stats || {},
+          monthlyGoal: entry.data.monthlyGoal || 0,
+          type: entry.data.type
         });
       }
     });
 
     // Sort by date (most recent first)
-    analytics.quality.sort((a, b) => new Date(b.date) - new Date(a.date));
-    analytics.formulation.sort((a, b) => new Date(b.date) - new Date(a.date));
-    analytics.dashboard.sort((a, b) => new Date(b.date) - new Date(a.date));
+    analytics.product_development_time.sort((a, b) => new Date(b.date) - new Date(a.date));
+    analytics.formulation_development.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Generate reports and alerts
     analytics.weeklyReports = generateRnDWeeklyReports(analytics);
@@ -322,64 +298,214 @@ export const useKPIData = () => {
     return analytics;
   }, [kpiData]);
 
-  // Calculate matiere premiere test metrics
-  const calculateMatierePremiereMetrics = (products) => {
-    if (!products || products.length === 0) return { totalTests: 0, passedTests: 0, byTestType: {} };
+  // Helper functions for calculations
+  const getWeekNumber = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+  };
+
+  // Generate R&D specific weekly reports
+  const generateRnDWeeklyReports = (analytics) => {
+    const reports = [];
+    const currentWeek = getWeekNumber(new Date());
     
-    let totalTests = 0;
-    let passedTests = 0;
-    const byTestType = { density: { total: 0, passed: 0 }, ph: { total: 0, passed: 0 }, dosage: { total: 0, passed: 0 } };
+    // Group data by week
+    const weeklyData = {};
     
-    products.forEach(product => {
-      if (product.tests) {
-        Object.entries(product.tests).forEach(([testType, test]) => {
-          totalTests++;
-          if (test.passed) passedTests++;
-          
-          if (byTestType[testType]) {
-            byTestType[testType].total++;
-            if (test.passed) byTestType[testType].passed++;
-          }
+    ['product_development_time', 'formulation_development'].forEach(type => {
+      analytics[type].forEach(entry => {
+        if (!weeklyData[entry.week]) {
+          weeklyData[entry.week] = { product_development_time: [], formulation_development: [] };
+        }
+        weeklyData[entry.week][type].push(entry);
+      });
+    });
+    
+    // Generate reports for each week
+    Object.keys(weeklyData).forEach(week => {
+      const weekData = weeklyData[week];
+      const report = {
+        week: parseInt(week),
+        isCurrent: parseInt(week) === currentWeek,
+        productDevelopment: calculateWeeklyProductDevelopment(weekData.product_development_time),
+        formulation: calculateWeeklyFormulation(weekData.formulation_development),
+        status: 'good'
+      };
+      
+      // Determine overall week status
+      const statuses = [report.productDevelopment.status, report.formulation.status];
+      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
+      else if (statuses.includes('good')) report.status = 'good';
+      else report.status = 'excellent';
+      
+      reports.push(report);
+    });
+    
+    return reports.sort((a, b) => b.week - a.week);
+  };
+
+  // Generate R&D specific monthly reports
+  const generateRnDMonthlyReports = (analytics) => {
+    const reports = [];
+    const currentMonth = new Date().getMonth();
+    
+    const monthlyData = {};
+    
+    ['product_development_time', 'formulation_development'].forEach(type => {
+      analytics[type].forEach(entry => {
+        if (!monthlyData[entry.month]) {
+          monthlyData[entry.month] = { product_development_time: [], formulation_development: [] };
+        }
+        monthlyData[entry.month][type].push(entry);
+      });
+    });
+    
+    Object.keys(monthlyData).forEach(month => {
+      const monthData = monthlyData[month];
+      const report = {
+        month: parseInt(month),
+        isCurrent: parseInt(month) === currentMonth,
+        productDevelopment: calculateMonthlyProductDevelopment(monthData.product_development_time),
+        formulation: calculateMonthlyFormulation(monthData.formulation_development),
+        status: 'good'
+      };
+      
+      const statuses = [report.productDevelopment.status, report.formulation.status];
+      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
+      else if (statuses.includes('good')) report.status = 'good';
+      else report.status = 'excellent';
+      
+      reports.push(report);
+    });
+    
+    return reports.sort((a, b) => b.month - a.month);
+  };
+
+  // Generate R&D specific alerts
+  const generateRnDAlerts = (analytics) => {
+    const alerts = [];
+    const now = new Date();
+    const currentWeek = getWeekNumber(now);
+    
+    // Check product development alerts
+    const currentWeekProductDev = analytics.product_development_time.filter(entry => entry.week === currentWeek);
+    currentWeekProductDev.forEach(entry => {
+      if (entry.value < 60) {
+        alerts.push({
+          id: `product_dev_${entry.date}`,
+          type: 'product_development',
+          severity: entry.value < 40 ? 'high' : 'medium',
+          message: `Performance développement produits faible: ${entry.value}%`,
+          date: entry.date,
+          kpiId: 'product_development_time'
+        });
+      }
+      
+      // Check for overdue projects
+      if (entry.stats && entry.stats.overdue > 0) {
+        alerts.push({
+          id: `overdue_projects_${entry.date}`,
+          type: 'product_development',
+          severity: entry.stats.overdue > 2 ? 'high' : 'medium',
+          message: `${entry.stats.overdue} projet(s) en retard d'échéance`,
+          date: entry.date,
+          kpiId: 'product_development_time'
         });
       }
     });
     
-    return { totalTests, passedTests, byTestType };
-  };
-
-  // Calculate produit fini test metrics
-  const calculateProduitFiniMetrics = (products) => {
-    if (!products || products.length === 0) return { totalTests: 0, passedTests: 0, byTestType: {} };
-    
-    let totalTests = 0;
-    let passedTests = 0;
-    const byTestType = { density: { total: 0, passed: 0 }, ph: { total: 0, passed: 0 }, dosage: { total: 0, passed: 0 } };
-    
-    products.forEach(product => {
-      if (product.tests) {
-        Object.entries(product.tests).forEach(([testType, test]) => {
-          totalTests++;
-          if (test.passed) passedTests++;
-          
-          if (byTestType[testType]) {
-            byTestType[testType].total++;
-            if (test.passed) byTestType[testType].passed++;
-          }
+    // Check formulation alerts
+    const currentWeekFormulation = analytics.formulation_development.filter(entry => entry.week === currentWeek);
+    currentWeekFormulation.forEach(entry => {
+      if (entry.value < 50) {
+        alerts.push({
+          id: `formulation_${entry.date}`,
+          type: 'formulation',
+          severity: entry.value < 30 ? 'high' : 'medium',
+          message: `Performance formulations faible: ${entry.value}%`,
+          date: entry.date,
+          kpiId: 'formulation_development'
         });
+      }
+      
+      // Check if monthly goal is far from being reached
+      if (entry.monthlyGoal > 0 && entry.stats) {
+        const completion = (entry.stats.monthlyCompleted / entry.monthlyGoal) * 100;
+        if (completion < 30) {
+          alerts.push({
+            id: `monthly_goal_${entry.date}`,
+            type: 'formulation',
+            severity: completion < 15 ? 'high' : 'medium',
+            message: `Objectif mensuel en retard: ${entry.stats.monthlyCompleted}/${entry.monthlyGoal} formules`,
+            date: entry.date,
+            kpiId: 'formulation_development'
+          });
+        }
       }
     });
     
-    return { totalTests, passedTests, byTestType };
+    return alerts.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
-  // Calculate emballage availability metrics
-  const calculateEmballageMetrics = (products) => {
-    if (!products || products.length === 0) return { totalProducts: 0, availableProducts: 0 };
+  // Weekly calculation helpers for R&D
+  const calculateWeeklyProductDevelopment = (data) => {
+    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
     
-    const totalProducts = products.length;
-    const availableProducts = products.filter(p => p.available).length;
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 80;
     
-    return { totalProducts, availableProducts };
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.75 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateWeeklyFormulation = (data) => {
+    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 75;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
+    };
+  };
+
+  // Monthly calculation helpers for R&D
+  const calculateMonthlyProductDevelopment = (data) => {
+    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 80;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.85 ? 'good' : 'needs-attention'
+    };
+  };
+
+  const calculateMonthlyFormulation = (data) => {
+    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
+    
+    const total = data.reduce((sum, entry) => sum + entry.value, 0);
+    const average = Math.round(total / data.length);
+    const target = 75;
+    
+    return {
+      average,
+      target,
+      status: average >= target ? 'excellent' : average >= target * 0.85 ? 'good' : 'needs-attention'
+    };
   };
 
   // Get team-specific analytics with corrected data processing
@@ -449,234 +575,6 @@ export const useKPIData = () => {
 
     return analytics;
   }, [kpiData]);
-
-  // Helper functions for calculations
-  const getWeekNumber = (date) => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-  };
-
-  // Generate R&D specific weekly reports
-  const generateRnDWeeklyReports = (analytics) => {
-    const reports = [];
-    const currentWeek = getWeekNumber(new Date());
-    
-    // Group data by week
-    const weeklyData = {};
-    
-    ['quality', 'formulation', 'dashboard'].forEach(type => {
-      analytics[type].forEach(entry => {
-        if (!weeklyData[entry.week]) {
-          weeklyData[entry.week] = { quality: [], formulation: [], dashboard: [] };
-        }
-        weeklyData[entry.week][type].push(entry);
-      });
-    });
-    
-    // Generate reports for each week
-    Object.keys(weeklyData).forEach(week => {
-      const weekData = weeklyData[week];
-      const report = {
-        week: parseInt(week),
-        isCurrent: parseInt(week) === currentWeek,
-        quality: calculateWeeklyQuality(weekData.quality),
-        formulation: calculateWeeklyFormulation(weekData.formulation),
-        dashboard: calculateWeeklyDashboard(weekData.dashboard),
-        status: 'good'
-      };
-      
-      // Determine overall week status
-      const statuses = [report.quality.status, report.formulation.status, report.dashboard.status];
-      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
-      else if (statuses.includes('good')) report.status = 'good';
-      else report.status = 'excellent';
-      
-      reports.push(report);
-    });
-    
-    return reports.sort((a, b) => b.week - a.week);
-  };
-
-  // Generate R&D specific monthly reports
-  const generateRnDMonthlyReports = (analytics) => {
-    const reports = [];
-    const currentMonth = new Date().getMonth();
-    
-    const monthlyData = {};
-    
-    ['quality', 'formulation', 'dashboard'].forEach(type => {
-      analytics[type].forEach(entry => {
-        if (!monthlyData[entry.month]) {
-          monthlyData[entry.month] = { quality: [], formulation: [], dashboard: [] };
-        }
-        monthlyData[entry.month][type].push(entry);
-      });
-    });
-    
-    Object.keys(monthlyData).forEach(month => {
-      const monthData = monthlyData[month];
-      const report = {
-        month: parseInt(month),
-        isCurrent: parseInt(month) === currentMonth,
-        quality: calculateMonthlyQuality(monthData.quality),
-        formulation: calculateMonthlyFormulation(monthData.formulation),
-        dashboard: calculateMonthlyDashboard(monthData.dashboard),
-        status: 'good'
-      };
-      
-      const statuses = [report.quality.status, report.formulation.status, report.dashboard.status];
-      if (statuses.includes('needs-attention')) report.status = 'needs-attention';
-      else if (statuses.includes('good')) report.status = 'good';
-      else report.status = 'excellent';
-      
-      reports.push(report);
-    });
-    
-    return reports.sort((a, b) => b.month - a.month);
-  };
-
-  // Generate R&D specific alerts
-  const generateRnDAlerts = (analytics) => {
-    const alerts = [];
-    const now = new Date();
-    const currentWeek = getWeekNumber(now);
-    
-    // Check quality alerts
-    const currentWeekQuality = analytics.quality.filter(entry => entry.week === currentWeek);
-    currentWeekQuality.forEach(entry => {
-      if (entry.value < 80) {
-        alerts.push({
-          id: `quality_${entry.date}`,
-          type: 'quality',
-          severity: entry.value < 60 ? 'high' : 'medium',
-          message: `Qualité produits en dessous du seuil: ${entry.value}%`,
-          date: entry.date,
-          kpiId: 'product_quality_validation'
-        });
-      }
-      
-      // Check specific test type failures
-      if (entry.matierePremiereTests && entry.matierePremiereTests.totalTests > 0) {
-        const failureRate = (entry.matierePremiereTests.totalTests - entry.matierePremiereTests.passedTests) / entry.matierePremiereTests.totalTests;
-        if (failureRate > 0.3) {
-          alerts.push({
-            id: `matiere_premiere_${entry.date}`,
-            type: 'quality',
-            severity: failureRate > 0.5 ? 'high' : 'medium',
-            message: `Taux d'échec élevé pour matières premières: ${Math.round(failureRate * 100)}%`,
-            date: entry.date,
-            kpiId: 'product_quality_validation'
-          });
-        }
-      }
-    });
-    
-    // Check formulation alerts
-    const currentWeekFormulation = analytics.formulation.filter(entry => entry.week === currentWeek);
-    currentWeekFormulation.forEach(entry => {
-      if (entry.value < 70) {
-        alerts.push({
-          id: `formulation_${entry.date}`,
-          type: 'formulation',
-          severity: entry.value < 50 ? 'high' : 'medium',
-          message: `Performance formulations faible: ${entry.value}%`,
-          date: entry.date,
-          kpiId: 'formulation_builder'
-        });
-      }
-    });
-    
-    return alerts.sort((a, b) => new Date(b.date) - new Date(a.date));
-  };
-
-  // Weekly calculation helpers for R&D
-  const calculateWeeklyQuality = (data) => {
-    if (!data.length) return { average: 0, target: 90, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 90;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
-    };
-  };
-
-  const calculateWeeklyFormulation = (data) => {
-    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 80;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
-    };
-  };
-
-  const calculateWeeklyDashboard = (data) => {
-    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 75;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.8 ? 'good' : 'needs-attention'
-    };
-  };
-
-  // Monthly calculation helpers for R&D
-  const calculateMonthlyQuality = (data) => {
-    if (!data.length) return { average: 0, target: 90, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 90;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
-    };
-  };
-
-  const calculateMonthlyFormulation = (data) => {
-    if (!data.length) return { average: 0, target: 80, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 80;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
-    };
-  };
-
-  const calculateMonthlyDashboard = (data) => {
-    if (!data.length) return { average: 0, target: 75, status: 'no-data' };
-    
-    const total = data.reduce((sum, entry) => sum + entry.value, 0);
-    const average = Math.round(total / data.length);
-    const target = 75;
-    
-    return {
-      average,
-      target,
-      status: average >= target ? 'excellent' : average >= target * 0.9 ? 'good' : 'needs-attention'
-    };
-  };
 
   // Original team functions (kept for compatibility)
   const generateWeeklyReports = (analytics) => {

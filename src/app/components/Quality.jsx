@@ -20,7 +20,9 @@ import {
   Activity,
   Sparkles,
   Award,
-  TrendingDown
+  TrendingDown,
+  Trash2,
+  List
 } from 'lucide-react';
 import { kpiDefinitions } from '../utils/kpiDefinitions';
 import { useKPIData } from '../hook/useKPIData';
@@ -28,6 +30,9 @@ import { KPIForm } from '../components/KPIForm';
 import { ChartDisplay } from '../components/ChartDisplay';
 import { AppContext } from '../context/AppContext';
 import ReactECharts from 'echarts-for-react';
+import RawMaterialsReceptionTracker from './quality/RawMaterialsReceptionTracker';
+import ProductionWasteTracker from './quality/ProductionWasteTracker';
+import InventoryQualityTracker from './quality/InventoryQualityTracker';
 
 // French display names for KPI statuses
 const kpiStatusDisplayFr = {
@@ -70,19 +75,26 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
 
   if (!weeklyData) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className={`w-full max-w-2xl p-8 rounded-xl border shadow-2xl ${
-          isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
+          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
         }`}>
           <div className="text-center">
-            <FileText className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-            <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
+              isDark ? 'bg-slate-700' : 'bg-slate-100'
+            }`}>
+              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            </div>
+            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Aucune donnée disponible
             </h3>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Aucune donnée de qualité trouvée pour cette semaine.
             </p>
-            <button onClick={onClose} className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
               Fermer
             </button>
           </div>
@@ -92,15 +104,16 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`w-full max-w-6xl max-h-[95vh] overflow-hidden rounded-xl border shadow-2xl ${
-        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <div className={`w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
+        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
       }`}>
         
+        {/* Header */}
         <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center">
                 <ShieldCheck className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -112,26 +125,31 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className={`p-2 rounded-lg ${
-              isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
-            }`}>
+            <button 
+              onClick={onClose} 
+              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
+                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
+              }`}
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(95vh-120px)]">
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
           <div className="p-8 space-y-8">
             
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
                     <ShieldCheck className="w-5 h-5 text-white" />
                   </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Qualité Moyenne
                   </h4>
                 </div>
@@ -144,13 +162,13 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               </div>
 
               <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
                     <Award className="w-5 h-5 text-white" />
                   </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Conformité
                   </h4>
                 </div>
@@ -163,13 +181,13 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               </div>
 
               <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-violet-600 flex items-center justify-center">
                     <Activity className="w-5 h-5 text-white" />
                   </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Contrôles Qualité
                   </h4>
                 </div>
@@ -182,13 +200,13 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               </div>
 
               <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
               }`}>
                 <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-amber-600 flex items-center justify-center">
                     <Target className="w-5 h-5 text-white" />
                   </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     Objectifs Atteints
                   </h4>
                 </div>
@@ -201,18 +219,19 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
               </div>
             </div>
 
+            {/* Summary Section */}
             <div className={`p-6 rounded-xl border ${
-              isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-100 border-slate-200'
+              isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-indigo-50/50 border-slate-200'
             }`}>
-              <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-lg font-semibold mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Résumé de la Semaine
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                     Réussites
                   </h4>
-                  <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     {weeklyData.avgQuality >= 95 && <li>• Excellente qualité</li>}
                     {weeklyData.avgCompliance >= 90 && <li>• Conformité optimale</li>}
                     {weeklyData.totalTests > 0 && <li>• Tests de qualité réguliers</li>}
@@ -220,10 +239,10 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                   </ul>
                 </div>
                 <div>
-                  <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                     Points d'Attention
                   </h4>
-                  <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     {weeklyData.avgQuality < 85 && <li>• Qualité à améliorer</li>}
                     {weeklyData.avgCompliance < 80 && <li>• Conformité à renforcer</li>}
                     {weeklyData.totalTests === 0 && <li>• Aucun test effectué</li>}
@@ -231,10 +250,10 @@ const QualityWeeklyReportModal = ({ analytics, isDark, onClose }) => {
                   </ul>
                 </div>
                 <div>
-                  <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                     Actions Recommandées
                   </h4>
-                  <ul className={`text-sm space-y-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                     <li>• Renforcer les contrôles</li>
                     <li>• Maintenir les standards</li>
                     <li>• Surveiller la conformité</li>
@@ -278,19 +297,26 @@ const QualityMonthlyReportModal = ({ analytics, isDark, onClose }) => {
 
   if (!monthlyData) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className={`w-full max-w-2xl p-8 rounded-xl border shadow-2xl ${
-          isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
+          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
         }`}>
           <div className="text-center">
-            <FileText className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-            <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
+              isDark ? 'bg-slate-700' : 'bg-slate-100'
+            }`}>
+              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            </div>
+            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
               Aucune donnée disponible
             </h3>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
               Aucune donnée de qualité trouvée pour ce mois.
             </p>
-            <button onClick={onClose} className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
               Fermer
             </button>
           </div>
@@ -300,15 +326,16 @@ const QualityMonthlyReportModal = ({ analytics, isDark, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`w-full max-w-6xl max-h-[95vh] overflow-hidden rounded-xl border shadow-2xl ${
-        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <div className={`w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
+        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
       }`}>
         
+        {/* Header */}
         <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -320,28 +347,32 @@ const QualityMonthlyReportModal = ({ analytics, isDark, onClose }) => {
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className={`p-2 rounded-lg ${
-              isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
-            }`}>
+            <button 
+              onClick={onClose} 
+              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
+                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
+              }`}
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(95vh-120px)]">
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
           <div className="p-8">
             <div className="text-center">
-              <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-xl font-semibold mb-8 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Résumé Mensuel - {monthlyData.monthName}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                <div className={`p-6 rounded-xl border ${
-                  isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'
+              <div className="max-w-sm mx-auto">
+                <div className={`p-8 rounded-xl border ${
+                  isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
                 }`}>
-                  <h4 className={`font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <h4 className={`font-medium mb-4 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                     Qualité Moyenne
                   </h4>
-                  <div className={`text-3xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  <div className={`text-4xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                     {monthlyData.avgQuality}%
                   </div>
                 </div>
@@ -370,14 +401,15 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
   const selectedKPIData = departmentKPIs.find(k => k.id === selectedKPI);
 
   return (
-    <div className={`rounded-2xl border shadow-2xl max-h-[85vh] overflow-y-auto ${
-      isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+    <div className={`rounded-2xl shadow-xl max-h-[85vh] overflow-y-auto ${
+      isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
     }`}>
 
+      {/* Header */}
       <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -392,8 +424,8 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
 
           <button
             onClick={onCancel}
-            className={`p-2 rounded-lg transition-colors ${
-              isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+            className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
+              isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
             }`}
           >
             <X className="w-5 h-5" />
@@ -402,6 +434,7 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
       </div>
 
       <div className="flex flex-col lg:flex-row min-h-[500px]">
+        {/* Left Panel - KPI List */}
         <div className={`flex-1 p-8 border-r ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="space-y-6">
 
@@ -416,21 +449,21 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                     <button
                       key={kpi.id}
                       onClick={() => setSelectedKPI(kpi.id)}
-                      className={`w-full p-6 rounded-xl border text-left transition-all duration-300 hover:scale-[1.02] ${
+                      className={`w-full p-6 rounded-xl border text-left transition-all duration-200 ${
                         selectedKPI === kpi.id
                           ? isDark
-                            ? 'border-emerald-500 bg-emerald-950/30 shadow-lg'
-                            : 'border-emerald-500 bg-emerald-50 shadow-lg'
+                            ? 'border-blue-500 bg-blue-900/20'
+                            : 'border-blue-500 bg-blue-50'
                           : isDark
-                            ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+                            ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-700/50'
                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4 flex-1">
-                          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center text-sm font-bold ${
+                          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center text-sm font-medium ${
                             selectedKPI === kpi.id
-                              ? 'bg-emerald-500 text-white border-emerald-500'
+                              ? 'bg-blue-600 text-white border-blue-600'
                               : isDark
                                 ? 'bg-slate-700 text-slate-300 border-slate-600'
                                 : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -440,14 +473,14 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                           <div className="flex-1">
                             <h4 className={`text-lg font-semibold mb-2 ${
                               selectedKPI === kpi.id
-                                ? isDark ? 'text-emerald-300' : 'text-emerald-700'
+                                ? isDark ? 'text-blue-300' : 'text-blue-700'
                                 : isDark ? 'text-white' : 'text-slate-900'
                             }`}>
                               {kpi.name?.fr || kpi.name?.en || kpi.id}
                             </h4>
                             <p className={`text-sm mb-3 leading-relaxed ${
                               selectedKPI === kpi.id
-                                ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                ? isDark ? 'text-blue-400' : 'text-blue-600'
                                 : isDark ? 'text-slate-400' : 'text-slate-600'
                             }`}>
                               {kpi.description?.fr || kpi.description?.en || ''}
@@ -455,14 +488,14 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                             <div className="flex items-center space-x-3">
                               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 selectedKPI === kpi.id
-                                  ? isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                                  ? isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'
                                   : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                               }`}>
                                 Cible : {kpi.target}{kpi.unit}
                               </span>
                               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                                 selectedKPI === kpi.id
-                                  ? isDark ? 'bg-emerald-900/30 text-emerald-300' : 'bg-emerald-100 text-emerald-700'
+                                  ? isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700'
                                   : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                               }`}>
                                 {kpi.type}
@@ -471,7 +504,7 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                           </div>
                         </div>
                         {selectedKPI === kpi.id && (
-                          <CheckCircle2 className="w-6 h-6 text-emerald-500 mt-1" />
+                          <CheckCircle2 className="w-6 h-6 text-blue-500 mt-1" />
                         )}
                       </div>
                     </button>
@@ -480,8 +513,8 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
               </div>
             ) : (
               <div className="text-center py-16">
-                <div className={`w-20 h-20 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-emerald-50'} flex items-center justify-center mx-auto mb-6`}>
-                  <ShieldCheck className={`w-10 h-10 ${isDark ? 'text-slate-600' : 'text-emerald-400'}`} />
+                <div className={`w-20 h-20 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex items-center justify-center mx-auto mb-6`}>
+                  <ShieldCheck className={`w-10 h-10 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                 </div>
                 <h4 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Aucun Indicateur Configuré
@@ -494,6 +527,7 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
           </div>
         </div>
 
+        {/* Right Panel - Selected KPI Details */}
         <div className="flex-1 p-8">
           <div className="h-full">
             {selectedKPIData ? (
@@ -503,10 +537,10 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                     Indicateur Sélectionné
                   </h4>
                   <div className={`p-6 rounded-xl border ${
-                    isDark ? 'border-slate-600 bg-slate-800/50' : 'border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50'
+                    isDark ? 'border-slate-600 bg-slate-700/50' : 'border-slate-200 bg-slate-50'
                   }`}>
                     <div className="flex items-start space-x-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                      <div className="w-16 h-16 rounded-xl bg-indigo-600 flex items-center justify-center">
                         <Target className="w-8 h-8 text-white" />
                       </div>
                       <div className="flex-1">
@@ -518,12 +552,12 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                         </p>
                         <div className="flex items-center space-x-4">
                           <span className={`px-4 py-2 rounded-xl text-sm font-medium ${
-                            isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-700 shadow-sm'
+                            isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-700 border border-slate-200'
                           }`}>
                             🎯 Cible : {selectedKPIData.target}{selectedKPIData.unit}
                           </span>
                           <span className={`px-4 py-2 rounded-xl text-sm font-medium ${
-                            isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-700 shadow-sm'
+                            isDark ? 'bg-slate-700 text-slate-300' : 'bg-white text-slate-700 border border-slate-200'
                           }`}>
                             📊 Type : {selectedKPIData.type}
                           </span>
@@ -534,17 +568,17 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
                 </div>
 
                 <div className={`p-6 rounded-xl border ${
-                  isDark ? 'border-slate-600 bg-slate-800/30' : 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50'
+                  isDark ? 'border-slate-600 bg-blue-900/20' : 'border-blue-200 bg-blue-50'
                 }`}>
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
                       <CheckCircle className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <h5 className={`text-lg font-semibold mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                         Prêt à mettre à jour
                       </h5>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                         Cliquez sur continuer pour saisir de nouvelles données pour cet indicateur.
                       </p>
                     </div>
@@ -554,8 +588,8 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
             ) : (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
-                  <div className={`w-24 h-24 rounded-2xl ${isDark ? 'bg-slate-800' : 'bg-emerald-50'} flex items-center justify-center mx-auto mb-6`}>
-                    <Target className={`w-12 h-12 ${isDark ? 'text-slate-600' : 'text-emerald-400'}`} />
+                  <div className={`w-24 h-24 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex items-center justify-center mx-auto mb-6`}>
+                    <Target className={`w-12 h-12 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                   </div>
                   <h4 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     Sélectionner un Indicateur
@@ -570,14 +604,15 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
         </div>
       </div>
 
-      <div className={`px-8 py-6 border-t ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-slate-50/50'}`}>
+      {/* Footer */}
+      <div className={`px-8 py-6 border-t ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
         <div className="flex justify-end gap-4">
           <button
             onClick={onCancel}
             className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               isDark
-                ? 'text-slate-300 hover:bg-slate-800'
-                : 'text-slate-700 hover:bg-slate-100'
+                ? 'text-slate-300 hover:bg-slate-700'
+                : 'text-slate-700 hover:bg-slate-200'
             }`}
           >
             Annuler
@@ -586,7 +621,7 @@ const QualityKPISelector = ({ onSelect, onCancel, isDark, departmentKPIs }) => {
           {selectedKPI && (
             <button
               onClick={handleSubmit}
-              className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-sm font-medium transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors"
             >
               Continuer
             </button>
@@ -605,6 +640,7 @@ export const QualityPage = () => {
   const [selectedKPI, setSelectedKPI] = useState(null);
   const [showReports, setShowReports] = useState(false);
   const [reportType, setReportType] = useState('weekly');
+  const [showReportsMenu, setShowReportsMenu] = useState(false);
 
   const {
     kpiData,
@@ -613,16 +649,13 @@ export const QualityPage = () => {
     getDepartmentSummary,
     getKPITrend,
     getQualityAnalytics,
+    getLatestKPIValue,
     isLoading
   } = useKPIData();
 
   const departmentId = 'quality';
   const department = kpiDefinitions[departmentId];
   const departmentKPIs = department?.kpis || [];
-
-  const departmentSummary = useMemo(() => {
-    return getDepartmentSummary(departmentId);
-  }, [getDepartmentSummary, departmentId, kpiData]);
 
   const getQualityAnalyticsData = () => {
     return getQualityAnalytics && getQualityAnalytics(departmentId);
@@ -659,35 +692,84 @@ export const QualityPage = () => {
   };
 
   const getStats = () => {
-    if (!departmentSummary?.kpis) {
-      return [
-        { title: 'Indicateurs Suivis', value: '0/0', change: 0, changeText: 'actifs', icon: Target, color: 'emerald' },
-        { title: 'Performance Globale', value: '0%', change: 0, changeText: 'efficacité', icon: TrendingUp, color: 'emerald' },
-        { title: 'Excellent', value: '0', change: 0, changeText: 'indicateurs', icon: CheckCircle, color: 'green' },
-        { title: 'Attention Requise', value: '0', change: 0, changeText: 'alertes', icon: AlertTriangle, color: 'red' }
-      ];
-    }
+    // Calculate stats based on the updated KPI structure
+    const kpisWithData = departmentKPIs.filter(kpi => {
+      const latestValue = getLatestKPIValue(departmentId, kpi.id);
+      return latestValue !== null;
+    });
 
-    const kpisWithData = departmentSummary.kpis.filter(kpi => kpi.latestValue) || [];
-    const excellentKpis = kpisWithData.filter(kpi => kpi.status === 'excellent');
-    const needsAttentionKpis = kpisWithData.filter(kpi => kpi.status === 'needs-attention');
+    const excellentKpis = departmentKPIs.filter(kpi => {
+      const latestValue = getLatestKPIValue(departmentId, kpi.id);
+      if (!latestValue) return false;
+      
+      // For reception tracking, check if value meets target
+      if (kpi.id === 'material_batch_acceptance_rate') {
+        return latestValue.value >= kpi.target;
+      }
+      
+      // For production waste tracking, lower is better
+      if (kpi.id === 'production_waste_rate') {
+        return latestValue.value >= 80; // KPI value of 80% or higher is excellent
+      }
+      
+      // For other KPIs, use standard logic
+      const lowerIsBetter = [];
+      if (lowerIsBetter.includes(kpi.id)) {
+        return latestValue.value <= kpi.target;
+      } else {
+        return latestValue.value >= kpi.target;
+      }
+    });
+
+    const needsAttentionKpis = departmentKPIs.filter(kpi => {
+      const latestValue = getLatestKPIValue(departmentId, kpi.id);
+      if (!latestValue) return false;
+      
+      if (kpi.id === 'material_batch_acceptance_rate') {
+        const tolerance = kpi.target * 0.2;
+        return latestValue.value < (kpi.target - tolerance);
+      }
+      
+      if (kpi.id === 'production_waste_rate') {
+        return latestValue.value < 60; // KPI value below 60% needs attention
+      }
+      
+      const tolerance = kpi.target * 0.2;
+      const lowerIsBetter = [];
+      if (lowerIsBetter.includes(kpi.id)) {
+        return latestValue.value > (kpi.target + tolerance);
+      } else {
+        return latestValue.value < (kpi.target - tolerance);
+      }
+    });
+
+    // Calculate overall efficiency
+    let efficiency = 0;
+    if (kpisWithData.length > 0) {
+      const excellentCount = excellentKpis.length;
+      const goodCount = kpisWithData.length - excellentKpis.length - needsAttentionKpis.length;
+      const needsAttentionCount = needsAttentionKpis.length;
+      
+      const totalScore = (excellentCount * 100) + (goodCount * 80) + (needsAttentionCount * 40);
+      efficiency = Math.round(totalScore / (kpisWithData.length * 100) * 100);
+    }
 
     return [
       {
         title: 'Indicateurs Suivis',
-        value: `${kpisWithData.length}/${departmentSummary.kpis.length}`,
+        value: `${kpisWithData.length}/${departmentKPIs.length}`,
         change: kpisWithData.length,
         changeText: 'actifs',
         icon: Target,
-        color: 'emerald'
+        color: 'blue'
       },
       {
         title: 'Performance Globale',
-        value: `${departmentSummary.efficiency || 0}%`,
-        change: departmentSummary.efficiency || 0,
+        value: `${efficiency}%`,
+        change: efficiency,
         changeText: 'efficacité',
         icon: TrendingUp,
-        color: 'emerald'
+        color: 'violet'
       },
       {
         title: 'Excellent',
@@ -695,7 +777,7 @@ export const QualityPage = () => {
         change: excellentKpis.length,
         changeText: 'indicateurs',
         icon: CheckCircle,
-        color: 'green'
+        color: 'emerald'
       },
       {
         title: 'Attention Requise',
@@ -725,11 +807,22 @@ export const QualityPage = () => {
         })));
 
         const latest = history[0];
+        let progress;
+        
+        // Special handling for production waste rate KPI
+        if (kpi.id === 'production_waste_rate') {
+          progress = latest.value; // KPI value is already a percentage
+        } else if (kpi.id === 'material_batch_acceptance_rate') {
+          progress = kpi.target !== 0 ? (latest.value / kpi.target) * 100 : 0;
+        } else {
+          progress = kpi.target !== 0 ? (latest.value / kpi.target) * 100 : 0;
+        }
+        
         categoryData.push({
           name: kpi.name?.fr || kpi.name?.en || kpi.id,
           value: latest.value,
           target: kpi.target,
-          progress: kpi.target !== 0 ? (latest.value / kpi.target) * 100 : 0
+          progress: progress
         });
       }
     });
@@ -791,15 +884,15 @@ export const QualityPage = () => {
           type: 'line',
           data: chartData.map(item => item.value),
           smooth: true,
-          lineStyle: { color: '#059669', width: 3 },
-          itemStyle: { color: '#059669' },
+          lineStyle: { color: '#3B82F6', width: 3 },
+          itemStyle: { color: '#3B82F6' },
           areaStyle: {
             color: {
               type: 'linear',
               x: 0, y: 0, x2: 0, y2: 1,
               colorStops: [
-                { offset: 0, color: '#05966940' },
-                { offset: 1, color: '#05966910' }
+                { offset: 0, color: '#3B82F640' },
+                { offset: 1, color: '#3B82F610' }
               ]
             }
           }
@@ -808,8 +901,8 @@ export const QualityPage = () => {
           name: 'Cible',
           type: 'line',
           data: chartData.map(item => item.target),
-          lineStyle: { color: '#0D9488', type: 'dashed', width: 2 },
-          itemStyle: { color: '#0D9488' },
+          lineStyle: { color: '#6366F1', type: 'dashed', width: 2 },
+          itemStyle: { color: '#6366F1' },
           symbol: 'none'
         }
       ]
@@ -817,10 +910,10 @@ export const QualityPage = () => {
 
     return (
       <div key={kpi.id} className={`p-6 rounded-xl border ${
-        isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+        isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-white border-slate-200'
       }`}>
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
             <BarChart3 className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -848,375 +941,545 @@ export const QualityPage = () => {
   React.useEffect(() => {
     console.log('Page Qualité montée. Données localStorage actuelles :', localStorage.getItem('hydrachim_kpi_data'));
     console.log('État kpiData actuel :', kpiData);
-    console.log('Résumé du département :', departmentSummary);
-  }, [kpiData, departmentSummary]);
+    console.log('KPIs configurés :', departmentKPIs);
+  }, [kpiData, departmentKPIs]);
 
   return (
-    <div className={`space-y-8 ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+    <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
 
-      {/* KPI Form Modal */}
-      {showKPIForm && (
-        <>
-          {selectedKPI ? (
-            <KPIForm
-              kpi={selectedKPI}
-              departmentId={departmentId}
-              onSave={handleSaveKPI}
-              onCancel={handleCancelKPI}
-            />
-          ) : (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-6xl max-h-[90vh]">
-                <QualityKPISelector
-                  onSelect={(kpi) => setSelectedKPI(kpi)}
-                  onCancel={handleCancelKPI}
-                  isDark={isDark}
-                  departmentKPIs={departmentKPIs}
+        {/* KPI Form Modal */}
+        {showKPIForm && (
+          <>
+            {selectedKPI && selectedKPI.id === 'material_batch_acceptance_rate' ? (
+              <RawMaterialsReceptionTracker
+                onSave={handleSaveKPI}
+                onCancel={handleCancelKPI}
+                existingData={getLatestKPIValue(departmentId, selectedKPI.id)?.data}
+                isDark={isDark}
+              />
+            ) : selectedKPI && selectedKPI.id === 'production_waste_rate' ? (
+              <ProductionWasteTracker
+                onSave={handleSaveKPI}
+                onCancel={handleCancelKPI}
+                existingData={getLatestKPIValue(departmentId, selectedKPI.id)?.data}
+                isDark={isDark}
+              />
+            ) : selectedKPI && selectedKPI.id === 'raw_materials_inventory_list' ? (
+              <InventoryQualityTracker
+                onSave={handleSaveKPI}
+                onCancel={handleCancelKPI}
+                existingData={getLatestKPIValue(departmentId, selectedKPI.id)?.data}
+                isDark={isDark}
+              />
+            ) : selectedKPI ? (
+              <KPIForm
+                kpi={selectedKPI}
+                departmentId={departmentId}
+                onSave={handleSaveKPI}
+                onCancel={handleCancelKPI}
+              />
+            ) : (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                <div className="w-full max-w-6xl max-h-[90vh]">
+                  <QualityKPISelector
+                    onSelect={(kpi) => setSelectedKPI(kpi)}
+                    onCancel={handleCancelKPI}
+                    isDark={isDark}
+                    departmentKPIs={departmentKPIs}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {showReports && reportType === 'weekly' && (
+          <QualityWeeklyReportModal 
+            analytics={getQualityAnalyticsData()}
+            isDark={isDark}
+            onClose={() => setShowReports(false)}
+          />
+        )}
+
+        {showReports && reportType === 'monthly' && (
+          <QualityMonthlyReportModal 
+            analytics={getQualityAnalyticsData()}
+            isDark={isDark}
+            onClose={() => setShowReports(false)}
+          />
+        )}
+
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center space-x-5">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg">
+              <ShieldCheck className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {deptName}
+              </h1>
+              <p className={`text-base mt-2 max-w-2xl ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Assurance qualité des matières premières et produits finis avec suivi intelligent des conformités
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Reports Dropdown */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowReportsMenu(!showReportsMenu)}
+                className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
+                  showReportsMenu
+                    ? isDark 
+                      ? 'border-indigo-500 bg-indigo-900/20 text-indigo-300 shadow-indigo-500/20' 
+                      : 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-indigo-500/20'
+                    : isDark 
+                      ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
+                      : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Rapports</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-200 ${showReportsMenu ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Backdrop for click outside */}
+              {showReportsMenu && (
+                <div 
+                  className="fixed inset-0 z-10" 
+                  onClick={() => setShowReportsMenu(false)}
                 />
+              )}
+              
+              {/* Dropdown Menu */}
+              <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl border shadow-xl z-20 transition-all duration-200 transform ${
+                showReportsMenu 
+                  ? 'opacity-100 visible translate-y-0' 
+                  : 'opacity-0 invisible translate-y-2'
+              } ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                
+                {/* Menu Header */}
+                <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
+                  <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Rapports de Qualité
+                  </h3>
+                  <p className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Analyses et synthèses des performances qualité
+                  </p>
+                </div>
+                
+                {/* Menu Items */}
+                <div className="p-3">
+                  <button
+                    onClick={() => { 
+                      setReportType('weekly'); 
+                      setShowReports(true); 
+                      setShowReportsMenu(false);
+                    }}
+                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
+                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                      <Eye className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Rapport Hebdomadaire
+                      </div>
+                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Analyse détaillée de la semaine en cours
+                      </div>
+                    </div>
+                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
+                      isDark ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      <ArrowUpRight className="w-5 h-5" />
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => { 
+                      setReportType('monthly'); 
+                      setShowReports(true); 
+                      setShowReportsMenu(false);
+                    }}
+                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
+                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                      <Calendar className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Rapport Mensuel
+                      </div>
+                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Vue d'ensemble et tendances du mois
+                      </div>
+                    </div>
+                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
+                      isDark ? 'text-slate-300' : 'text-slate-700'
+                    }`}>
+                      <ArrowUpRight className="w-5 h-5" />
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-        </>
-      )}
 
-      {showReports && reportType === 'weekly' && (
-        <QualityWeeklyReportModal 
-          analytics={getQualityAnalyticsData()}
-          isDark={isDark}
-          onClose={() => setShowReports(false)}
-        />
-      )}
-
-      {showReports && reportType === 'monthly' && (
-        <QualityMonthlyReportModal 
-          analytics={getQualityAnalyticsData()}
-          isDark={isDark}
-          onClose={() => setShowReports(false)}
-        />
-      )}
-
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <ShieldCheck className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {deptName}
-            </h1>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Assurance qualité des matières premières et produits finis
-            </p>
+            {/* Primary Action Button */}
+            <button
+              onClick={() => handleAddData()}
+              className="flex items-center space-x-2.5 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Ajouter Données</span>
+            </button>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => { setReportType('weekly'); setShowReports(true); }}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-lg hover:from-emerald-700 hover:to-teal-700 transition-all duration-200"
-          >
-            <Eye className="w-4 h-4" />
-            <span>Rapport Hebdomadaire</span>
-          </button>
-          
-          <button 
-            onClick={() => { setReportType('monthly'); setShowReports(true); }}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl hover:shadow-lg hover:from-teal-700 hover:to-cyan-700 transition-all duration-200"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Rapport Mensuel</span>
-          </button>
 
-          <button
-            onClick={() => handleAddData()}
-            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-300 font-medium shadow-lg hover:shadow-xl"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Ajouter Données</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-              isDark
-                ? 'bg-slate-800/60 border-slate-700/50'
-                : 'bg-white border-slate-200/80 shadow-sm'
-            }`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${
-              stat.color === 'emerald' ? (isDark ? 'from-emerald-500/10 to-teal-500/5' : 'from-emerald-50 to-teal-50/50') :
-              stat.color === 'green' ? (isDark ? 'from-green-500/10 to-emerald-500/5' : 'from-green-50 to-emerald-50/50') :
-              stat.color === 'red' ? (isDark ? 'from-red-500/10 to-pink-500/5' : 'from-red-50 to-pink-50/50') :
-              (isDark ? 'from-slate-500/10 to-slate-600/5' : 'from-slate-50 to-slate-100/50')
-            } opacity-50`} />
-
-            <div className="relative">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${
-                  stat.color === 'emerald' ? 'from-emerald-600 to-teal-600' :
-                  stat.color === 'green' ? 'from-green-600 to-emerald-600' :
-                  stat.color === 'red' ? 'from-red-600 to-pink-600' :
-                  'from-slate-600 to-slate-700'
-                } shadow-lg`}>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className={`p-6 rounded-2xl border transition-all duration-200 hover:shadow-lg group ${
+                isDark
+                  ? 'bg-slate-800/80 border-slate-700 hover:border-slate-600'
+                  : 'bg-white border-slate-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-6">
+                <div className={`p-3 rounded-xl shadow-md group-hover:shadow-lg transition-all ${
+                  stat.color === 'blue' ? 'bg-blue-600' :
+                  stat.color === 'violet' ? 'bg-violet-600' :
+                  stat.color === 'emerald' ? 'bg-emerald-600' :
+                  stat.color === 'red' ? 'bg-red-600' :
+                  'bg-slate-600'
+                }`}>
                   <stat.icon className="w-5 h-5 text-white" />
                 </div>
-                <ArrowUpRight className={`w-4 h-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                <div className={`p-1 rounded-lg transition-all ${
+                  stat.color === 'blue' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' :
+                  stat.color === 'violet' ? 'bg-violet-100 text-violet-700 dark:bg-violet-800 dark:text-violet-300' :
+                  stat.color === 'emerald' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300' :
+                  'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300'
+                }`}>
+                  <ArrowUpRight className="w-3 h-3" />
+                </div>
               </div>
 
               <div>
-                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   {stat.title}
                 </p>
                 <p className={`text-3xl font-bold mb-3 ${
+                  stat.color === 'blue' ? 'text-blue-600' :
+                  stat.color === 'violet' ? 'text-violet-600' :
                   stat.color === 'emerald' ? 'text-emerald-600' :
-                  stat.color === 'green' ? 'text-green-600' :
                   stat.color === 'red' ? 'text-red-600' :
                   isDark ? 'text-slate-200' : 'text-slate-700'
                 }`}>
                   {stat.value}
                 </p>
                 <div className="flex items-center space-x-2">
-                  <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <span className={`text-sm font-semibold ${
+                    stat.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                    stat.color === 'violet' ? 'text-violet-600 dark:text-violet-400' :
+                    stat.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
+                    'text-red-600 dark:text-red-400'
+                  }`}>
                     {stat.change}
                   </span>
-                  <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
+                  <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {stat.changeText}
                   </span>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* KPI Cards Section */}
-      <div className={`rounded-2xl border p-6 ${
-        isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
-      }`}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Indicateurs Clés de Performance
-            </h3>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentSummary?.kpis?.length || 0} configurés • Cliquez sur une carte pour ajouter rapidement des données
-            </p>
-          </div>
-          <button
-            onClick={() => handleAddData()}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 text-sm font-medium shadow-lg"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Sélectionner l'Indicateur</span>
-          </button>
+          ))}
         </div>
 
-        {departmentSummary?.kpis && departmentSummary.kpis.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {departmentSummary.kpis.map((kpi) => {
-              const getStatusColor = (status) => {
-                switch (status) {
-                  case 'excellent': return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
-                  case 'good': return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
-                  case 'fair': return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
-                  case 'needs-attention': return 'text-red-600 bg-red-50 dark:bg-red-900/20';
-                  default: return 'text-gray-600 bg-gray-50 dark:bg-gray-900/20';
-                }
-              };
+        {/* KPI Cards Section */}
+        <div className={`rounded-2xl border p-8 shadow-sm ${
+          isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Indicateurs Clés de Performance
+              </h3>
+              <p className={`text-base mt-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                {departmentKPIs.filter(kpi => getLatestKPIValue(departmentId, kpi.id)).length || 0} / {departmentKPIs.length || 0} configurés • Suivi intelligent des normes qualité et conformité
+              </p>
+            </div>
+            <div className={`px-4 py-2 rounded-lg border ${
+              isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-800'
+            }`}>
+              <div className="flex items-center space-x-2 text-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>Interface unifiée</span>
+              </div>
+            </div>
+          </div>
 
-              const getProgress = () => {
-                if (!kpi.latestValue || !kpi.target || kpi.target === 0) return 0;
-                return Math.min(100, (kpi.latestValue.value / kpi.target) * 100);
-              };
-
-              const progress = getProgress();
-              const kpiName = kpi.name?.fr || kpi.name?.en || kpi.id;
-              const statusText = kpiStatusDisplayFr[kpi.status] || (kpi.status ? kpi.status.charAt(0).toUpperCase() + kpi.status.slice(1) : 'Indéfini');
-
-              // Function to get appropriate icon for each KPI
-              const getKPIIcon = (kpiId, kpiName) => {
-                const name = (kpiName || kpiId).toLowerCase();
+          {departmentKPIs && departmentKPIs.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {departmentKPIs.map((kpi) => {
+                const latestValue = getLatestKPIValue(departmentId, kpi.id);
                 
-                if (name.includes('conformité') || name.includes('compliance')) {
-                  return Award;
-                } else if (name.includes('défaut') || name.includes('defect') || name.includes('erreur')) {
-                  return AlertTriangle;
-                } else if (name.includes('test') || name.includes('contrôle') || name.includes('control')) {
-                  return Activity;
-                } else if (name.includes('pureté') || name.includes('purity') || name.includes('qualité') || name.includes('quality')) {
-                  return Sparkles;
-                } else if (name.includes('certification') || name.includes('audit')) {
-                  return CheckCircle;
-                } else if (name.includes('produit') || name.includes('product') || name.includes('matière')) {
-                  return Package;
-                } else if (name.includes('mesure') || name.includes('measure') || name.includes('température') || name.includes('ph')) {
-                  return Gauge;
-                } else if (name.includes('temps') || name.includes('time') || name.includes('délai')) {
-                  return Clock;
-                } else if (name.includes('performance') || name.includes('efficacité')) {
-                  return TrendingUp;
-                } else {
-                  return ShieldCheck; // Default fallback
-                }
-              };
+                const getKPIStatus = (kpi, latestValue) => {
+                  if (!latestValue) return 'no-data';
+                  
+                  if (kpi.id === 'material_batch_acceptance_rate') {
+                    const value = latestValue.value;
+                    if (value >= kpi.target) return 'excellent';
+                    if (value >= kpi.target * 0.9) return 'good';
+                    if (value >= kpi.target * 0.7) return 'fair';
+                    return 'needs-attention';
+                  }
+                  
+                  if (kpi.id === 'production_waste_rate') {
+                    const value = latestValue.value;
+                    if (value >= 80) return 'excellent';
+                    if (value >= 60) return 'good';
+                    if (value >= 40) return 'fair';
+                    return 'needs-attention';
+                  }
+                  
+                  const tolerance = kpi.target * 0.1;
+                  if (latestValue.value >= kpi.target) return 'excellent';
+                  if (latestValue.value >= kpi.target - tolerance) return 'good';
+                  return 'needs-attention';
+                };
 
-              const KPIIcon = getKPIIcon(kpi.id, kpiName);
+                const status = getKPIStatus(kpi, latestValue);
 
-              return (
-                <div
-                  key={kpi.id}
-                  onClick={() => handleAddData(kpi)}
-                  className={`group cursor-pointer p-6 rounded-2xl border transition-all duration-300 hover:shadow-xl hover:scale-[1.02] ${
-                    isDark ? 'bg-slate-800/60 border-slate-700/50 hover:border-emerald-500/50' : 'bg-white border-slate-200/80 hover:border-emerald-500/50 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-lg">
-                      <KPIIcon className="w-6 h-6 text-white" />
+                const getStatusColor = (status) => {
+                  switch (status) {
+                    case 'excellent': return 'text-emerald-800 bg-emerald-200 dark:bg-emerald-800 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700';
+                    case 'good': return 'text-blue-800 bg-blue-200 dark:bg-blue-800 dark:text-blue-100 border border-blue-300 dark:border-blue-700';
+                    case 'fair': return 'text-amber-800 bg-amber-200 dark:bg-amber-800 dark:text-amber-100 border border-amber-300 dark:border-amber-700';
+                    case 'needs-attention': return 'text-red-800 bg-red-200 dark:bg-red-800 dark:text-red-100 border border-red-300 dark:border-red-700';
+                    default: return 'text-slate-800 bg-slate-200 dark:bg-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600';
+                  }
+                };
+
+                const getProgress = () => {
+                  if (!latestValue || !kpi.target || kpi.target === 0) return 0;
+                  
+                  // For reception tracking, use direct percentage
+                  if (kpi.id === 'material_batch_acceptance_rate') {
+                    return latestValue.value;
+                  }
+                  
+                  // For production waste rate, the value is already a percentage
+                  if (kpi.id === 'production_waste_rate') {
+                    return latestValue.value;
+                  }
+                  
+                  return Math.min(100, (latestValue.value / kpi.target) * 100);
+                };
+
+                const progress = getProgress();
+                const kpiName = kpi.name?.fr || kpi.name?.en || kpi.id;
+                const statusText = kpiStatusDisplayFr[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Indéfini');
+
+                // Function to get appropriate icon for each KPI
+                const getKPIIcon = (kpiId, kpiName) => {
+                  if (kpiId === 'material_batch_acceptance_rate') {
+                    return Package;
+                  } else if (kpiId === 'production_waste_rate') {
+                    return Trash2;
+                  } else if (kpiId === 'raw_materials_inventory_list') {
+                    return List;
+                  } else if (kpiId === 'compliance_rate') {
+                    return Award;
+                  } else {
+                    return ShieldCheck; // Default fallback
+                  }
+                };
+
+                const KPIIcon = getKPIIcon(kpi.id, kpiName);
+
+                return (
+                  <div
+                    key={kpi.id}
+                    onClick={() => handleAddData(kpi)}
+                    className={`group cursor-pointer p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
+                      isDark ? 'bg-slate-800/80 border-slate-700 hover:border-blue-500/50 hover:bg-slate-800' : 'bg-white border-slate-200 hover:border-blue-400/50 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300">
+                        <KPIIcon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                          {statusText}
+                        </div>
+                        <div className={`opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1 ${
+                          isDark ? 'text-blue-400' : 'text-blue-600'
+                        }`}>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(kpi.status)}`}>
-                        {statusText}
-                      </div>
-                      <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                        isDark ? 'text-emerald-400' : 'text-emerald-500'
-                      }`}>
-                        <Plus className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      {kpiName}
-                    </h4>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Cible : {kpi.target}{kpi.unit}
-                    </p>
-                  </div>
-
-                  {kpi.latestValue ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {kpi.latestValue.value}{kpi.unit}
-                        </span>
-                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          {progress.toFixed(0)}%
-                        </span>
-                      </div>
-
-                      <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-500 ${
-                            progress >= 90 ? 'bg-emerald-500' :
-                            progress >= 70 ? 'bg-emerald-500' :
-                            progress >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
-                      </div>
-
-                      {kpi.latestValue.notes && (
-                        <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          "{kpi.latestValue.notes}"
-                        </p>
-                      )}
-
-                      <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                        {new Date(kpi.latestValue.date).toLocaleDateString('fr-FR')}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className={`w-12 h-12 rounded-xl ${
-                        isDark ? 'bg-slate-700 group-hover:bg-emerald-900/30' : 'bg-slate-100 group-hover:bg-emerald-50'
-                      } flex items-center justify-center mx-auto mb-3 transition-all`}>
-                        <Plus className={`w-6 h-6 ${
-                          isDark ? 'text-slate-500 group-hover:text-emerald-400' : 'text-slate-400 group-hover:text-emerald-500'
-                        } transition-colors`} />
-                      </div>
-                      <p className={`text-sm font-medium ${
-                        isDark ? 'text-slate-300 group-hover:text-emerald-300' : 'text-slate-600 group-hover:text-emerald-600'
-                      } transition-colors`}>
-                        Cliquez pour ajouter des données
+                    <div className="mb-4">
+                      <h4 className={`text-base font-bold mb-2 group-hover:text-blue-600 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {kpiName}
+                      </h4>
+                      <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        Cible : {kpi.target}{kpi.unit}
                       </p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className={`w-16 h-16 rounded-2xl ${isDark ? 'bg-slate-700/50' : 'bg-emerald-50'} flex items-center justify-center mx-auto mb-4`}>
-              <ShieldCheck className="w-8 h-8 text-emerald-500" />
+
+                    {latestValue ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            {latestValue.value}{kpi.unit}
+                          </span>
+                          <div className="text-right">
+                            <div className={`text-xs font-semibold ${
+                              progress >= 100 ? 'text-emerald-600' :
+                              progress >= 80 ? 'text-blue-600' :
+                              progress >= 60 ? 'text-amber-600' : 'text-red-600'
+                            }`}>
+                              {progress.toFixed(0)}% atteint
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`w-full rounded-full h-2 shadow-inner ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                          <div
+                            className={`h-2 rounded-full transition-all duration-700 shadow-sm ${
+                              progress >= 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
+                              progress >= 80 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                              progress >= 60 ? 'bg-gradient-to-r from-amber-500 to-amber-600' : 'bg-gradient-to-r from-red-500 to-red-600'
+                            }`}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
+                        </div>
+
+                        {latestValue.notes && (
+                          <p className={`text-xs italic ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                            "{latestValue.notes}"
+                          </p>
+                        )}
+
+                        <div className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {new Date(latestValue.date).toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className={`w-12 h-12 rounded-xl ${
+                          isDark ? 'bg-slate-700 group-hover:bg-blue-900/30' : 'bg-slate-100 group-hover:bg-blue-100'
+                        } flex items-center justify-center mx-auto mb-4 transition-all duration-300 shadow-sm group-hover:shadow-md`}>
+                          <Plus className={`w-6 h-6 ${
+                            isDark ? 'text-slate-300 group-hover:text-blue-400' : 'text-slate-700 group-hover:text-blue-500'
+                          } transition-all duration-300`} />
+                        </div>
+                        <p className={`text-sm font-semibold mb-1 ${
+                          isDark ? 'text-slate-200 group-hover:text-blue-300' : 'text-slate-800 group-hover:text-blue-600'
+                        } transition-colors`}>
+                          Configurer ce KPI
+                        </p>
+                        <p className={`text-xs ${
+                          isDark ? 'text-slate-400' : 'text-slate-600'
+                        }`}>
+                          Cliquez pour commencer le suivi
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <h4 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Prêt à Démarrer le Contrôle Qualité
-            </h4>
-            <p className={`text-sm mb-6 max-w-md mx-auto ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Commencez à ajouter des données d'indicateurs pour votre contrôle qualité afin de suivre les normes et la conformité
-            </p>
-            <button
-              onClick={() => handleAddData()}
-              className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition-all font-medium shadow-lg hover:shadow-xl"
-            >
-              Ajouter le Premier Indicateur
-            </button>
+          ) : (
+            <div className="text-center py-20">
+              <div className={`w-24 h-24 rounded-2xl ${isDark ? 'bg-slate-700' : 'bg-slate-100'} flex items-center justify-center mx-auto mb-8 shadow-lg`}>
+                <ShieldCheck className="w-12 h-12 text-indigo-600" />
+              </div>
+              <h4 className={`text-2xl font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Prêt à Démarrer le Contrôle Qualité
+              </h4>
+              <p className={`text-lg mb-10 max-w-xl mx-auto leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                Commencez à ajouter des données d'indicateurs pour votre contrôle qualité afin de suivre les normes et la conformité avec intelligence
+              </p>
+              <button
+                onClick={() => handleAddData()}
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-semibold shadow-lg hover:shadow-xl"
+              >
+                Ajouter le Premier Indicateur
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Charts Section */}
+        {departmentKPIs.some(kpi => getKPIHistory(departmentId, kpi.id).length > 0) && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Analyse de Performance par Indicateur
+              </h3>
+              <div className="flex items-center space-x-2 text-sm">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Évolution temporelle des indicateurs</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              {departmentKPIs.map(kpi => renderKPIChart(kpi)).filter(Boolean)}
+            </div>
+          </div>
+        )}
+
+        {/* Traditional Charts if needed */}
+        {trendData.length > 0 && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <ChartDisplay
+              data={trendData}
+              title={'Analyse des Tendances des Indicateurs'}
+              height={300}
+              dataKey="value"
+              xAxisKey="date"
+              color="#3B82F6"
+              className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
+            />
+            <ChartDisplay
+              data={categoryData}
+              title={'Performance des Indicateurs vs Cible'}
+              type="bar"
+              height={300}
+              dataKey="progress"
+              xAxisKey="name"
+              color="#6366F1"
+              className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
+            />
           </div>
         )}
       </div>
-
-      {/* Charts Section */}
-      {departmentKPIs.some(kpi => getKPIHistory(departmentId, kpi.id).length > 0) && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Analyse de Performance par Indicateur
-            </h3>
-            <div className="flex items-center space-x-2 text-sm text-slate-500">
-              <BarChart3 className="w-4 h-4" />
-              <span>Évolution individuelle des indicateurs</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {departmentKPIs.map(kpi => renderKPIChart(kpi)).filter(Boolean)}
-          </div>
-        </div>
-      )}
-
-      {/* Traditional Charts if needed */}
-      {trendData.length > 0 && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <ChartDisplay
-            data={trendData}
-            title={'Analyse des Tendances des Indicateurs'}
-            height={300}
-            dataKey="value"
-            xAxisKey="date"
-            color="#059669"
-            className={isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80'}
-          />
-          <ChartDisplay
-            data={categoryData}
-            title={'Performance des Indicateurs vs Cible'}
-            type="bar"
-            height={300}
-            dataKey="progress"
-            xAxisKey="name"
-            color="#0D9488"
-            className={isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80'}
-          />
-        </div>
-      )}
     </div>
   );
 };

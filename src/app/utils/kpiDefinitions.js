@@ -1,4 +1,4 @@
-// Complete KPI definitions organized by department with multilingual support and team enhancements
+// Updated KPI definitions - Warehouse section with only cost tracking
 export const kpiDefinitions = {
   rnd: {
     id: 'rnd',
@@ -7,64 +7,47 @@ export const kpiDefinitions = {
       fr: 'Laboratoire de Recherche & Développement'
     },
     kpis: [
-      // NEW INTERACTIVE R&D KPIs
+      // UPDATED INTERACTIVE R&D KPIs with correct IDs that match the components
       {
-        id: 'product_quality_validation',
+        id: 'product_development_time',
         name: {
-          en: 'New Product Development Time',
+          en: 'Product Development Time',
           fr: 'Temps de Développement de Nouveaux Produits'
         },
         description: {
-          en: 'Quality testing tracking (pH, density, visual aspect) for raw materials, finished products and packaging',
-          fr: 'Suivi des tests qualité (pH, densité, aspect) pour matières premières, produits finis et emballages'
-        },
-        unit: '%',
-        type: 'percentage',
-        target: 95,
-        category: 'quality',
-        trackingType: 'interactive',
-        features: ['tabbed_interface', 'test_tracking', 'auto_validation', 'chart_per_tab']
-      },
-      {
-        id: 'formulation_builder',
-        name: {
-          en: 'New Products Developed',
-          fr: 'Nouveaux Produits Développés'
-        },
-        description: {
-          en: 'Drag & drop formula creation with trial tracking and automatic success rate calculation',
-          fr: 'Création de formules par glisser-déposer avec suivi des essais et calcul automatique du taux de réussite'
+          en: 'Smart tracking with deadline detection and global performance calculation',
+          fr: 'Suivi intelligent avec détection des retards d\'échéance et calcul de performance globale'
         },
         unit: '%',
         type: 'percentage',
         target: 80,
-        category: 'development',
+        category: 'efficiency',
         trackingType: 'interactive',
-        features: ['drag_drop', 'trial_tracking', 'success_calculation', 'ingredient_library']
+        features: ['project_tracking', 'deadline_detection', 'auto_performance', 'timeline_analysis']
       },
       {
-        id: 'live_kpi_dashboard',
+        id: 'formulation_development',
         name: {
-          en: 'Laboratory Trial Success Rate',
-          fr: 'Taux de Réussite des Essais de Laboratoire'
+          en: 'New Formulation Development',
+          fr: 'Développement de Nouvelles Formules'
         },
         description: {
-          en: 'Real-time synchronized overview of all formulation performances with trend analysis',
-          fr: 'Vue d\'ensemble synchronisée en temps réel des performances de toutes les formulations avec analyse de tendances'
+          en: 'Monthly objectives tracking with development timelines and deadline management',
+          fr: 'Suivi des objectifs mensuels avec délais de développement et gestion des échéances'
         },
         unit: '%',
         type: 'percentage',
-        target: 85,
-        category: 'efficiency',
+        target: 75,
+        category: 'development',
         trackingType: 'interactive',
-        features: ['auto_sync', 'real_time_updates', 'trend_analysis', 'global_kpi_view']
+        features: ['monthly_goals', 'timeline_tracking', 'deadline_management', 'completion_analysis']
       },
-      // TRADITIONAL R&D KPIs
+      // TRADITIONAL R&D KPIs (kept for compatibility)
       {
-        id: 'new_product_dev_time',
+        id: 'new_product_dev_time_legacy',
         name: {
-          en: 'New Product Development Time',
-          fr: 'Temps de Développement de Nouveaux Produits'
+          en: 'New Product Development Time (Legacy)',
+          fr: 'Temps de Développement de Nouveaux Produits (Ancien)'
         },
         description: {
           en: 'Time taken from idea to lab validation',
@@ -114,65 +97,57 @@ export const kpiDefinitions = {
       fr: 'Contrôle Qualité'
     },
     kpis: [
+      // UPDATED QUALITY KPIs - REMOVED quality_response_time card
       {
         id: 'material_batch_acceptance_rate',
         name: {
-          en: 'Material & Batch Acceptance Rate',
-          fr: 'Taux d\'Acceptation des Matériaux et Lots'
+          en: 'Raw Materials & Packaging Non-Conformity Rate at Reception',
+          fr: 'Taux des Matières Premières et Emballage Non Conforme à la Réception'
         },
         description: {
-          en: 'Combined rate of raw materials and finished batches accepted',
-          fr: 'Taux combiné d\'acceptation des matières premières et lots finis'
+          en: 'Rate of raw materials and packaging rejected upon arrival with manual inspection tracking',
+          fr: 'Taux de matières premières et emballages rejetés à l\'arrivée avec suivi d\'inspection manuelle'
         },
         unit: '%',
         type: 'percentage',
-        target: 98,
-        category: 'quality'
+        target: 90,
+        category: 'quality',
+        trackingType: 'reception-based',
+        features: ['daily_tracking', 'conformity_check', 'automatic_calculation', 'weekly_performance']
       },
       {
-        id: 'quality_nonconformities',
+        id: 'production_waste_rate',
         name: {
-          en: 'Quality Non-Conformities Detected',
-          fr: 'Non-Conformités Qualité Détectées'
+          en: 'Production Waste Rate',
+          fr: 'Taux de Déchet de Production'
         },
         description: {
-          en: 'Number of quality issues identified',
-          fr: 'Nombre de problèmes de qualité identifiés'
+          en: 'Percentage of materials wasted during production process',
+          fr: 'Pourcentage de matériaux gaspillés pendant le processus de production'
         },
-        unit: 'count',
-        type: 'number',
+        unit: '%',
+        type: 'percentage',
         target: 2,
-        category: 'quality'
+        category: 'efficiency',
+        trackingType: 'waste-tracking',
+        features: ['daily_waste_tracking', 'material_type_classification', 'cost_impact_calculation']
       },
       {
-        id: 'quality_response_time',
+        id: 'raw_materials_inventory_list',
         name: {
-          en: 'Response Time to Quality Issues',
-          fr: 'Temps de Réponse aux Problèmes de Qualité'
+          en: 'Raw Materials & Packaging Inventory List',
+          fr: 'Liste des Produits Matières Première et Emballage'
         },
         description: {
-          en: 'Average time to address quality problems',
-          fr: 'Temps moyen pour traiter les problèmes de qualité'
+          en: 'Comprehensive inventory tracking of raw materials and packaging materials with expiry monitoring',
+          fr: 'Suivi exhaustif de l\'inventaire des matières premières et emballages avec surveillance des dates de péremption'
         },
-        unit: 'hours',
-        type: 'number',
-        target: 4,
-        category: 'efficiency'
-      },
-      {
-        id: 'internal_rejection_rate',
-        name: {
-          en: 'Internal Rejection Rate',
-          fr: 'Taux de Rejet Interne'
-        },
-        description: {
-          en: '% of batches rejected before packaging',
-          fr: '% de lots rejetés avant l\'emballage'
-        },
-        unit: '%',
-        type: 'percentage',
-        target: 1,
-        category: 'quality'
+        unit: 'items',
+        type: 'inventory',
+        target: 100,
+        category: 'inventory',
+        trackingType: 'inventory-based',
+        features: ['stock_tracking', 'expiry_monitoring', 'supplier_tracking', 'quantity_alerts']
       },
       {
         id: 'compliance_rate',
@@ -252,51 +227,7 @@ export const kpiDefinitions = {
       fr: 'Entrepôts & Logistique'
     },
     kpis: [
-      {
-        id: 'inventory_accuracy',
-        name: {
-          en: 'Inventory Accuracy Rate',
-          fr: 'Taux de Précision des Stocks'
-        },
-        description: {
-          en: 'Accuracy of inventory records',
-          fr: 'Précision des registres d\'inventaire'
-        },
-        unit: '%',
-        type: 'percentage',
-        target: 99,
-        category: 'efficiency'
-      },
-      {
-        id: 'average_storage_time',
-        name: {
-          en: 'Average Storage Time',
-          fr: 'Temps de Stockage Moyen'
-        },
-        description: {
-          en: 'Average time products stay in warehouse',
-          fr: 'Temps moyen que les produits restent en entrepôt'
-        },
-        unit: 'days',
-        type: 'number',
-        target: 45,
-        category: 'efficiency'
-      },
-      {
-        id: 'order_fulfillment_time',
-        name: {
-          en: 'Order Fulfillment Time',
-          fr: 'Temps d\'Exécution des Commandes'
-        },
-        description: {
-          en: 'Time to complete orders on time and in full',
-          fr: 'Temps pour compléter les commandes à temps et en totalité'
-        },
-        unit: 'hours',
-        type: 'number',
-        target: 24,
-        category: 'service'
-      },
+      // UPDATED: Only cost tracking KPI remains, others removed as requested
       {
         id: 'cost_per_formulation',
         name: {
@@ -304,13 +235,15 @@ export const kpiDefinitions = {
           fr: 'Coût des Matières Premières'
         },
         description: {
-          en: 'Average cost for raw materials per batch',
-          fr: 'Coût moyen des matières premières par lot'
+          en: 'Comprehensive cost tracking of raw materials and packaging with intelligent budget management',
+          fr: 'Suivi complet des coûts des matières premières et emballages avec gestion budgétaire intelligente'
         },
-        unit: '€',
-        type: 'currency',
-        target: 5000,
-        category: 'cost'
+        unit: '%',
+        type: 'percentage',
+        target: 100,
+        category: 'cost',
+        trackingType: 'cost-based',
+        features: ['budget_tracking', 'cost_per_item', 'budget_alerts', 'cost_optimization']
       },
       {
         id: 'stock_issues_rate',
@@ -410,7 +343,7 @@ export const getKPIsByDepartment = (departmentId) => {
 
 // Get KPI categories
 export const getKPICategories = () => {
-  return ['quality', 'efficiency', 'productivity', 'cost', 'sustainability', 'service', 'development', 'safety', 'retention'];
+  return ['quality', 'efficiency', 'productivity', 'cost', 'sustainability', 'service', 'development', 'safety', 'retention', 'inventory'];
 };
 
 // Helper functions for team KPIs
@@ -484,24 +417,28 @@ export const getWeekNumber = (date) => {
   return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
 };
 
-// Determine KPI status based on performance vs target
+// Determine KPI status based on performance vs target 
 export const getKPIPerformanceStatus = (value, target, kpiType, kpiId) => {
   if (!value || !target) return 'no-data';
   
   const tolerance = target * 0.1; // 10% tolerance
   
-  // For some KPIs, lower is better (e.g., incidents, costs, time)
+  // For some KPIs, lower is better (e.g., incidents, costs, time, waste)
   const lowerIsBetter = [
     'safety_incidents', 
-    'quality_nonconformities', 
-    'quality_response_time',
-    'cost_per_formulation', 
     'energy_consumption', 
-    'average_storage_time',
-    'order_fulfillment_time',
     'mixing_time',
-    'new_product_dev_time'
+    'new_product_dev_time_legacy',
+    'production_waste_rate',
+    'stock_issues_rate'
   ];
+  
+  // For cost KPI, special handling: 100% is excellent (within budget), 0% is poor (over budget)
+  if (kpiId === 'cost_per_formulation') {
+    if (value === 100) return 'excellent';
+    if (value === 0) return 'needs-attention';
+    return 'fair';
+  }
   
   if (lowerIsBetter.includes(kpiId)) {
     if (value <= target) return 'excellent';
@@ -514,172 +451,351 @@ export const getKPIPerformanceStatus = (value, target, kpiType, kpiId) => {
   }
 };
 
-// NEW HELPER FUNCTIONS FOR R&D INTERACTIVE KPIs
+// HELPER FUNCTIONS FOR NEW R&D INTERACTIVE KPIs
 
-// Product Quality Validation helpers
-export const calculateQualityTestSuccess = (products) => {
-  if (!products || Object.keys(products).length === 0) return 0;
+// Product Development Time helpers
+export const calculateProductDevelopmentKPI = (products) => {
+  if (!products || products.length === 0) return 0;
   
-  let totalTests = 0;
-  let passedTests = 0;
+  let totalScore = 0;
   
-  Object.values(products).forEach(categoryProducts => {
-    categoryProducts.forEach(product => {
-      Object.values(product.tests || {}).forEach(test => {
-        if (test.value && test.target) {
-          totalTests++;
-          if (test.status === 'pass') passedTests++;
-        }
-      });
-    });
-  });
-  
-  return totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
-};
-
-export const getProductsByCategory = (products, category) => {
-  return products[category] || [];
-};
-
-export const validateTestResult = (testType, value, target) => {
-  if (!value || !target) return null;
-  
-  if (testType === 'aspect') {
-    return value.toLowerCase() === target.toLowerCase() ? 'pass' : 'fail';
-  } else {
-    const testValue = parseFloat(value);
-    const targetValue = parseFloat(target);
-    const tolerance = targetValue * 0.05; // 5% tolerance
-    return Math.abs(testValue - targetValue) <= tolerance ? 'pass' : 'fail';
-  }
-};
-
-// Formulation Builder helpers
-export const calculateFormulaSuccessRate = (formula) => {
-  if (!formula.essais || formula.essais.length === 0) return 0;
-  const passed = formula.essais.filter(e => e.result === 'passed').length;
-  return Math.round((passed / formula.essais.length) * 100);
-};
-
-export const getGlobalFormulationKPI = (formulas) => {
-  if (!formulas || formulas.length === 0) return 0;
-  const totalSuccessRate = formulas.reduce((sum, formula) => 
-    sum + calculateFormulaSuccessRate(formula), 0);
-  return Math.round(totalSuccessRate / formulas.length);
-};
-
-export const canAddEssai = (formula) => {
-  return formula.essais.length < formula.maxEssais;
-};
-
-export const getFormulaStatus = (formula, target = 80) => {
-  const successRate = calculateFormulaSuccessRate(formula);
-  if (successRate >= target) return 'success';
-  if (successRate >= 60) return 'warning';
-  return 'danger';
-};
-
-// Live Dashboard helpers
-export const calculateDashboardMetrics = (formulas) => {
-  if (!formulas || formulas.length === 0) {
-    return {
-      globalSuccessRate: 0,
-      totalFormulas: 0,
-      activeFormulas: 0,
-      totalEssais: 0,
-      successfulEssais: 0,
-      formulasAboveTarget: 0,
-      averageEssaisPerFormula: 0
-    };
-  }
-
-  const totalFormulas = formulas.length;
-  let totalEssais = 0;
-  let successfulEssais = 0;
-  let formulasAboveTarget = 0;
-  const globalTarget = 80; // Default target
-
-  formulas.forEach(formula => {
-    const essaisCount = formula.essais?.length || 0;
-    const successCount = formula.essais?.filter(e => e.result === 'passed').length || 0;
-    const successRate = calculateFormulaSuccessRate(formula);
-
-    totalEssais += essaisCount;
-    successfulEssais += successCount;
+  products.forEach(product => {
+    const efficiency = calculateDevelopmentEfficiency(product);
+    const isOverdue = isProjectOverdue(product);
     
-    if (successRate >= globalTarget) {
-      formulasAboveTarget++;
+    if (product.isCompleted) {
+      // Completed projects: full efficiency if delivered on time, penalized if late
+      if (isOverdue) {
+        totalScore += Math.min(efficiency, 60); // Cap at 60% for late deliveries
+      } else {
+        totalScore += efficiency;
+      }
+    } else {
+      // In-progress projects: penalize overdue projects
+      if (isOverdue) {
+        totalScore += Math.min(efficiency, 40); // Heavy penalty for overdue ongoing projects
+      } else {
+        totalScore += efficiency;
+      }
     }
   });
+  
+  return Math.round(totalScore / products.length);
+};
 
-  const globalSuccessRate = totalEssais > 0 ? Math.round((successfulEssais / totalEssais) * 100) : 0;
-  const activeFormulas = formulas.filter(f => (f.essais?.length || 0) > 0).length;
-  const averageEssaisPerFormula = totalFormulas > 0 ? Math.round(totalEssais / totalFormulas) : 0;
+export const calculateDevelopmentEfficiency = (product) => {
+  const elapsedTime = calculateElapsedTime(product);
+  const targetTime = product.targetWeeks;
+  
+  if (elapsedTime <= targetTime) {
+    return 100;
+  } else {
+    return Math.round((targetTime / elapsedTime) * 100);
+  }
+};
 
+export const calculateElapsedTime = (product) => {
+  const startDate = new Date(product.startDate);
+  const currentDate = new Date();
+  const diffTime = Math.abs(currentDate - startDate);
+  const diffWeeks = diffTime / (7 * 24 * 60 * 60 * 1000);
+  return Math.round(diffWeeks * 10) / 10;
+};
+
+export const isProjectOverdue = (product) => {
+  const currentDate = new Date();
+  const plannedFinishDate = new Date(product.finishDate);
+  return currentDate > plannedFinishDate;
+};
+
+export const getDevelopmentStats = (products) => {
+  const total = products.length;
+  const completed = products.filter(p => p.isCompleted).length;
+  const inProgress = products.filter(p => !p.isCompleted && !isProjectOverdue(p)).length;
+  const overdue = products.filter(p => isProjectOverdue(p)).length;
+  
+  // On-time projects: not overdue (regardless of completion status)
+  const onTime = products.filter(p => !isProjectOverdue(p)).length;
+  const successRate = total > 0 ? Math.round((onTime / total) * 100) : 0;
+  
+  return { total, completed, inProgress, overdue, onTime, successRate };
+};
+
+// Formulation Development helpers
+export const calculateFormulationKPI = (formulas, monthlyGoal) => {
+  const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  const monthlyFormulas = formulas.filter(formula => {
+    const formulaMonth = formula.finishDate?.substring(0, 7);
+    return formulaMonth === currentMonth;
+  });
+  
+  const completedFormulas = monthlyFormulas.filter(f => f.isCompleted);
+  
+  if (monthlyGoal === 0) return 0;
+  
+  const achievementRate = (completedFormulas.length / monthlyGoal) * 100;
+  return Math.min(Math.round(achievementRate), 100);
+};
+
+export const calculateAverageDevelopmentTime = (formulas) => {
+  const completedFormulas = formulas.filter(f => f.isCompleted);
+  if (completedFormulas.length === 0) return 0;
+  
+  const totalDays = completedFormulas.reduce((sum, formula) => {
+    return sum + calculateFormulaDuration(formula.startDate, formula.finishDate);
+  }, 0);
+  
+  return Math.round(totalDays / completedFormulas.length);
+};
+
+export const calculateFormulaDuration = (startDate, finishDate) => {
+  if (!startDate || !finishDate) return 0;
+  const start = new Date(startDate);
+  const finish = new Date(finishDate);
+  const diffTime = Math.abs(finish - start);
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+export const getFormulaStatus = (formula) => {
+  if (formula.isCompleted) return 'completed';
+  
+  const today = new Date();
+  const finishDate = new Date(formula.finishDate);
+  
+  if (finishDate < today) return 'overdue';
+  return 'in_progress';
+};
+
+export const getFormulationStats = (formulas, monthlyGoal) => {
+  const currentMonthFormulas = getCurrentMonthFormulas(formulas);
+  const total = formulas.length;
+  const monthlyTotal = currentMonthFormulas.length;
+  const completed = formulas.filter(f => f.isCompleted).length;
+  const monthlyCompleted = currentMonthFormulas.filter(f => f.isCompleted).length;
+  const inProgress = formulas.filter(f => !f.isCompleted && getFormulaStatus(f) === 'in_progress').length;
+  const overdue = formulas.filter(f => getFormulaStatus(f) === 'overdue').length;
+  const averageDays = calculateAverageDevelopmentTime(formulas);
+  
   return {
-    globalSuccessRate,
-    totalFormulas,
-    activeFormulas,
-    totalEssais,
-    successfulEssais,
-    formulasAboveTarget,
-    averageEssaisPerFormula
+    total,
+    monthlyTotal,
+    completed,
+    monthlyCompleted,
+    inProgress,
+    overdue,
+    averageDays,
+    remaining: monthlyGoal - monthlyCompleted
   };
 };
 
-export const generateTrendData = (baseRate, days = 7) => {
-  const trends = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    
-    // Simulate trend with some variation
-    const variation = (Math.random() - 0.5) * 20; // ±10% variation
-    const dayRate = Math.max(0, Math.min(100, baseRate + variation));
-    
-    trends.push({
-      date: date.toLocaleDateString('fr-FR'),
-      successRate: Math.round(dayRate)
-    });
-  }
-  return trends;
+export const getCurrentMonthFormulas = (formulas) => {
+  const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+  return formulas.filter(formula => {
+    const formulaMonth = formula.finishDate?.substring(0, 7);
+    return formulaMonth === currentMonth;
+  });
+};
+
+// HELPER FUNCTIONS FOR NEW QUALITY KPIs
+
+// Calculate reception-based KPI value
+export const calculateReceptionKPI = (receptions) => {
+  if (!receptions || receptions.length === 0) return 0;
+  
+  // Group receptions by date
+  const receptionsByDate = receptions.reduce((acc, reception) => {
+    if (!acc[reception.date]) {
+      acc[reception.date] = [];
+    }
+    acc[reception.date].push(reception);
+    return acc;
+  }, {});
+
+  // Calculate daily KPIs
+  const dailyKPIs = Object.keys(receptionsByDate).map(date => {
+    const dayReceptions = receptionsByDate[date];
+    const conformeCount = dayReceptions.filter(r => r.isConforme === true).length;
+    const totalCount = dayReceptions.length;
+    return (conformeCount / totalCount) * 100;
+  });
+
+  if (dailyKPIs.length === 0) return 0;
+  
+  const averageKPI = dailyKPIs.reduce((sum, kpi) => sum + kpi, 0) / dailyKPIs.length;
+  return Math.round(averageKPI);
+};
+
+// Calculate daily reception KPI
+export const calculateDailyReceptionKPI = (receptions, date) => {
+  const dayReceptions = receptions.filter(r => r.date === date);
+  if (dayReceptions.length === 0) return 100; // Default 100% if no receptions
+  
+  const conformeCount = dayReceptions.filter(r => r.isConforme === true).length;
+  const totalCount = dayReceptions.length;
+  
+  return Math.round((conformeCount / totalCount) * 100);
+};
+
+// Get reception statistics
+export const getReceptionStats = (receptions) => {
+  const total = receptions.length;
+  const conforme = receptions.filter(r => r.isConforme === true).length;
+  const nonConforme = receptions.filter(r => r.isConforme === false).length;
+  const pending = receptions.filter(r => r.isConforme === null).length;
+  
+  const matierePremiereCount = receptions.filter(r => r.productType === 'matiere_premiere').length;
+  const emballageCount = receptions.filter(r => r.productType === 'emballage').length;
+  
+  return {
+    total,
+    conforme,
+    nonConforme,
+    pending,
+    matierePremiereCount,
+    emballageCount,
+    conformeRate: total > 0 ? Math.round((conforme / total) * 100) : 0
+  };
+};
+
+// Get reception status based on performance
+export const getReceptionStatus = (kpiValue, target = 90) => {
+  if (kpiValue >= target) return 'excellent';
+  if (kpiValue >= target * 0.9) return 'good';
+  if (kpiValue >= target * 0.7) return 'fair';
+  return 'needs-attention';
+};
+
+// HELPER FUNCTIONS FOR NEW COST TRACKING KPI
+
+// Calculate cost-based KPI value (100% if within budget, 0% if over budget)
+export const calculateCostKPI = (productCosts, budget) => {
+  if (!productCosts || !budget || budget === 0) return 0;
+  
+  const totalCost = Object.values(productCosts).reduce((sum, item) => {
+    return sum + (parseFloat(item.cost) || 0);
+  }, 0);
+  
+  return totalCost <= budget ? 100 : 0;
+};
+
+// Get cost statistics for tracking
+export const getCostStats = (productCosts, budget, totalItems) => {
+  const budgetedItems = Object.keys(productCosts).filter(key => productCosts[key].cost > 0).length;
+  const totalCost = Object.values(productCosts).reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+  const remainingBudget = budget - totalCost;
+  
+  return {
+    totalItems: totalItems || 0,
+    budgetedItems,
+    totalCost,
+    remainingBudget,
+    budgetUtilization: budget > 0 ? Math.round((totalCost / budget) * 100) : 0
+  };
+};
+
+// Get cost status based on budget performance
+export const getCostStatus = (kpiValue) => {
+  if (kpiValue === 100) return 'excellent'; // Within budget
+  if (kpiValue === 0) return 'needs-attention'; // Over budget
+  return 'fair'; // Edge case
 };
 
 // Cross-KPI integration helpers
-export const syncFormulationWithDashboard = (formulationData, dashboardData) => {
-  if (!formulationData || !formulationData.formulas) return dashboardData;
-  
-  const metrics = calculateDashboardMetrics(formulationData.formulas);
-  
+export const syncDataStructures = (productDevData, formulationData) => {
   return {
-    ...dashboardData,
-    value: metrics.globalSuccessRate,
-    metrics: {
-      ...metrics,
-      trendsData: generateTrendData(metrics.globalSuccessRate),
-      formulaStats: formulationData.formulas.map(formula => ({
-        name: formula.name,
-        successRate: calculateFormulaSuccessRate(formula),
-        essaisCount: formula.essais?.length || 0,
-        status: getFormulaStatus(formula),
-        createdAt: formula.createdAt
-      }))
+    productDevelopment: {
+      kpi: calculateProductDevelopmentKPI(productDevData?.products || []),
+      stats: getDevelopmentStats(productDevData?.products || []),
+      products: productDevData?.products || []
+    },
+    formulation: {
+      kpi: calculateFormulationKPI(formulationData?.formulas || [], formulationData?.monthlyGoal || 0),
+      stats: getFormulationStats(formulationData?.formulas || [], formulationData?.monthlyGoal || 0),
+      formulas: formulationData?.formulas || [],
+      monthlyGoal: formulationData?.monthlyGoal || 0
     }
   };
 };
 
+// Format helper functions
+export const formatDuration = (days) => {
+  if (days === 0) return '0 jour';
+  if (days === 1) return '1 jour';
+  if (days < 7) return `${days} jours`;
+  
+  const weeks = Math.floor(days / 7);
+  const remainingDays = days % 7;
+  
+  if (weeks === 1 && remainingDays === 0) return '1 semaine';
+  if (weeks === 1) return `1 semaine ${remainingDays} jour${remainingDays > 1 ? 's' : ''}`;
+  if (remainingDays === 0) return `${weeks} semaines`;
+  return `${weeks} semaines ${remainingDays} jour${remainingDays > 1 ? 's' : ''}`;
+};
+
+export const formatElapsedTime = (weeks) => {
+  const days = Math.round(weeks * 7);
+  const months = weeks / 4.33;
+  
+  if (weeks < 1) {
+    return `${days} jour${days !== 1 ? 's' : ''}`;
+  } else if (weeks < 4) {
+    return `${weeks.toFixed(1)} sem. (${days} jours)`;
+  } else {
+    return `${weeks.toFixed(1)} sem. (≈ ${months.toFixed(1)} mois)`;
+  }
+};
+
+export const getMonthsFromWeeks = (weeks) => {
+  const months = weeks / 4.33;
+  if (months < 1) {
+    return `${weeks} sem.`;
+  } else if (months < 2) {
+    return `≈ 1 mois`;
+  } else {
+    return `≈ ${Math.round(months)} mois`;
+  }
+};
+
+// Legacy compatibility helpers (kept for backward compatibility)
 export const getIngredientCategories = () => {
   return {
     matiere_premiere: [
-      'Acide citrique', 'Bicarbonate de sodium', 'Tensioactif anionique', 
-      'Eau déminéralisée', 'Glycérine', 'Parfum lavande', 'Colorant bleu'
+      'Acide citrique', 'Acticide DDQ 50', 'Acticide GDA 50', 'Amidét B112',
+      'BAC 50 Bactéricide Fangicide', 'Butyl glycol', 'Chimisol 13 LH FD',
+      'Chlorhexidine gluconate 20%', 'Colorant bleu acide', 'Colorant jaune tartracina E-102',
+      'Colorant marron SAV 648', 'Colorant rose rodhamine', 'Colorant vert olive',
+      'Colorant violet acide 17', 'Décapant carrelage', 'Dehscofix CO 125', 'DPG',
+      'Eau déminéralisée', 'EDTA-Masqual EDTA Na', 'Eltesol SC 93', 'Empicol OP 301',
+      'Empigen BAC 80', 'Empigen BS/FA', 'Empigen OB', 'Empilan KR6', 'Formol',
+      'Glutaraldéhyde 50%', 'Glyoxal 40%', 'Gomme xanthane', 'Green Apple LEV',
+      'Hydroxypropylméthylcellulose HPMC', 'Isopropyl alcohol IPA',
+      'Linear Alkyl Benzene Sulfonic Acid LABSA 96%', 'MP Acide nitrique 58%',
+      'MP Acide phosphorique 85%', 'MP Extrait de Javel 50°', 'MP Lessive de soude caustique 50%',
+      'MP Premix Alcalin', 'MP Premix Alcalin Chlore', 'MP Premix CAM 4260',
+      'MP Premix CIP 1500', 'MP Premix Dégraissant alimentaire', 'Musk Nokhba',
+      'Nansa LSS 38/AS', 'NP9', 'Parfum vanille oude', 'Parfum citron vert',
+      'Parfum extra lavender', 'Parfum jasmin', 'Parfum lavande', 'Parfum lemon',
+      'Parfum MAR', 'Parfum océan bleu', 'Parfum oud cannelle', 'Parfum pear & rose',
+      'Parfum pêche', 'Parfum pin parasol', 'Parfum pink comfort', 'Parfum pretty lemon',
+      'Parfum softinella', 'Potasse caustique', 'Producto 2000', 'Sel', 'Sinebact CG',
+      'Sodium Lauryl Ether Sulfate SLES 70%', 'TEA'
     ],
     produit_fini: [
-      'Dégraissant alimentaire', 'Nettoyant multi-surfaces', 'Désinfectant',
-      'Liquide vaisselle', 'Détergent lessive'
+      'Dégraissant alimentaire', 'Agita', 'Atom EC 25', 'Airfresh good vibes',
+      'CAM 1501', 'CAM 4102', 'CAM 4260', 'CIP 1073', 'CIP 1273', 'CIP 1500',
+      'CIP 2040', 'Crème mains bactéricides', 'Décap Force Four', 'Décasol', 'DEGR MS'
     ],
     emballage: [
-      'Flacon spray 500ml', 'Bidon 5L', 'Sachet dosette', 'Étiquette waterproof'
+      'BIDON JAUNE 20L BM 900 G', 'BIDON 20L BLANC BM 900 G', 'BIDON 20L BLEU BM 900 G',
+      'BIDON 20L NOIR BM 900 G', 'BIDON 20L ROUGE BM 900 G', 'BIDON 20L VERT BM 1200 KG',
+      'BIDON 5L BLANC', 'BIDON TRANSPARENT /20 L', 'BIDON TRANSPARENT 5L',
+      'BOUCHON DESK-TOP 24', 'BOUTEILLE 0.5 L', 'BOUTEILLE 100 ML', 'BOUTEILLE 250 ML',
+      'BOUTEILLE 250ML BLANC LAIT', 'BOUTEILLE 5L 9RAM', 'BOUTEILLE 750 ML',
+      'CARTON 275180250', 'CARTON 400270260', 'CARTON pour 4 bid 5l TL/TL 400260300',
+      'FLACON 1L BLANC AMP', 'FLACON 1L CARRE-SOTUPROC', 'FLACON 1L/ BLANC',
+      'FLACON 200 ML-24', 'FLACON 200ML-28', 'FLACON TRANSPARENT 1L AM',
+      'LOTION PUMP FP 314 38/400 WHITE', 'MINI TRIGGER 28/410', 'MIST SPRAYER FP601',
+      'POMPE BEC LONG G28', 'POMPE BLANC DIAM 28'
     ]
   };
 };
