@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 import {
   X,
   Calendar,
-  Shield,
+  Calculator,
+  Factory,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
@@ -12,48 +13,59 @@ import {
   BarChart3,
   Download,
   FileText,
-  Users,
   Clock,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Filter,
+  Users,
   Activity,
   Gauge,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
+  Share2,
+  Settings,
+  ChevronDown,
+  ChevronUp,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
-  Brain,
-  Lightbulb,
   Zap,
+  Lightbulb,
+  Search,
   AlertCircle,
   Star,
   Award,
   PieChart,
   LineChart,
+  BarChart,
   FileSpreadsheet,
   Mail,
   BookOpen,
   Layers,
-  Settings,
-  Plus,
-  Sparkles,
-  Eye,
-  Filter,
-  Search,
-  Share,
-  Bookmark,
-  MapPin,
   Timer,
+  PlayCircle,
+  CheckCircle2,
+  Package,
+  Droplets,
+  Power,
+  Thermometer,
+  Cpu,
+  Loader2,
+  Brain,
+  Sparkles,
   Flame,
-  Heart,
-  ShieldCheck
+  Shield
 } from 'lucide-react';
 
-export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
+const ProductionMonthlyReport = ({ analytics, isDark, onClose }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedView, setSelectedView] = useState('overview');
+  const [expandedWeek, setExpandedWeek] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedWeekDetail, setSelectedWeekDetail] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [animatedStats, setAnimatedStats] = useState(false);
 
   React.useEffect(() => {
@@ -61,34 +73,51 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Loading and error handling
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Simulate loading time for better UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (!analytics) {
+          throw new Error('Aucune donnée analytique disponible');
+        }
+      } catch (err) {
+        setError(err.message || 'Erreur lors du chargement des données');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [analytics]);
+
   const monthlyAnalysis = useMemo(() => {
-    if (!analytics) return null;
+    if (!analytics || isLoading) return null;
 
     const monthStart = new Date(selectedYear, selectedMonth, 1);
     const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
     const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-    // Extract data for each KPI for the selected month
-    const attendanceData = (analytics.team_productivity_attendance || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
+    // Get data for both KPIs
+    const energyData = (analytics.energy_consumption || []).filter(entry => {
+      const entryDate = new Date(entry.date);
       return entryDate >= monthStart && entryDate <= monthEnd;
     });
 
-    const safetyData = (analytics.safety_incidents || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
+    const mixingData = (analytics.mixing_time || []).filter(entry => {
+      const entryDate = new Date(entry.date);
       return entryDate >= monthStart && entryDate <= monthEnd;
     });
 
-    const efficiencyData = (analytics.operator_efficiency || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
-      return entryDate >= monthStart && entryDate <= monthEnd;
-    });
-
-    if (attendanceData.length === 0 && safetyData.length === 0 && efficiencyData.length === 0) {
+    if (energyData.length === 0 && mixingData.length === 0) {
       return null;
     }
 
-    // Weekly breakdown analysis
     const getWeekNumber = (date) => {
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
       const dayNum = d.getUTCDay() || 7;
@@ -98,100 +127,218 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     };
 
     const weeklyData = {};
-    const allDetections = [];
-
-    // Process data by week
-    [...attendanceData, ...safetyData, ...efficiencyData].forEach(entry => {
-      const week = getWeekNumber(new Date(entry.kpi_date));
+    
+    // Process energy and mixing data by week
+    [...energyData, ...mixingData].forEach(entry => {
+      const week = getWeekNumber(new Date(entry.date));
       if (!weeklyData[week]) {
         weeklyData[week] = {
           week,
-          startDate: new Date(entry.kpi_date),
-          attendance: [],
-          safety: [],
-          efficiency: [],
+          startDate: new Date(entry.date),
+          energy: [],
+          mixing: [],
           detectedEvents: []
         };
       }
 
-      if (attendanceData.includes(entry)) weeklyData[week].attendance.push(entry);
-      if (safetyData.includes(entry)) weeklyData[week].safety.push(entry);
-      if (efficiencyData.includes(entry)) weeklyData[week].efficiency.push(entry);
+      if (energyData.includes(entry)) weeklyData[week].energy.push(entry);
+      if (mixingData.includes(entry)) weeklyData[week].mixing.push(entry);
     });
 
-    // Analyze weekly performance
-    const weeklyBreakdown = Object.values(weeklyData).map(week => {
+    const weeklyBreakdown = [];
+    const allDetections = [];
+    const recommendations = [];
+
+    Object.values(weeklyData).forEach(week => {
       const weekAnalysis = {
         week: week.week,
         startDate: week.startDate.toLocaleDateString('fr-FR'),
         endDate: new Date(week.startDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
-        attendance: { average: 0, entries: week.attendance.length, issues: [] },
-        safety: { average: 100, entries: week.safety.length, issues: [] },
-        efficiency: { average: 0, entries: week.efficiency.length, issues: [] },
+        energy: {
+          average: 0,
+          entries: week.energy.length,
+          totalConsumption: 0,
+          totalCost: 0,
+          peakConsumption: 0,
+          efficiencyScore: 0,
+          issues: []
+        },
+        mixing: {
+          average: 0,
+          entries: week.mixing.length,
+          avgTime: 0,
+          optimalBatches: 0,
+          totalBatches: 0,
+          issues: []
+        },
         detectedEvents: [],
-        overallStatus: 'good'
+        overallStatus: 'good',
+        rawData: {
+          energy: week.energy,
+          mixing: week.mixing
+        }
       };
 
-      // Calculate averages
-      if (week.attendance.length > 0) {
-        weekAnalysis.attendance.average = Math.round(
-          week.attendance.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.attendance.length
-        );
+      // Analyze Energy Performance
+      if (week.energy.length > 0) {
+        const energyAvg = week.energy.reduce((sum, entry) => sum + entry.value, 0) / week.energy.length;
+        weekAnalysis.energy.average = Math.round(energyAvg);
+
+        week.energy.forEach(entry => {
+          if (entry.data && entry.data.stats) {
+            weekAnalysis.energy.totalConsumption += entry.data.stats.totalConsumption || 0;
+            weekAnalysis.energy.totalCost += entry.data.stats.totalCost || 0;
+            weekAnalysis.energy.peakConsumption = Math.max(weekAnalysis.energy.peakConsumption, entry.data.stats.peakConsumption || 0);
+            weekAnalysis.energy.efficiencyScore += entry.data.stats.efficiencyScore || 0;
+          }
+        });
+
+        weekAnalysis.energy.efficiencyScore = Math.round(weekAnalysis.energy.efficiencyScore / week.energy.length);
+
+        // Energy efficiency detection
+        if (energyAvg < 70) {
+          const severity = energyAvg < 50 ? 'critical' : 'warning';
+          const detection = {
+            type: 'energy_inefficiency',
+            severity,
+            category: 'Efficacité Énergétique',
+            title: `Performance énergétique critique (${Math.round(energyAvg)}%)`,
+            description: `Efficacité énergétique en dessous des standards avec consommation excessive détectée.`,
+            impact: severity === 'critical' ? 'Coûts énergétiques élevés' : 'Optimisation nécessaire',
+            week: week.week,
+            realData: {
+              totalConsumption: weekAnalysis.energy.totalConsumption,
+              efficiencyScore: energyAvg,
+              totalCost: weekAnalysis.energy.totalCost
+            }
+          };
+          allDetections.push(detection);
+          weekAnalysis.detectedEvents.push(detection);
+          weekAnalysis.energy.issues.push(`Efficacité ${Math.round(energyAvg)}%`);
+        }
+
+        // High consumption detection
+        if (weekAnalysis.energy.totalConsumption > 5000) {
+          const detection = {
+            type: 'high_consumption',
+            severity: weekAnalysis.energy.totalConsumption > 8000 ? 'critical' : 'warning',
+            category: 'Consommation Énergétique',
+            title: `Consommation énergétique élevée`,
+            description: `${weekAnalysis.energy.totalConsumption.toLocaleString()} kWh consommés cette semaine.`,
+            impact: 'Impact budgétaire significatif',
+            week: week.week,
+            realData: {
+              totalConsumption: weekAnalysis.energy.totalConsumption,
+              totalCost: weekAnalysis.energy.totalCost,
+              averageDaily: weekAnalysis.energy.totalConsumption / 7
+            }
+          };
+          allDetections.push(detection);
+          weekAnalysis.detectedEvents.push(detection);
+        }
+
+        // Peak consumption analysis
+        if (weekAnalysis.energy.peakConsumption > 500) {
+          const detection = {
+            type: 'peak_consumption',
+            severity: weekAnalysis.energy.peakConsumption > 800 ? 'critical' : 'warning',
+            category: 'Efficacité Énergétique',
+            title: `Pic de consommation détecté`,
+            description: `Consommation maximale de ${weekAnalysis.energy.peakConsumption} kW/h enregistrée.`,
+            impact: 'Révision des processus de production recommandée',
+            week: week.week,
+            realData: {
+              peakConsumption: weekAnalysis.energy.peakConsumption,
+              avgConsumption: weekAnalysis.energy.totalConsumption / week.energy.length
+            }
+          };
+          allDetections.push(detection);
+          weekAnalysis.detectedEvents.push(detection);
+        }
       }
 
-      if (week.safety.length > 0) {
-        weekAnalysis.safety.average = Math.round(
-          week.safety.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.safety.length
-        );
+      // Analyze Mixing Performance
+      if (week.mixing.length > 0) {
+        const mixingAvg = week.mixing.reduce((sum, entry) => sum + entry.value, 0) / week.mixing.length;
+        weekAnalysis.mixing.average = Math.round(mixingAvg);
+
+        week.mixing.forEach(entry => {
+          if (entry.data && entry.data.stats) {
+            weekAnalysis.mixing.avgTime += entry.data.stats.averageTime || 0;
+            weekAnalysis.mixing.optimalBatches += entry.data.stats.optimalBatches || 0;
+            weekAnalysis.mixing.totalBatches += entry.data.stats.totalBatches || 0;
+          }
+        });
+
+        weekAnalysis.mixing.avgTime = Math.round(weekAnalysis.mixing.avgTime / week.mixing.length);
+
+        // Mixing time efficiency detection
+        if (mixingAvg < 70) {
+          const severity = mixingAvg < 50 ? 'critical' : 'warning';
+          const detection = {
+            type: 'mixing_inefficiency',
+            severity,
+            category: 'Efficacité Mélange',
+            title: `Performance de mélange critique (${Math.round(mixingAvg)}%)`,
+            description: `Temps de mélange excessive avec ${weekAnalysis.mixing.totalBatches - weekAnalysis.mixing.optimalBatches} lots non optimaux.`,
+            impact: severity === 'critical' ? 'Retards de production majeurs' : 'Optimisation requise',
+            week: week.week,
+            realData: {
+              totalBatches: weekAnalysis.mixing.totalBatches,
+              performanceRate: mixingAvg,
+              avgTime: weekAnalysis.mixing.avgTime
+            }
+          };
+          allDetections.push(detection);
+          weekAnalysis.detectedEvents.push(detection);
+          weekAnalysis.mixing.issues.push(`${weekAnalysis.mixing.totalBatches - weekAnalysis.mixing.optimalBatches} lots non optimaux`);
+        }
+
+        // Batch optimization analysis
+        if (weekAnalysis.mixing.totalBatches > 0) {
+          const optimizationRate = (weekAnalysis.mixing.optimalBatches / weekAnalysis.mixing.totalBatches) * 100;
+          if (optimizationRate < 60 && weekAnalysis.mixing.totalBatches > 5) {
+            const detection = {
+              type: 'batch_optimization',
+              severity: optimizationRate < 40 ? 'critical' : 'warning',
+              category: 'Efficacité Mélange',
+              title: `Taux d'optimisation faible (${Math.round(optimizationRate)}%)`,
+              description: `Seulement ${weekAnalysis.mixing.optimalBatches} lots optimaux sur ${weekAnalysis.mixing.totalBatches}.`,
+              impact: 'Révision des paramètres de mélange nécessaire',
+              week: week.week,
+              realData: {
+                optimizationRate,
+                optimalBatches: weekAnalysis.mixing.optimalBatches,
+                totalBatches: weekAnalysis.mixing.totalBatches
+              }
+            };
+            allDetections.push(detection);
+            weekAnalysis.detectedEvents.push(detection);
+          }
+        }
+
+        // Average mixing time analysis
+        if (weekAnalysis.mixing.avgTime > 45) {
+          const detection = {
+            type: 'mixing_time_excess',
+            severity: weekAnalysis.mixing.avgTime > 60 ? 'critical' : 'warning',
+            category: 'Efficacité Mélange',
+            title: `Temps de mélange excessif`,
+            description: `Temps moyen de ${weekAnalysis.mixing.avgTime} minutes dépasse les standards.`,
+            impact: 'Réduction de la productivité',
+            week: week.week,
+            realData: {
+              avgTime: weekAnalysis.mixing.avgTime,
+              targetTime: 30,
+              efficiency: Math.max(0, 100 - ((weekAnalysis.mixing.avgTime - 30) / 30 * 100))
+            }
+          };
+          allDetections.push(detection);
+          weekAnalysis.detectedEvents.push(detection);
+        }
       }
 
-      if (week.efficiency.length > 0) {
-        weekAnalysis.efficiency.average = Math.round(
-          week.efficiency.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.efficiency.length
-        );
-      }
-
-      // Detect issues
-      if (weekAnalysis.attendance.average < 75) {
-        const detection = {
-          type: 'attendance_degradation',
-          severity: weekAnalysis.attendance.average < 60 ? 'critical' : 'warning',
-          category: 'Productivité Équipe',
-          title: `Productivité faible (${weekAnalysis.attendance.average}%)`,
-          description: `Performance d'équipe en dessous des standards.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      if (weekAnalysis.safety.average < 85) {
-        const detection = {
-          type: 'safety_degradation',
-          severity: weekAnalysis.safety.average < 70 ? 'critical' : 'warning',
-          category: 'Sécurité Workplace',
-          title: `Score sécurité dégradé (${weekAnalysis.safety.average}%)`,
-          description: `Surveillance renforcée requise.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      if (weekAnalysis.efficiency.average < 70) {
-        const detection = {
-          type: 'efficiency_loss',
-          severity: weekAnalysis.efficiency.average < 50 ? 'critical' : 'warning',
-          category: 'Efficacité Opérationnelle',
-          title: `Efficacité faible (${weekAnalysis.efficiency.average}%)`,
-          description: `Optimisation des processus requise.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      // Determine overall status
+      // Determine overall week status
       const criticalEvents = weekAnalysis.detectedEvents.filter(e => e.severity === 'critical').length;
       const warningEvents = weekAnalysis.detectedEvents.filter(e => e.severity === 'warning').length;
       
@@ -199,62 +346,201 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
         weekAnalysis.overallStatus = 'critical';
       } else if (warningEvents > 0) {
         weekAnalysis.overallStatus = 'warning';
-      } else if (weekAnalysis.attendance.average >= 90 && weekAnalysis.safety.average >= 95 && weekAnalysis.efficiency.average >= 85) {
+      } else if (weekAnalysis.energy.average >= 80 && weekAnalysis.mixing.average >= 80) {
         weekAnalysis.overallStatus = 'excellent';
+      } else if (weekAnalysis.energy.average >= 60 || weekAnalysis.mixing.average >= 60) {
+        weekAnalysis.overallStatus = 'good';
       }
 
-      return weekAnalysis;
-    }).sort((a, b) => a.week - b.week);
+      weeklyBreakdown.push(weekAnalysis);
+    });
 
     // Calculate monthly performance
     const monthlyPerformance = {
-      attendance: attendanceData.length > 0 ? Math.round(attendanceData.reduce((sum, entry) => sum + entry.kpi_value, 0) / attendanceData.length) : 0,
-      safety: safetyData.length > 0 ? Math.round(safetyData.reduce((sum, entry) => sum + entry.kpi_value, 0) / safetyData.length) : 100,
-      efficiency: efficiencyData.length > 0 ? Math.round(efficiencyData.reduce((sum, entry) => sum + entry.kpi_value, 0) / efficiencyData.length) : 0
+      energy: energyData.length > 0 ? Math.round(energyData.reduce((sum, entry) => sum + entry.value, 0) / energyData.length) : 0,
+      mixing: mixingData.length > 0 ? Math.round(mixingData.reduce((sum, entry) => sum + entry.value, 0) / mixingData.length) : 0
     };
-    monthlyPerformance.overall = Math.round((monthlyPerformance.attendance + monthlyPerformance.safety + monthlyPerformance.efficiency) / 3);
+    monthlyPerformance.overall = Math.round((monthlyPerformance.energy + monthlyPerformance.mixing) / 2);
+
+    // Generate AI recommendations based on detected patterns
+    const generateRecommendations = () => {
+      const recs = [];
+      
+      const energyIssues = allDetections.filter(d => d.category === 'Efficacité Énergétique').length;
+      const mixingIssues = allDetections.filter(d => d.category === 'Efficacité Mélange').length;
+      const consumptionIssues = allDetections.filter(d => d.type === 'high_consumption').length;
+      
+      if (energyIssues > 2) {
+        recs.push({
+          type: 'energy_optimization',
+          priority: 'high',
+          title: 'Optimiser l\'efficacité énergétique',
+          description: 'Auditer les équipements énergivores et implémenter un plan d\'optimisation énergétique.',
+          impact: 'Réduction de 15-25% des coûts énergétiques'
+        });
+      }
+      
+      if (mixingIssues > 1) {
+        recs.push({
+          type: 'mixing_optimization',
+          priority: 'medium',
+          title: 'Améliorer les processus de mélange',
+          description: 'Réviser les paramètres de mélange et former les équipes aux bonnes pratiques.',
+          impact: 'Amélioration de 20% de la productivité'
+        });
+      }
+      
+      if (consumptionIssues > 0) {
+        recs.push({
+          type: 'consumption_monitoring',
+          priority: 'medium',
+          title: 'Surveillance renforcée de la consommation',
+          description: 'Mettre en place des alertes en temps réel pour la consommation énergétique.',
+          impact: 'Contrôle proactif des coûts'
+        });
+      }
+      
+      return recs;
+    };
+
+    const aiRecommendations = generateRecommendations();
 
     return {
       monthName: monthNames[selectedMonth],
       year: selectedYear,
       monthlyPerformance,
-      weeklyBreakdown,
+      weeklyBreakdown: weeklyBreakdown.sort((a, b) => a.week - b.week),
       detections: allDetections.sort((a, b) => {
         const severityOrder = { 'critical': 3, 'warning': 2, 'low': 1 };
-        return severityOrder[b.severity] - severityOrder[a.severity];
+        return severityOrder[b.severity] - severityOrder[a.severity] || b.week - a.week;
       }),
+      recommendations: aiRecommendations,
       statistics: {
-        totalEntries: attendanceData.length + safetyData.length + efficiencyData.length,
+        totalEntries: energyData.length + mixingData.length,
+        energyEntries: energyData.length,
+        mixingEntries: mixingData.length,
         totalDetections: allDetections.length,
         criticalIssues: allDetections.filter(d => d.severity === 'critical').length,
         warningIssues: allDetections.filter(d => d.severity === 'warning').length,
         excellentWeeks: weeklyBreakdown.filter(w => w.overallStatus === 'excellent').length,
+        categoryBreakdown: {
+          'Efficacité Énergétique': allDetections.filter(d => d.category === 'Efficacité Énergétique').length,
+          'Efficacité Mélange': allDetections.filter(d => d.category === 'Efficacité Mélange').length,
+          'Consommation Énergétique': allDetections.filter(d => d.category === 'Consommation Énergétique').length
+        },
         weeksAnalyzed: weeklyBreakdown.length,
+        totalEnergyConsumption: weeklyBreakdown.reduce((sum, week) => sum + week.energy.totalConsumption, 0),
+        totalEnergyCost: weeklyBreakdown.reduce((sum, week) => sum + week.energy.totalCost, 0),
+        totalBatches: weeklyBreakdown.reduce((sum, week) => sum + week.mixing.totalBatches, 0),
+        optimalBatches: weeklyBreakdown.reduce((sum, week) => sum + week.mixing.optimalBatches, 0),
         daysInMonth: monthEnd.getDate()
       },
-      hasData: true
+      hasData: energyData.length > 0 || mixingData.length > 0
     };
-  }, [analytics, selectedMonth, selectedYear]);
+  }, [analytics, selectedMonth, selectedYear, isLoading]);
 
+  // Loading Component
+  const LoadingDisplay = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className={`w-full max-w-2xl p-8 rounded-3xl border shadow-2xl backdrop-blur-sm transition-all duration-500 ${
+        isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'
+      }`}>
+        <div className="text-center">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className={`w-8 h-8 animate-spin ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+            <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Génération du Rapport
+            </h3>
+            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Analyse des données de production en cours...
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Error Display Component
+  const ErrorDisplay = () => (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div className={`w-full max-w-2xl p-8 rounded-3xl border shadow-2xl backdrop-blur-sm transition-all duration-500 ${
+        isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'
+      }`}>
+        <div className="text-center">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <AlertCircle className="w-8 h-8 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+          </div>
+          <h3 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Erreur de Chargement
+          </h3>
+          <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {error}
+          </p>
+          <div className="flex space-x-3 justify-center">
+            <button
+              onClick={() => {
+                setError(null);
+                setIsLoading(true);
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-medium shadow-lg"
+            >
+              <RefreshCw className="w-4 h-4 mr-2 inline" />
+              Réessayer
+            </button>
+            <button 
+              onClick={onClose} 
+              className={`px-6 py-3 rounded-xl border font-medium transition-all duration-200 ${
+                isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Show loading state
+  if (isLoading) {
+    return <LoadingDisplay />;
+  }
+
+  // Show error state
+  if (error) {
+    return <ErrorDisplay />;
+  }
+
+  // Show no data state
   if (!monthlyAnalysis || !monthlyAnalysis.hasData) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className={`w-full max-w-2xl p-8 rounded-2xl border shadow-2xl backdrop-blur-sm ${
-          isDark ? 'bg-slate-900/90 border-slate-700' : 'bg-white/90 border-slate-200'
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div className={`w-full max-w-2xl p-8 rounded-3xl border shadow-2xl backdrop-blur-sm transition-all duration-500 ${
+          isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'
         }`}>
           <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-8 h-8 text-white" />
+            <div className="relative">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white rounded-full"></div>
+              </div>
             </div>
             <h3 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
+              Aucune Donnée Disponible
             </h3>
             <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'équipe trouvée pour {new Date(selectedYear, selectedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}.
+              Aucune donnée de production trouvée pour {new Date(selectedYear, selectedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}.
             </p>
             <button 
               onClick={onClose} 
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg"
+              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-medium shadow-lg"
             >
               Fermer
             </button>
@@ -264,7 +550,6 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     );
   }
 
-  // Enhanced chart configurations
   const getWeeklyTrendChart = () => ({
     backgroundColor: 'transparent',
     textStyle: {
@@ -310,239 +595,111 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     },
     series: [
       {
-        name: 'Productivité',
+        name: 'Performance Énergie',
         type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.attendance.average),
+        data: monthlyAnalysis.weeklyBreakdown.map(week => week.energy.average),
         smooth: true,
-        lineStyle: { color: '#3B82F6', width: 4 },
-        itemStyle: { color: '#3B82F6', borderWidth: 3, borderColor: '#FFFFFF' },
+        lineStyle: { color: '#F97316', width: 4 },
+        itemStyle: { color: '#F97316', borderWidth: 3, borderColor: '#FFFFFF' },
         areaStyle: {
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.4)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+              { offset: 0, color: 'rgba(249, 115, 22, 0.4)' },
+              { offset: 1, color: 'rgba(249, 115, 22, 0.05)' }
             ]
           }
         }
       },
       {
-        name: 'Sécurité',
+        name: 'Performance Mélange',
         type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.safety.average),
+        data: monthlyAnalysis.weeklyBreakdown.map(week => week.mixing.average),
         smooth: true,
-        lineStyle: { color: '#6366F1', width: 4 },
-        itemStyle: { color: '#6366F1', borderWidth: 3, borderColor: '#FFFFFF' }
-      },
-      {
-        name: 'Efficacité',
-        type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.efficiency.average),
-        smooth: true,
-        lineStyle: { color: '#8B5CF6', width: 4 },
-        itemStyle: { color: '#8B5CF6', borderWidth: 3, borderColor: '#FFFFFF' }
+        lineStyle: { color: '#3B82F6', width: 4 },
+        itemStyle: { color: '#3B82F6', borderWidth: 3, borderColor: '#FFFFFF' }
       }
     ]
   });
 
-  const getMonthlyComparisonChart = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
-    },
-    legend: {
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }
-    },
-    grid: {
-      left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      max: 100,
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, formatter: '{value}%' },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-    },
-    series: [{
-      name: 'Performance Globale',
-      type: 'bar',
-      data: monthlyAnalysis.weeklyBreakdown.map(week => 
-        Math.round((week.attendance.average + week.safety.average + week.efficiency.average) / 3)
-      ),
-      itemStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: '#3B82F6' },
-            { offset: 1, color: '#1E40AF' }
-          ]
-        },
-        borderRadius: [4, 4, 0, 0]
-      },
-      emphasis: {
-        itemStyle: {
+  const getEnergyDistributionChart = () => {
+    const totalConsumption = monthlyAnalysis.statistics.totalEnergyConsumption;
+    const data = [
+      { 
+        value: totalConsumption * 0.6, 
+        name: 'Production', 
+        itemStyle: { 
           color: {
             type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
+            x: 0, y: 0, x2: 1, y2: 1,
             colorStops: [
-              { offset: 0, color: '#60A5FA' },
-              { offset: 1, color: '#3B82F6' }
+              { offset: 0, color: '#F97316' },
+              { offset: 1, color: '#EA580C' }
             ]
           }
-        }
-      }
-    }]
-  });
-
-  const getKPIDistributionChart = () => ({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);',
-      formatter: '{b}: {c}%'
-    },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['50%', '50%'],
-      data: [
-        { 
-          value: monthlyAnalysis.monthlyPerformance.attendance, 
-          name: 'Productivité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#3B82F6' },
-                { offset: 1, color: '#1E40AF' }
-              ]
-            }
-          }
-        },
-        { 
-          value: monthlyAnalysis.monthlyPerformance.safety, 
-          name: 'Sécurité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#6366F1' },
-                { offset: 1, color: '#4338CA' }
-              ]
-            }
-          }
-        },
-        { 
-          value: monthlyAnalysis.monthlyPerformance.efficiency, 
-          name: 'Efficacité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#8B5CF6' },
-                { offset: 1, color: '#6D28D9' }
-              ]
-            }
-          }
-        }
-      ],
-      label: {
-        color: isDark ? '#E2E8F0' : '#1E293B',
-        fontSize: 12,
-        formatter: '{b}\n{c}%'
+        } 
       },
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 20,
-          shadowOffsetX: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.3)'
-        }
-      }
-    }]
-  });
-
-  const getWeeklyDetectionsChart = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
-    },
-    legend: {
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }
-    },
-    grid: {
-      left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: monthlyAnalysis.weeklyBreakdown.map(week => `S${week.week}`),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-    },
-    series: [
-      {
-        name: 'Détections Critiques',
-        type: 'bar',
-        stack: 'detections',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => 
-          week.detectedEvents.filter(e => e.severity === 'critical').length
-        ),
+      { 
+        value: totalConsumption * 0.25, 
+        name: 'Mélange', 
         itemStyle: { 
-          color: '#EF4444',
-          borderRadius: [4, 4, 0, 0]
-        }
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 1, y2: 1,
+            colorStops: [
+              { offset: 0, color: '#3B82F6' },
+              { offset: 1, color: '#1D4ED8' }
+            ]
+          }
+        } 
       },
-      {
-        name: 'Détections Attention',
-        type: 'bar',
-        stack: 'detections',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => 
-          week.detectedEvents.filter(e => e.severity === 'warning').length
-        ),
+      { 
+        value: totalConsumption * 0.15, 
+        name: 'Auxiliaires', 
         itemStyle: { 
-          color: '#F59E0B',
-          borderRadius: [0, 0, 4, 4]
-        }
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 1, y2: 1,
+            colorStops: [
+              { offset: 0, color: '#10B981' },
+              { offset: 1, color: '#059669' }
+            ]
+          }
+        } 
       }
-    ]
-  });
+    ].filter(item => item.value > 0);
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        borderColor: isDark ? '#475569' : '#E2E8F0',
+        textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+        extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);',
+        formatter: '{b}: {c} kWh ({d}%)'
+      },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '50%'],
+        data,
+        label: {
+          color: isDark ? '#E2E8F0' : '#1E293B',
+          fontSize: 12,
+          formatter: '{b}\n{d}%'
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 20,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.3)'
+          }
+        }
+      }]
+    };
+  };
 
   const getPerformanceRadarChart = () => ({
     backgroundColor: 'transparent',
@@ -555,11 +712,11 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     },
     radar: {
       indicator: [
-        { name: 'Productivité', max: 100 },
-        { name: 'Sécurité', max: 100 },
+        { name: 'Énergie', max: 100 },
+        { name: 'Mélange', max: 100 },
         { name: 'Efficacité', max: 100 },
-        { name: 'Qualité', max: 100 },
-        { name: 'Innovation', max: 100 }
+        { name: 'Coûts', max: 100 },
+        { name: 'Qualité', max: 100 }
       ],
       center: ['50%', '50%'],
       radius: '70%',
@@ -573,9 +730,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
       splitArea: {
         areaStyle: {
           color: [
+            'rgba(249, 115, 22, 0.05)',
             'rgba(59, 130, 246, 0.05)',
-            'rgba(99, 102, 241, 0.05)',
-            'rgba(139, 92, 246, 0.05)'
+            'rgba(16, 185, 129, 0.05)'
           ]
         }
       }
@@ -584,22 +741,22 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
       type: 'radar',
       data: [{
         value: [
-          monthlyAnalysis.monthlyPerformance.attendance,
-          monthlyAnalysis.monthlyPerformance.safety,
-          monthlyAnalysis.monthlyPerformance.efficiency,
-          85, // Quality score
-          78  // Innovation score
+          monthlyAnalysis.monthlyPerformance.energy,
+          monthlyAnalysis.monthlyPerformance.mixing,
+          Math.max(monthlyAnalysis.monthlyPerformance.energy, monthlyAnalysis.monthlyPerformance.mixing),
+          85, // Cost efficiency score
+          78  // Quality score
         ],
         name: 'Performance Actuelle',
         areaStyle: {
-          color: 'rgba(59, 130, 246, 0.2)'
+          color: 'rgba(249, 115, 22, 0.2)'
         },
         lineStyle: {
-          color: '#3B82F6',
+          color: '#F97316',
           width: 3
         },
         itemStyle: {
-          color: '#3B82F6'
+          color: '#F97316'
         }
       }]
     }]
@@ -623,10 +780,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Rapport Équipe - ${monthlyAnalysis.monthName} ${monthlyAnalysis.year}</title>
+          <title>Rapport Production - ${monthlyAnalysis.monthName} ${monthlyAnalysis.year}</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; color: #333; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+            .header { background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
             h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
             .subtitle { font-size: 1.2em; opacity: 0.9; margin-top: 10px; }
             .metric { margin: 15px 0; padding: 20px; border: 1px solid #e1e5e9; border-radius: 12px; background: #f8f9fa; }
@@ -640,22 +797,22 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
         </head>
         <body>
           <div class="header">
-            <h1>📊 Rapport Équipe Mensuel</h1>
+            <h1>🏭 Rapport Production Mensuel</h1>
             <div class="subtitle">${monthlyAnalysis.monthName} ${monthlyAnalysis.year} • Performance Globale: ${monthlyAnalysis.monthlyPerformance.overall}%</div>
           </div>
           
           <div class="stats-grid">
             <div class="stat-card">
-              <h3>🎯 Productivité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.attendance}%</h2>
+              <h3>⚡ Performance Énergie</h3>
+              <h2>${monthlyAnalysis.monthlyPerformance.energy}%</h2>
             </div>
             <div class="stat-card">
-              <h3>🛡️ Sécurité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.safety}%</h2>
+              <h3>⏱️ Performance Mélange</h3>
+              <h2>${monthlyAnalysis.monthlyPerformance.mixing}%</h2>
             </div>
             <div class="stat-card">
-              <h3>⚡ Efficacité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.efficiency}%</h2>
+              <h3>🔌 Consommation Totale</h3>
+              <h2>${monthlyAnalysis.statistics.totalEnergyConsumption.toLocaleString()} kWh</h2>
             </div>
             <div class="stat-card">
               <h3>📈 Semaines Excellentes</h3>
@@ -668,8 +825,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
             <ul>
               <li><strong>Semaines analysées:</strong> ${monthlyAnalysis.statistics.weeksAnalyzed}</li>
               <li><strong>Total entrées:</strong> ${monthlyAnalysis.statistics.totalEntries}</li>
+              <li><strong>Coût énergétique total:</strong> ${monthlyAnalysis.statistics.totalEnergyCost.toLocaleString()} TND</li>
+              <li><strong>Lots optimaux:</strong> ${monthlyAnalysis.statistics.optimalBatches}/${monthlyAnalysis.statistics.totalBatches}</li>
               <li><strong>Problèmes critiques:</strong> ${monthlyAnalysis.statistics.criticalIssues}</li>
-              <li><strong>Alertes:</strong> ${monthlyAnalysis.statistics.warningIssues}</li>
             </ul>
           </div>
         </body>
@@ -717,8 +875,8 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-md">
-                  <BarChart3 className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-600 via-red-600 to-orange-700 flex items-center justify-center shadow-md">
+                  <Factory className="w-6 h-6 text-white" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -726,7 +884,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
               </div>
               <div>
                 <h1 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Mensuel d'Équipe
+                  Rapport Mensuel de Production
                 </h1>
                 <div className="flex items-center space-x-3 mt-1">
                   <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -804,7 +962,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                     onClick={() => setSelectedView(view.id)}
                     className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       selectedView === view.id 
-                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
+                        ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg' 
                         : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
@@ -830,7 +988,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                     isDark ? 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <Share className="w-4 h-4" />
+                  <Share2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -853,7 +1011,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                     
                     {/* Subtle Background Pattern */}
                     <div className="absolute inset-0 opacity-[0.02]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500"></div>
+                      <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-red-500 to-pink-500"></div>
                     </div>
                     
                     <div className="relative">
@@ -872,7 +1030,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                             {monthlyAnalysis.monthlyPerformance.overall}%
                           </div>
                           <div className={`text-xs font-medium uppercase tracking-wide ${
-                            overallStatus.color === 'emerald' ? 'text-blue-600' :
+                            overallStatus.color === 'emerald' ? 'text-emerald-600' :
                             overallStatus.color === 'blue' ? 'text-blue-600' :
                             overallStatus.color === 'amber' ? 'text-amber-600' :
                             'text-red-600'
@@ -883,11 +1041,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                       </div>
 
                       {/* Refined KPI Grid */}
-                      <div className="grid grid-cols-3 gap-6">
+                      <div className="grid grid-cols-2 gap-6">
                         {[
-                          { title: 'Productivité', value: monthlyAnalysis.monthlyPerformance.attendance, icon: Users, color: 'blue' },
-                          { title: 'Sécurité', value: monthlyAnalysis.monthlyPerformance.safety, icon: ShieldCheck, color: 'indigo' },
-                          { title: 'Efficacité', value: monthlyAnalysis.monthlyPerformance.efficiency, icon: Zap, color: 'purple' }
+                          { title: 'Énergie', value: monthlyAnalysis.monthlyPerformance.energy, icon: Zap, color: 'orange' },
+                          { title: 'Mélange', value: monthlyAnalysis.monthlyPerformance.mixing, icon: Timer, color: 'blue' }
                         ].map((kpi, index) => (
                           <div key={index} className={`p-5 rounded-2xl ${
                             isDark ? 'bg-slate-700/20 border border-slate-600/30' : 'bg-slate-50/50 border border-slate-200/50'
@@ -895,9 +1052,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                             
                             <div className="flex items-center space-x-3 mb-4">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                kpi.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
-                                kpi.color === 'indigo' ? 'bg-indigo-500/15 text-indigo-600' :
-                                'bg-purple-500/15 text-purple-600'
+                                kpi.color === 'orange' ? 'bg-orange-500/15 text-orange-600' : 'bg-blue-500/15 text-blue-600'
                               }`}>
                                 <kpi.icon className="w-4 h-4" />
                               </div>
@@ -910,10 +1065,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                               {kpi.value}%
                             </div>
                             
-                            <div className={`w-full h-1 rounded-full ${                            isDark ? 'bg-slate-600/30' : 'bg-slate-200/50'} overflow-hidden`}>
+                            <div className={`w-full h-1 rounded-full ${isDark ? 'bg-slate-600/30' : 'bg-slate-200/50'} overflow-hidden`}>
                               <div
                                 className={`h-1 rounded-full transition-all duration-1000 ${
-                                  kpi.value >= 90 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
+                                  kpi.value >= 90 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
                                   kpi.value >= 75 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
                                   kpi.value >= 60 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
                                   'bg-gradient-to-r from-red-500 to-pink-500'
@@ -970,19 +1125,19 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                       
                       <div className="flex items-center justify-between">
                         <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Total Entrées
+                          Consommation Totale
                         </span>
                         <span className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {monthlyAnalysis.statistics.totalEntries}
+                          {monthlyAnalysis.statistics.totalEnergyConsumption.toLocaleString()} kWh
                         </span>
                       </div>
                       
                       <div className="flex items-center justify-between">
                         <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Jours Analysés
+                          Lots Optimaux
                         </span>
                         <span className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {monthlyAnalysis.statistics.daysInMonth}
+                          {monthlyAnalysis.statistics.optimalBatches}/{monthlyAnalysis.statistics.totalBatches}
                         </span>
                       </div>
                     </div>
@@ -1000,7 +1155,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                       {monthlyAnalysis.weeklyBreakdown.slice(0, 4).map((week, index) => (
                         <div key={index} className="flex items-center space-x-3">
                           <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-medium ${
-                            week.overallStatus === 'excellent' ? 'bg-blue-500/20 text-blue-600' :
+                            week.overallStatus === 'excellent' ? 'bg-emerald-500/20 text-emerald-600' :
                             week.overallStatus === 'critical' ? 'bg-red-500/20 text-red-600' :
                             week.overallStatus === 'warning' ? 'bg-amber-500/20 text-amber-600' :
                             isDark ? 'bg-slate-600/20 text-slate-400' : 'bg-slate-200 text-slate-600'
@@ -1013,12 +1168,12 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                             </div>
                           </div>
                           <div className={`text-sm font-medium ${
-                            week.overallStatus === 'excellent' ? 'text-blue-600' :
+                            week.overallStatus === 'excellent' ? 'text-emerald-600' :
                             week.overallStatus === 'critical' ? 'text-red-600' :
                             week.overallStatus === 'warning' ? 'text-amber-600' :
                             isDark ? 'text-slate-400' : 'text-slate-600'
                           }`}>
-                            {Math.round((week.attendance.average + week.safety.average + week.efficiency.average) / 3)}%
+                            {Math.round((week.energy.average + week.mixing.average) / 2)}%
                           </div>
                         </div>
                       ))}
@@ -1043,16 +1198,12 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   
                   <div className="flex items-center space-x-4 text-xs">
                     <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded bg-orange-500"></div>
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Énergie</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
                       <div className="w-3 h-3 rounded bg-blue-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Productivité</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded bg-indigo-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Sécurité</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded bg-purple-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Efficacité</span>
+                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Mélange</span>
                     </div>
                   </div>
                 </div>
@@ -1063,6 +1214,55 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   opts={{ renderer: 'svg' }}
                 />
               </div>
+
+              {/* AI Recommendations Section */}
+              {monthlyAnalysis.recommendations.length > 0 && (
+                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
+                  isDark ? 'bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border-indigo-700/30' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200'
+                }`}>
+                  <div className="flex items-center space-x-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                      <Brain className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Recommandations IA
+                      </h3>
+                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Basées sur l'analyse des tendances de production détectées
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {monthlyAnalysis.recommendations.map((rec, idx) => (
+                      <div key={idx} className={`p-4 rounded-xl border ${
+                        isDark ? 'bg-slate-800/40 border-slate-600/30' : 'bg-white/80 border-slate-200'
+                      }`}>
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            rec.priority === 'high' ? 'bg-red-500 text-white' :
+                            rec.priority === 'medium' ? 'bg-amber-500 text-white' : 'bg-green-500 text-white'
+                          }`}>
+                            {rec.priority === 'high' ? '!' : rec.priority === 'medium' ? '~' : '✓'}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className={`font-medium mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {rec.title}
+                            </h4>
+                            <p className={`text-sm mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {rec.description}
+                            </p>
+                            <div className={`text-xs italic ${isDark ? 'text-indigo-300' : 'text-indigo-600'}`}>
+                              Impact attendu: {rec.impact}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1077,7 +1277,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
                 }`}>
                   <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                       <LineChart className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -1085,7 +1285,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         Tendances Hebdomadaires
                       </h3>
                       <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Évolution des KPIs par semaine
+                        Évolution énergie et mélange par semaine
                       </p>
                     </div>
                   </div>
@@ -1102,7 +1302,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
                 }`}>
                   <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
                       <Target className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -1121,92 +1321,42 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                     opts={{ renderer: 'svg' }}
                   />
                 </div>
+              </div>
 
-                {/* Monthly Comparison Bar Chart */}
+              {/* Secondary Chart */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Energy Distribution */}
                 <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
                   isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
                 }`}>
                   <div className="flex items-center space-x-3 mb-6">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Performance Hebdomadaire
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Comparaison des performances globales
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getMonthlyComparisonChart()} 
-                    style={{ height: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* KPI Distribution Pie Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                       <PieChart className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Distribution des KPIs
+                        Répartition Énergétique
                       </h3>
                       <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Répartition des performances moyennes
+                        Distribution par processus
                       </p>
                     </div>
                   </div>
                   
                   <ReactECharts 
-                    option={getKPIDistributionChart()} 
+                    option={getEnergyDistributionChart()} 
                     style={{ height: '300px' }}
                     opts={{ renderer: 'svg' }}
                   />
                 </div>
-              </div>
 
-              {/* Secondary Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Weekly Detections Chart */}
+                {/* Performance Summary Card */}
                 <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
                   isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
                 }`}>
                   <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                      <AlertTriangle className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Détections par Semaine
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Volume des alertes critiques et d'attention
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getWeeklyDetectionsChart()} 
-                    style={{ height: '280px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* Performance Metrics Summary */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                       <Activity className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -1222,27 +1372,27 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                   <div className="space-y-4">
                     {[
                       {
-                        label: 'Moyenne Productivité',
-                        value: `${monthlyAnalysis.monthlyPerformance.attendance}%`,
+                        label: 'Performance Énergie',
+                        value: `${monthlyAnalysis.monthlyPerformance.energy}%`,
+                        color: 'orange',
+                        progress: monthlyAnalysis.monthlyPerformance.energy
+                      },
+                      {
+                        label: 'Performance Mélange',
+                        value: `${monthlyAnalysis.monthlyPerformance.mixing}%`,
                         color: 'blue',
-                        progress: monthlyAnalysis.monthlyPerformance.attendance
+                        progress: monthlyAnalysis.monthlyPerformance.mixing
                       },
                       {
-                        label: 'Moyenne Sécurité',
-                        value: `${monthlyAnalysis.monthlyPerformance.safety}%`,
-                        color: 'emerald',
-                        progress: monthlyAnalysis.monthlyPerformance.safety
-                      },
-                      {
-                        label: 'Moyenne Efficacité',
-                        value: `${monthlyAnalysis.monthlyPerformance.efficiency}%`,
-                        color: 'purple',
-                        progress: monthlyAnalysis.monthlyPerformance.efficiency
+                        label: 'Coût Énergétique',
+                        value: `${monthlyAnalysis.statistics.totalEnergyCost.toLocaleString()} TND`,
+                        color: 'green',
+                        progress: Math.min(100, monthlyAnalysis.statistics.totalEnergyCost / 10000 * 100)
                       },
                       {
                         label: 'Semaines Excellentes',
                         value: `${monthlyAnalysis.statistics.excellentWeeks}/${monthlyAnalysis.statistics.weeksAnalyzed}`,
-                        color: 'green',
+                        color: 'emerald',
                         progress: (monthlyAnalysis.statistics.excellentWeeks / monthlyAnalysis.statistics.weeksAnalyzed) * 100
                       }
                     ].map((metric, index) => (
@@ -1260,10 +1410,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
                           <div
                             className={`h-2 rounded-full transition-all duration-1000 ${
+                              metric.color === 'orange' ? 'bg-gradient-to-r from-orange-500 to-red-500' :
                               metric.color === 'blue' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-                              metric.color === 'emerald' ? 'bg-gradient-to-r from-indigo-500 to-purple-500' :
-                              metric.color === 'purple' ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
-                              'bg-gradient-to-r from-green-500 to-emerald-500'
+                              metric.color === 'green' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                              'bg-gradient-to-r from-emerald-500 to-green-500'
                             }`}
                             style={{ width: `${Math.min(metric.progress, 100)}%` }}
                           />
@@ -1299,9 +1449,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         onClick={() => setSelectedWeekDetail(isSelected ? null : week.week)}
                         className={`group relative p-3 rounded-xl border transition-all duration-300 hover:scale-105 ${
                           isSelected ?
-                            'bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-300/50 shadow-lg' :
+                            'bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-300/50 shadow-lg' :
                           week.overallStatus === 'excellent' ?
-                            isDark ? 'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10' : 'bg-blue-50/50 border-blue-200/50 hover:bg-blue-50' :
+                            isDark ? 'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10' : 'bg-emerald-50/50 border-emerald-200/50 hover:bg-emerald-50' :
                           week.overallStatus === 'critical' ?
                             isDark ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10' : 'bg-red-50/50 border-red-200/50 hover:bg-red-50' :
                           week.overallStatus === 'warning' ?
@@ -1312,9 +1462,9 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         {/* Week Number */}
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 transition-all duration-300 ${
                           isSelected ? 
-                            'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md' :
+                            'bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-md' :
                           week.overallStatus === 'excellent' ? 
-                            'bg-blue-500/80 text-white' :
+                            'bg-emerald-500/80 text-white' :
                           week.overallStatus === 'critical' ? 
                             'bg-red-500/80 text-white' :
                           week.overallStatus === 'warning' ? 
@@ -1327,7 +1477,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         {/* Week Label */}
                         <div className={`text-xs font-medium transition-colors ${
                           isSelected ? 
-                            isDark ? 'text-indigo-300' : 'text-indigo-600' :
+                            isDark ? 'text-orange-300' : 'text-orange-600' :
                           isDark ? 'text-slate-300' : 'text-slate-700'
                         }`}>
                           Sem {week.week}
@@ -1346,7 +1496,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
 
                         {/* Selection Indicator */}
                         {isSelected && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-2 border-indigo-400/30"></div>
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border-2 border-orange-400/30"></div>
                         )}
                       </button>
                     );
@@ -1370,7 +1520,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
                               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${
-                                selectedWeek.overallStatus === 'excellent' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
+                                selectedWeek.overallStatus === 'excellent' ? 'bg-gradient-to-br from-emerald-500 to-green-600' :
                                 selectedWeek.overallStatus === 'critical' ? 'bg-gradient-to-br from-red-500 to-pink-600' :
                                 selectedWeek.overallStatus === 'warning' ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
                                 'bg-gradient-to-br from-slate-500 to-slate-600'
@@ -1392,7 +1542,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                               isDark ? 'bg-slate-700/50' : 'bg-slate-100/70'
                             }`}>
                               <div className={`w-2 h-2 rounded-full ${
-                                selectedWeek.overallStatus === 'excellent' ? 'bg-blue-500' :
+                                selectedWeek.overallStatus === 'excellent' ? 'bg-emerald-500' :
                                 selectedWeek.overallStatus === 'critical' ? 'bg-red-500' :
                                 selectedWeek.overallStatus === 'warning' ? 'bg-amber-500' :
                                 'bg-slate-500'
@@ -1408,28 +1558,23 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                         </div>
 
                         {/* Performance Metrics Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {[
                             { 
-                              title: 'Productivité', 
-                              value: selectedWeek.attendance.average, 
-                              icon: Users, 
-                              color: 'blue',
-                              subtitle: 'Équipe & Présence'
-                            },
-                            { 
-                              title: 'Sécurité', 
-                              value: selectedWeek.safety.average, 
-                              icon: ShieldCheck, 
-                              color: 'emerald',
-                              subtitle: 'Workplace & Incidents'
-                            },
-                            { 
-                              title: 'Efficacité', 
-                              value: selectedWeek.efficiency.average, 
+                              title: 'Énergie', 
+                              value: selectedWeek.energy.average, 
                               icon: Zap, 
-                              color: 'purple',
-                              subtitle: 'Opérationnelle & Tâches'
+                              color: 'orange',
+                              subtitle: 'Performance Énergétique',
+                              details: `${selectedWeek.energy.totalConsumption.toLocaleString()} kWh consommés`
+                            },
+                            { 
+                              title: 'Mélange', 
+                              value: selectedWeek.mixing.average, 
+                              icon: Timer, 
+                              color: 'blue',
+                              subtitle: 'Efficacité de Mélange',
+                              details: `${selectedWeek.mixing.optimalBatches}/${selectedWeek.mixing.totalBatches} lots optimaux`
                             }
                           ].map((metric, index) => (
                             <div key={index} className={`p-5 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
@@ -1437,9 +1582,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                             }`}>
                               <div className="flex items-center space-x-3 mb-4">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  metric.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
-                                  metric.color === 'emerald' ? 'bg-emerald-500/15 text-emerald-600' :
-                                  'bg-purple-500/15 text-purple-600'
+                                  metric.color === 'orange' ? 'bg-orange-500/15 text-orange-600' : 'bg-blue-500/15 text-blue-600'
                                 }`}>
                                   <metric.icon className="w-5 h-5" />
                                 </div>
@@ -1455,6 +1598,10 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
                               
                               <div className={`text-2xl font-light mb-3 ${getPerformanceColor(metric.value)}`}>
                                 {metric.value}%
+                              </div>
+                              
+                              <div className={`text-xs mb-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                {metric.details}
                               </div>
                               
                               <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/50'} overflow-hidden`}>
@@ -1561,7 +1708,7 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
               
               <button
                 onClick={onClose}
-                className="px-6 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-medium transition-all duration-200 hover:from-violet-700 hover:to-purple-700 shadow-lg"
+                className="px-6 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-red-600 text-white text-sm font-medium transition-all duration-200 hover:from-orange-700 hover:to-red-700 shadow-lg"
               >
                 Fermer
               </button>
@@ -1572,3 +1719,5 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     </div>
   );
 };
+
+export default ProductionMonthlyReport;

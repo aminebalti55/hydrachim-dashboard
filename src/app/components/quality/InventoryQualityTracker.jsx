@@ -1,37 +1,29 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Package,
-  Plus,
   Save,
   X,
   Search,
   TestTube,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Eye,
-  Edit3,
-  Filter,
   BarChart3,
   Target,
-  TrendingDown,
-  Clock,
   List,
-  ChevronRight,
-  ChevronDown,
   Beaker,
-  Droplets,
   Activity,
   FlaskConical,
-  Zap
+  TrendingUp
 } from 'lucide-react';
 
-const InventoryQualityTracker = ({ onSave, onCancel, existingData = null, isDark = false }) => {
-  // Product categories and items
-  const productCategories = {
+const InventoryQualityTracker = ({ onSave, onCancel, existingData = null }) => {
+  // Catégories de produits
+  const categoriesProduits = {
     matieres_premieres: {
-      name: '🧪 Matières premières',
+      name: 'Matières Premières',
       icon: TestTube,
+      color: 'blue',
       items: [
         'Acide citrique', 'Acticide DDQ 50', 'Acticide GDA 50', 'Amidét B112',
         'BAC 50 Bactéricide Fangicide', 'Butyl glycol', 'Chimisol 13 LH FD',
@@ -55,8 +47,9 @@ const InventoryQualityTracker = ({ onSave, onCancel, existingData = null, isDark
       ]
     },
     produits_finis: {
-      name: '🧴 Produits finis',
+      name: 'Produits Finis',
       icon: Beaker,
+      color: 'purple',
       items: [
         'Dégraissant alimentaire', 'Agita', 'Atom EC 25', 'Airfresh good vibes',
         'CAM 1501', 'CAM 4102', 'CAM 4260', 'CIP 1073', 'CIP 1273', 'CIP 1500',
@@ -64,8 +57,9 @@ const InventoryQualityTracker = ({ onSave, onCancel, existingData = null, isDark
       ]
     },
     emballage: {
-      name: '📦 Emballage',
+      name: 'Emballage',
       icon: Package,
+      color: 'orange',
       items: [
         'BIDON JAUNE 20L BM 900 G', 'BIDON 20L BLANC BM 900 G', 'BIDON 20L BLEU BM 900 G',
         'BIDON 20L NOIR BM 900 G', 'BIDON 20L ROUGE BM 900 G', 'BIDON 20L VERT BM 1200 KG',
@@ -81,126 +75,122 @@ const InventoryQualityTracker = ({ onSave, onCancel, existingData = null, isDark
     }
   };
 
-  // Test types for materials and finished products
-  const testTypes = [
-    { id: 'ph', name: 'pH', icon: Droplets, unit: '', color: 'blue' },
-    { id: 'dosage', name: 'Dosage', icon: TestTube, unit: '%', color: 'indigo' },
-    { id: 'densite', name: 'Densité', icon: Activity, unit: 'g/cm³', color: 'purple' }
-  ];
-
-  // State management
-  const [activeCategory, setActiveCategory] = useState('matieres_premieres');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [kpiThreshold, setKpiThreshold] = useState(existingData?.kpiThreshold || 90);
-  const [selectedDate, setSelectedDate] = useState(
-    existingData?.date || new Date().toISOString().split('T')[0]
-  );
-  const [productTests, setProductTests] = useState(existingData?.productTests || {});
-  const [filterStatus, setFilterStatus] = useState('all'); // all, passed, failed, pending
-
-  // Calculate total testable products
-  const getTotalTestableProducts = () => {
-    return productCategories.matieres_premieres.items.length + productCategories.produits_finis.items.length;
+  // Types de tests par catégorie
+  const typesTests = {
+    matieres_premieres: [
+      { id: 'ph', name: 'pH', icon: TestTube, color: 'blue' },
+      { id: 'dosage', name: 'Dosage', icon: FlaskConical, color: 'indigo' },
+      { id: 'densite', name: 'Densité', icon: Activity, color: 'purple' }
+    ],
+    produits_finis: [
+      { id: 'ph', name: 'pH', icon: TestTube, color: 'blue' },
+      { id: 'dosage', name: 'Dosage', icon: FlaskConical, color: 'indigo' },
+      { id: 'densite', name: 'Densité', icon: Activity, color: 'purple' }
+    ],
+    emballage: [
+      { id: 'aspect_visuel', name: 'Aspect Visuel', icon: Eye, color: 'emerald' }
+    ]
   };
 
-  // Calculate KPI with correct logic
-  const calculateKPI = () => {
-    const totalTestableProducts = getTotalTestableProducts();
-    let failedProducts = 0;
+  // État - initialiser avec données existantes
+  const [categorieActive, setCategorieActive] = useState('matieres_premieres');
+  const [termeRecherche, setTermeRecherche] = useState('');
+  const [seuilKPI, setSeuilKPI] = useState(existingData?.kpiThreshold || 90);
+  const [testsProduits, setTestsProduits] = useState(existingData?.productTests || {});
+  const [filtreStatut, setFiltreStatut] = useState('all');
 
-    // Check matières premières
-    productCategories.matieres_premieres.items.forEach(item => {
-      const testKey = `matieres_premieres_${item}`;
-      const productTest = productTests[testKey];
-      
-      if (productTest && productTest.lastTested && productTest.overallPassed === false) {
-        failedProducts++;
-      }
-    });
-
-    // Check produits finis
-    productCategories.produits_finis.items.forEach(item => {
-      const testKey = `produits_finis_${item}`;
-      const productTest = productTests[testKey];
-      
-      if (productTest && productTest.lastTested && productTest.overallPassed === false) {
-        failedProducts++;
-      }
-    });
-
-    // Calculate KPI: Start at 100%, deduct percentage for each failed product
-    const deductionPerProduct = 100 / totalTestableProducts;
-    const kpi = Math.max(0, 100 - (failedProducts * deductionPerProduct));
-    
-    return Math.round(kpi * 100) / 100; // Round to 2 decimal places
+  // Obtenir le total des produits testables
+  const obtenirTotalProduitsTestables = () => {
+    return Object.values(categoriesProduits).reduce((total, cat) => total + cat.items.length, 0);
   };
 
-  // Update test result for a product
-  const updateTestResult = (productName, category, testId, passed) => {
-    const testKey = `${category}_${productName}`;
+  // Calculer le KPI
+  const calculerKPI = () => {
+    const totalProduits = obtenirTotalProduitsTestables();
+    let produitsEchoues = 0;
+
+    Object.entries(categoriesProduits).forEach(([categorieKey, categorie]) => {
+      categorie.items.forEach(item => {
+        const cleTest = `${categorieKey}_${item}`;
+        const testProduit = testsProduits[cleTest];
+        
+        if (testProduit && testProduit.dernierTest && testProduit.reussiteGlobale === false) {
+          produitsEchoues++;
+        }
+      });
+    });
+
+    const deductionParProduit = 100 / totalProduits;
+    const kpi = Math.max(0, 100 - (produitsEchoues * deductionParProduit));
     
-    setProductTests(prev => {
-      const updated = { ...prev };
+    return Math.round(kpi * 100) / 100;
+  };
+
+  // Mettre à jour résultat de test
+  const mettreAJourResultatTest = (nomProduit, categorie, testId, reussi) => {
+    const cleTest = `${categorie}_${nomProduit}`;
+    
+    setTestsProduits(prev => {
+      const miseAJour = { ...prev };
       
-      if (!updated[testKey]) {
-        updated[testKey] = {
-          productName,
-          category,
-          tests: testTypes.reduce((acc, test) => ({
+      if (!miseAJour[cleTest]) {
+        const testsCategorie = typesTests[categorie] || [];
+        miseAJour[cleTest] = {
+          nomProduit,
+          categorie,
+          tests: testsCategorie.reduce((acc, test) => ({
             ...acc,
-            [test.id]: { passed: null, tested: false }
+            [test.id]: { reussi: null, teste: false }
           }), {}),
-          lastTested: null,
-          overallPassed: null
+          dernierTest: null,
+          reussiteGlobale: null
         };
       }
 
-      // Update specific test
-      updated[testKey].tests[testId] = {
-        passed: passed,
-        tested: true
+      // Mettre à jour test spécifique
+      miseAJour[cleTest].tests[testId] = {
+        reussi: reussi,
+        teste: true
       };
 
-      // Check if all tests are completed and calculate overall pass
-      const allTests = Object.values(updated[testKey].tests);
-      const allTested = allTests.every(test => test.tested);
+      // Vérifier si tous les tests sont terminés
+      const tousTests = Object.values(miseAJour[cleTest].tests);
+      const tousTestes = tousTests.every(test => test.teste);
       
-      if (allTested) {
-        const allPassed = allTests.every(test => test.passed === true);
-        updated[testKey].overallPassed = allPassed;
-        updated[testKey].lastTested = new Date().toISOString();
+      if (tousTestes) {
+        const tousReussis = tousTests.every(test => test.reussi === true);
+        miseAJour[cleTest].reussiteGlobale = tousReussis;
+        miseAJour[cleTest].dernierTest = new Date().toISOString();
       } else {
-        updated[testKey].overallPassed = null;
+        miseAJour[cleTest].reussiteGlobale = null;
       }
 
-      return updated;
+      return miseAJour;
     });
   };
 
-  // Get filtered products based on search and status
-  const getFilteredProducts = (category) => {
-    let items = productCategories[category].items;
+  // Obtenir produits filtrés
+  const obtenirProduitsFiltres = (categorie) => {
+    let items = categoriesProduits[categorie].items;
 
-    // Filter by search term
-    if (searchTerm) {
+    if (termeRecherche) {
       items = items.filter(item => 
-        item.toLowerCase().includes(searchTerm.toLowerCase())
+        item.toLowerCase().includes(termeRecherche.toLowerCase())
       );
     }
 
-    // Filter by test status (only for testable categories)
-    if (filterStatus !== 'all' && ['matieres_premieres', 'produits_finis'].includes(category)) {
+    if (filtreStatut !== 'all') {
       items = items.filter(item => {
-        const testKey = `${category}_${item}`;
-        const productTest = productTests[testKey];
+        const cleTest = `${categorie}_${item}`;
+        const testProduit = testsProduits[cleTest];
         
-        switch (filterStatus) {
-          case 'passed':
-            return productTest?.overallPassed === true;
-          case 'failed':
-            return productTest?.overallPassed === false;
-          case 'pending':
-            return !productTest?.lastTested;
+        switch (filtreStatut) {
+          case 'reussi':
+            return testProduit?.reussiteGlobale === true;
+          case 'echec':
+            return testProduit?.reussiteGlobale === false;
+          case 'attente':
+            return !testProduit?.dernierTest;
           default:
             return true;
         }
@@ -210,612 +200,506 @@ const InventoryQualityTracker = ({ onSave, onCancel, existingData = null, isDark
     return items;
   };
 
-  // Get status statistics
-  const getStatusStats = () => {
-    const testableCategories = ['matieres_premieres', 'produits_finis'];
+  // Obtenir statistiques
+  const obtenirStatistiques = () => {
     let total = 0;
-    let passed = 0;
-    let failed = 0;
-    let pending = 0;
+    let reussis = 0;
+    let echoues = 0;
+    let attente = 0;
 
-    testableCategories.forEach(category => {
-      productCategories[category].items.forEach(item => {
-        const testKey = `${category}_${item}`;
-        const productTest = productTests[testKey];
+    Object.entries(categoriesProduits).forEach(([categorieKey, categorie]) => {
+      categorie.items.forEach(item => {
+        const cleTest = `${categorieKey}_${item}`;
+        const testProduit = testsProduits[cleTest];
         
         total++;
-        if (productTest?.overallPassed === true) {
-          passed++;
-        } else if (productTest?.overallPassed === false) {
-          failed++;
+        if (testProduit?.reussiteGlobale === true) {
+          reussis++;
+        } else if (testProduit?.reussiteGlobale === false) {
+          echoues++;
         } else {
-          pending++;
+          attente++;
         }
       });
     });
 
-    return { total, passed, failed, pending };
+    return { total, reussis, echoues, attente };
   };
 
-  // Quick test functions
-  const quickTestPass = (productName, category) => {
-    testTypes.forEach(test => {
-      updateTestResult(productName, category, test.id, true);
+  // Tests rapides
+  const testRapideReussite = (nomProduit, categorie) => {
+    const testsCategorie = typesTests[categorie] || [];
+    testsCategorie.forEach(test => {
+      mettreAJourResultatTest(nomProduit, categorie, test.id, true);
     });
   };
 
-  const quickTestFail = (productName, category) => {
-    testTypes.forEach(test => {
-      updateTestResult(productName, category, test.id, false);
+  const testRapideEchec = (nomProduit, categorie) => {
+    const testsCategorie = typesTests[categorie] || [];
+    testsCategorie.forEach(test => {
+      mettreAJourResultatTest(nomProduit, categorie, test.id, false);
     });
   };
 
-  const handleSubmit = () => {
-    const kpi = calculateKPI();
-    const stats = getStatusStats();
+  const gererSoumission = () => {
+    const kpi = calculerKPI();
+    const stats = obtenirStatistiques();
     
-    const inventoryData = {
+    const donneesInventaire = {
       value: kpi,
-      date: selectedDate,
-      kpiThreshold: kpiThreshold,
-      productTests: productTests,
+      date: new Date().toISOString().split('T')[0],
+      kpiThreshold: seuilKPI,
+      productTests: testsProduits,
       stats: stats,
       type: 'inventory_quality'
     };
     
-    onSave('quality', 'raw_materials_inventory_list', inventoryData, '');
+    onSave('quality', 'raw_materials_inventory_list', donneesInventaire, '');
   };
 
-  const baseInputClasses = `w-full px-4 py-3 rounded-lg border text-sm font-medium transition-colors focus:ring-2 focus:outline-none ${
-    isDark 
-      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400 focus:border-emerald-500 focus:ring-emerald-500/20' 
-      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:border-emerald-500 focus:ring-emerald-500/20'
-  }`;
+  const kpi = calculerKPI();
+  const stats = obtenirStatistiques();
+  const kpiPerdu = kpi < seuilKPI;
 
-  const kpi = calculateKPI();
-  const stats = getStatusStats();
-  const isKpiLost = kpi < kpiThreshold;
+  // Obtenir couleur KPI
+  const obtenirCouleurKPI = () => {
+    if (kpi >= 95) return 'text-emerald-600';
+    if (kpi >= seuilKPI) return 'text-blue-600';
+    if (kpi >= 50) return 'text-amber-600';
+    return 'text-red-600';
+  };
+
+  // Obtenir couleur catégorie
+  const obtenirCouleurCategorie = (categorie) => {
+    const couleurs = {
+      blue: 'bg-blue-500 hover:bg-blue-600 border-blue-500',
+      purple: 'bg-purple-500 hover:bg-purple-600 border-purple-500',
+      orange: 'bg-orange-500 hover:bg-orange-600 border-orange-500'
+    };
+    return couleurs[categoriesProduits[categorie].color] || 'bg-slate-500 hover:bg-slate-600';
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className={`w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl border flex flex-col ${
-        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
-      }`}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="w-full max-w-6xl h-[85vh] rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden border border-blue-100">
         
-        {/* Header */}
-        <div className={`px-8 py-6 border-b flex-shrink-0 ${
-          isDark ? 'border-slate-700' : 'border-slate-200'
-        }`}>
+        {/* En-tête moderne */}
+        <div className="px-6 py-4 bg-white border-b border-blue-100">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-5">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <List className="w-7 h-7 text-white" />
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg">
+                <List className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Liste des Produits Matières Première et Emballage
-                </h3>
-                <p className={`text-sm mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Gestion et suivi qualité de l'inventaire laboratoire
+                <h1 className="text-xl font-semibold text-slate-900">
+                  Contrôle Qualité Inventaire
+                </h1>
+                <p className="text-sm text-slate-700">
+                  Suivi complet matières, produits et emballages
                 </p>
               </div>
             </div>
+            
             <div className="flex items-center space-x-4">
-              <div className={`text-right ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                <div className="text-sm font-medium">KPI Global</div>
-                <div className={`text-3xl font-bold ${
-                  isKpiLost ? 'text-red-600' : 
-                  kpi >= 95 ? 'text-emerald-600' : 
-                  kpi >= kpiThreshold ? 'text-emerald-600' : 'text-amber-600'
-                }`}>
+              <div className="text-right">
+                <div className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+                  Performance KPI
+                </div>
+                <div 
+                  className={`text-3xl font-light cursor-help transition-all hover:scale-105 ${obtenirCouleurKPI()}`}
+                  title={`📊 FORMULE KPI QUALITÉ
+
+🎯 CALCUL DU SCORE:
+• Base: 100% (performance parfaite)
+• Déduction: 100 ÷ ${obtenirTotalProduitsTestables()} = ${(100/obtenirTotalProduitsTestables()).toFixed(2)}% par produit échoué
+
+📋 SITUATION ACTUELLE:
+• Total produits: ${stats.total}
+• Produits conformes: ${stats.reussis}
+• Produits non-conformes: ${stats.echoues}
+• En attente de test: ${stats.attente}
+• Seuil minimum: ${seuilKPI}%
+
+🧪 TESTS PAR CATÉGORIE:
+• Matières Premières: pH, Dosage, Densité
+• Produits Finis: pH, Dosage, Densité
+• Emballage: Aspect Visuel
+
+💡 INTERPRÉTATION:
+• 95-100%: Excellence qualité
+• ${seuilKPI}-94%: Performance satisfaisante
+• 50-${seuilKPI-1}%: Attention requise
+• <50%: Action corrective urgente
+
+Score actuel: ${kpi}%
+${kpiPerdu ? '🚨 SEUIL NON ATTEINT' : '✅ OBJECTIF ATTEINT'}`}
+                >
                   {kpi}%
                 </div>
               </div>
               <button 
                 onClick={onCancel} 
-                className={`p-3 rounded-xl transition-colors ${
-                  isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
-                }`}
+                className="w-9 h-9 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all"
               >
-                <X className="w-6 h-6" />
+                <X className="w-4 h-4 text-red-600" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Main Content - Two Column Layout */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full flex">
+        {/* Panneau de contrôle optimisé */}
+        <div className="px-6 py-4 bg-blue-50/50 border-b border-blue-100">
+          <div className="flex items-center justify-between">
             
-            {/* Left Column - Controls & Overview */}
-            <div className={`w-2/5 border-r p-8 overflow-y-auto ${
-              isDark ? 'border-slate-700' : 'border-slate-200'
-            }`}>
+            {/* Métriques simplifiées */}
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500"></div>
+                  <div className="text-xl font-bold text-emerald-600">{stats.reussis}</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                  <div className="text-xl font-bold text-red-600">{stats.echoues}</div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 rounded-full bg-amber-500"></div>
+                  <div className="text-xl font-bold text-amber-600">{stats.attente}</div>
+                </div>
+              </div>
               
-              {/* Configuration */}
-              <div className={`p-6 rounded-xl border mb-6 ${
-                isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <Target className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
-                  <h4 className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Configuration
-                  </h4>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Date de contrôle
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className={baseInputClasses}
-                    />
+              {/* Seuil KPI avec espacement */}
+              <div className="flex items-center space-x-3 px-4 py-2 rounded-xl bg-white border border-blue-200 ml-8">
+                <Target className="w-4 h-4 text-blue-600" />
+                <div className="text-sm font-medium text-slate-700">Seuil:</div>
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => setSeuilKPI(Math.max(0, seuilKPI - 5))}
+                    className="w-6 h-6 rounded-md bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-700 transition-all text-xs font-bold"
+                  >
+                    −
+                  </button>
+                  <div className="w-12 text-center text-sm font-semibold text-slate-900">
+                    {seuilKPI}%
                   </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Seuil KPI minimum (%)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={kpiThreshold}
-                      onChange={(e) => setKpiThreshold(parseInt(e.target.value) || 90)}
-                      className={baseInputClasses}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* KPI Overview */}
-              <div className="space-y-4 mb-6">
-                {/* Main KPI */}
-                <div className={`p-6 rounded-xl border ${
-                  isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h4 className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                          Performance Globale
-                        </h4>
-                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                          Total: {getTotalTestableProducts()} produits
-                        </p>
-                      </div>
-                    </div>
-                    <div className={`text-2xl font-bold ${
-                      isKpiLost ? 'text-red-600' : 
-                      kpi >= 95 ? 'text-emerald-600' : 
-                      kpi >= kpiThreshold ? 'text-emerald-600' : 'text-amber-600'
-                    }`}>
-                      {kpi}%
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <div className={`text-xs px-2 py-1 rounded-lg font-semibold inline-block ${
-                      isKpiLost
-                        ? isDark ? 'bg-red-900 text-red-400' : 'bg-red-100 text-red-700'
-                        : kpi >= 95
-                        ? isDark ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                        : isDark ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {isKpiLost ? '❌ KPI PERDU' : '✅ KPI OK'} - Seuil: ≥ {kpiThreshold}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Cards */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-emerald-900 border-emerald-800' : 'bg-emerald-50 border-emerald-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className={`text-xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-                        {stats.passed}
-                      </div>
-                      <div className={`text-xs font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>
-                        Tests Réussis
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-red-900 border-red-800' : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                      <XCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className={`text-xl font-bold ${isDark ? 'text-red-400' : 'text-red-700'}`}>
-                        {stats.failed}
-                      </div>
-                      <div className={`text-xs font-semibold ${isDark ? 'text-red-300' : 'text-red-600'}`}>
-                        Tests Échoués
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-amber-900 border-amber-800' : 'bg-amber-50 border-amber-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center">
-                      <AlertTriangle className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className={`text-xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                        {stats.pending}
-                      </div>
-                      <div className={`text-xs font-semibold ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>
-                        En Attente
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-xl border ${
-                  isDark ? 'bg-blue-900 border-blue-800' : 'bg-blue-50 border-blue-200'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                      <BarChart3 className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className={`text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
-                        {stats.total}
-                      </div>
-                      <div className={`text-xs font-semibold ${isDark ? 'text-blue-300' : 'text-blue-600'}`}>
-                        Total
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search and Filter */}
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <Search className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
-                  <h4 className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Recherche & Filtres
-                  </h4>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Rechercher un produit
-                    </label>
-                    <div className="relative">
-                      <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
-                        isDark ? 'text-slate-400' : 'text-slate-500'
-                      }`} />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Nom du produit..."
-                        className={`${baseInputClasses} pl-10`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Filtrer par statut
-                    </label>
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className={baseInputClasses}
-                    >
-                      <option value="all">Tous les produits</option>
-                      <option value="passed">Tests réussis</option>
-                      <option value="failed">Tests échoués</option>
-                      <option value="pending">En attente</option>
-                    </select>
-                  </div>
+                  <button
+                    onClick={() => setSeuilKPI(Math.min(100, seuilKPI + 5))}
+                    className="w-6 h-6 rounded-md bg-blue-100 hover:bg-blue-200 flex items-center justify-center text-blue-700 transition-all text-xs font-bold"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Right Column - Product Lists */}
-            <div className="flex-1 p-8 overflow-y-auto">
-              {/* Category Tabs */}
-              <div className="flex space-x-4 mb-6">
-                {Object.entries(productCategories).map(([categoryKey, category]) => (
-                  <button
-                    key={categoryKey}
-                    onClick={() => setActiveCategory(categoryKey)}
-                    className={`px-6 py-3 rounded-lg text-sm font-semibold transition-colors ${
-                      activeCategory === categoryKey
-                        ? 'bg-emerald-600 text-white'
-                        : isDark 
-                          ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' 
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <category.icon className="w-4 h-4" />
-                      <span>{category.name}</span>
-                    </div>
-                  </button>
-                ))}
+            {/* Recherche et filtres avec espacement */}
+            <div className="flex items-center space-x-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="text"
+                  value={termeRecherche}
+                  onChange={(e) => setTermeRecherche(e.target.value)}
+                  placeholder="Rechercher produit..."
+                  className="pl-10 pr-4 py-2 rounded-lg border border-blue-200 bg-white text-slate-900 text-sm focus:border-blue-500 outline-none w-56"
+                />
               </div>
-
-              {/* Product Grid */}
-              <div className="space-y-6">
-                {Object.entries(productCategories)
-                  .filter(([categoryKey]) => categoryKey === activeCategory)
-                  .map(([categoryKey, category]) => {
-                    const filteredItems = getFilteredProducts(categoryKey);
-                    const isTestable = ['matieres_premieres', 'produits_finis'].includes(categoryKey);
-                    
-                    return (
-                      <div key={categoryKey}>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                              categoryKey === 'matieres_premieres' ? 'bg-emerald-600' :
-                              categoryKey === 'produits_finis' ? 'bg-blue-600' : 'bg-purple-600'
-                            }`}>
-                              <category.icon className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                {category.name}
-                              </h3>
-                              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                {filteredItems.length} produit(s) 
-                                {isTestable && ` • Tests requis: pH, Dosage, Densité`}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {filteredItems.length === 0 ? (
-                          <div className={`text-center py-12 border-2 border-dashed rounded-xl ${
-                            isDark ? 'border-slate-700 bg-slate-800' : 'border-slate-300 bg-slate-50'
-                          }`}>
-                            <Search className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-                            <p className={`text-lg font-semibold mb-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                              Aucun produit trouvé
-                            </p>
-                            <p className={`text-sm font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                              Modifiez vos critères de recherche
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {filteredItems.map((item) => {
-                              const testKey = `${categoryKey}_${item}`;
-                              const productTest = productTests[testKey];
-                              const hasTests = productTest?.lastTested;
-                              const allPassed = productTest?.overallPassed;
-                              
-                              return (
-                                <div key={item} className={`p-6 rounded-xl border transition-colors ${
-                                  isDark ? 'bg-slate-800 border-slate-700 hover:bg-slate-750' : 'bg-white border-slate-200 hover:bg-slate-50'
-                                }`}>
-                                  <div className="space-y-4">
-                                    {/* Product Header */}
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1">
-                                        <h4 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                          {item}
-                                        </h4>
-                                        <div className="flex items-center space-x-4 mt-2">
-                                          <div className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                            {categoryKey === 'matieres_premieres' ? '🧪 Matière première' :
-                                             categoryKey === 'produits_finis' ? '🧴 Produit fini' : '📦 Emballage'}
-                                          </div>
-                                          
-                                          {isTestable && (
-                                            <div className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${
-                                              hasTests
-                                                ? allPassed === true
-                                                  ? isDark ? 'bg-emerald-900 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                                                  : allPassed === false
-                                                  ? isDark ? 'bg-red-900 text-red-400' : 'bg-red-100 text-red-700'
-                                                  : isDark ? 'bg-amber-900 text-amber-400' : 'bg-amber-100 text-amber-700'
-                                                : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'
-                                            }`}>
-                                              {hasTests
-                                                ? allPassed === true ? '✅ CONFORME' 
-                                                  : allPassed === false ? '❌ NON CONFORME' 
-                                                  : '⏳ PARTIEL'
-                                                : '⚪ NON TESTÉ'
-                                              }
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {isTestable && (
-                                        <div className="flex items-center space-x-3">
-                                          <button
-                                            onClick={() => quickTestPass(item, categoryKey)}
-                                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                              isDark ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                            }`}
-                                          >
-                                            <CheckCircle className="w-4 h-4 inline mr-2" />
-                                            RÉUSSIR TOUT
-                                          </button>
-                                          
-                                          <button
-                                            onClick={() => quickTestFail(item, categoryKey)}
-                                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                                              isDark ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50' : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                            }`}
-                                          >
-                                            <XCircle className="w-4 h-4 inline mr-2" />
-                                            ÉCHOUER TOUT
-                                          </button>
-                                        </div>
-                                      )}
-
-                                      {!isTestable && (
-                                        <div className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                                          isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'
-                                        }`}>
-                                          <AlertTriangle className="w-3 h-3 inline mr-1" />
-                                          Tests à définir
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Individual Tests */}
-                                    {isTestable && (
-                                      <div className={`p-4 rounded-lg border-2 border-dashed ${
-                                        isDark ? 'border-slate-600 bg-slate-700/30' : 'border-slate-300 bg-slate-50'
-                                      }`}>
-                                        <div className="flex items-center justify-between mb-4">
-                                          <div className="flex items-center space-x-2">
-                                            <TestTube className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
-                                            <span className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                              Tests Individuels
-                                            </span>
-                                          </div>
-                                          {hasTests && (
-                                            <div className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                              Testé le {new Date(productTest.lastTested).toLocaleDateString('fr-FR')}
-                                            </div>
-                                          )}
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-3 gap-4">
-                                          {testTypes.map((test) => {
-                                            const currentTests = productTest?.tests || {};
-                                            const currentTest = currentTests[test.id] || { passed: null, tested: false };
-                                            
-                                            return (
-                                              <div key={test.id} className={`p-3 rounded-lg border ${
-                                                isDark ? 'bg-slate-800 border-slate-600' : 'bg-white border-slate-200'
-                                              }`}>
-                                                <div className="flex items-center space-x-2 mb-3">
-                                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                                    test.color === 'blue' ? 'bg-blue-600' :
-                                                    test.color === 'indigo' ? 'bg-indigo-600' : 'bg-purple-600'
-                                                  }`}>
-                                                    <test.icon className="w-3 h-3 text-white" />
-                                                  </div>
-                                                  <div>
-                                                    <h6 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                                      {test.name}
-                                                    </h6>
-                                                    <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                      {test.unit || 'Unité'}
-                                                    </p>
-                                                  </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-2">
-                                                  <button
-                                                    onClick={() => updateTestResult(item, categoryKey, test.id, true)}
-                                                    className={`p-2 rounded-lg text-xs font-semibold transition-colors ${
-                                                      currentTest.passed === true
-                                                        ? isDark ? 'bg-emerald-700 text-emerald-100 ring-2 ring-emerald-500' : 'bg-emerald-200 text-emerald-800 ring-2 ring-emerald-400'
-                                                        : isDark ? 'bg-slate-700 text-slate-400 hover:bg-emerald-900/30' : 'bg-slate-100 text-slate-600 hover:bg-emerald-100'
-                                                    }`}
-                                                  >
-                                                    <CheckCircle className="w-3 h-3 mx-auto" />
-                                                  </button>
-
-                                                  <button
-                                                    onClick={() => updateTestResult(item, categoryKey, test.id, false)}
-                                                    className={`p-2 rounded-lg text-xs font-semibold transition-colors ${
-                                                      currentTest.passed === false
-                                                        ? isDark ? 'bg-red-700 text-red-100 ring-2 ring-red-500' : 'bg-red-200 text-red-800 ring-2 ring-red-400'
-                                                        : isDark ? 'bg-slate-700 text-slate-400 hover:bg-red-900/30' : 'bg-slate-100 text-slate-600 hover:bg-red-100'
-                                                    }`}
-                                                  >
-                                                    <XCircle className="w-3 h-3 mx-auto" />
-                                                  </button>
-                                                </div>
-
-                                                {currentTest.tested && (
-                                                  <div className={`mt-2 px-2 py-1 rounded text-xs font-medium text-center ${
-                                                    currentTest.passed === true
-                                                      ? isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                                                      : currentTest.passed === false
-                                                      ? isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700'
-                                                      : isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-100 text-amber-700'
-                                                  }`}>
-                                                    {currentTest.passed === true ? '✅' : 
-                                                     currentTest.passed === false ? '❌' : '⏳'}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+              
+              <div className="flex items-center space-x-1 bg-white rounded-lg border border-blue-200 p-1">
+                <button
+                  onClick={() => setFiltreStatut('all')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                    filtreStatut === 'all' ? 'bg-blue-500 text-white' : 'text-slate-600 hover:bg-blue-50'
+                  }`}
+                >
+                  Tous
+                </button>
+                <button
+                  onClick={() => setFiltreStatut('reussi')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                    filtreStatut === 'reussi' ? 'bg-emerald-500 text-white' : 'text-slate-600 hover:bg-emerald-50'
+                  }`}
+                >
+                  Conformes
+                </button>
+                <button
+                  onClick={() => setFiltreStatut('echec')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                    filtreStatut === 'echec' ? 'bg-red-500 text-white' : 'text-slate-600 hover:bg-red-50'
+                  }`}
+                >
+                  Non-Conformes
+                </button>
+                <button
+                  onClick={() => setFiltreStatut('attente')}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                    filtreStatut === 'attente' ? 'bg-amber-500 text-white' : 'text-slate-600 hover:bg-amber-50'
+                  }`}
+                >
+                  En Attente
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className={`px-8 py-5 border-t flex-shrink-0 ${
-          isDark ? 'border-slate-700' : 'border-slate-200'
-        }`}>
-          <div className="flex justify-between items-center">
-            <div className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              KPI Global: <span className={`text-lg ${
-                isKpiLost ? 'text-red-600' : 
-                kpi >= 95 ? 'text-emerald-600' : 
-                kpi >= kpiThreshold ? 'text-emerald-600' : 'text-amber-600'
-              }`}>
-                {kpi}%
-              </span> • {stats.passed}/{stats.total} produits conformes • Seuil: ≥ {kpiThreshold}%
-              {isKpiLost && <span className="text-red-500 ml-2">⚠️ KPI PERDU</span>}
+        {/* Contenu principal */}
+        <div className="flex flex-1 min-h-0">
+          
+          {/* Onglets catégories */}
+          <div className="w-60 border-r border-blue-100 bg-blue-50/30 p-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">Catégories</h3>
+            <div className="space-y-3">
+              {Object.entries(categoriesProduits).map(([categorieKey, categorie]) => (
+                <button
+                  key={categorieKey}
+                  onClick={() => setCategorieActive(categorieKey)}
+                  className={`w-full p-3 rounded-xl text-left transition-all ${
+                    categorieActive === categorieKey
+                      ? `${obtenirCouleurCategorie(categorieKey)} text-white shadow-lg`
+                      : 'bg-white hover:bg-blue-50 text-slate-700 border border-blue-100'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      categorieActive === categorieKey ? 'bg-white/20' : 'bg-blue-100'
+                    }`}>
+                      <categorie.icon className={`w-4 h-4 ${
+                        categorieActive === categorieKey ? 'text-white' : 'text-blue-600'
+                      }`} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">{categorie.name}</div>
+                      <div className={`text-xs ${
+                        categorieActive === categorieKey ? 'text-white/80' : 'text-slate-500'
+                      }`}>
+                        {categorie.items.length} produits
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
-            <div className="flex gap-4">
+          </div>
+
+          {/* Liste des produits */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {(() => {
+              const categorieActuelle = categoriesProduits[categorieActive];
+              const produitsFiltres = obtenirProduitsFiltres(categorieActive);
+              const testsCategorie = typesTests[categorieActive] || [];
+              
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${obtenirCouleurCategorie(categorieActive)}`}>
+                        <categorieActuelle.icon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-900">
+                          {categorieActuelle.name}
+                        </h2>
+                        <p className="text-sm text-slate-600">
+                          {produitsFiltres.length} produit(s) • Tests: {testsCategorie.map(t => t.name).join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {produitsFiltres.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Search className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">
+                        Aucun produit trouvé
+                      </h3>
+                      <p className="text-slate-600">
+                        Modifiez vos critères de recherche
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {produitsFiltres.map((item) => {
+                        const cleTest = `${categorieActive}_${item}`;
+                        const testProduit = testsProduits[cleTest];
+                        const aTests = testProduit?.dernierTest;
+                        const tousReussis = testProduit?.reussiteGlobale;
+                        
+                        return (
+                          <div key={item} className="p-5 rounded-xl bg-white border border-blue-100 hover:border-blue-200 transition-all shadow-sm">
+                            
+                            {/* En-tête produit */}
+                            <div className="flex items-center justify-between mb-5">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg text-slate-900 mb-1">
+                                  {item}
+                                </h4>
+                                <div className="flex items-center space-x-4">
+                                  <div className="text-sm text-slate-600 font-medium">
+                                    {categorieActuelle.name}
+                                  </div>
+                                  
+                                  <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                    aTests
+                                      ? tousReussis === true
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : tousReussis === false
+                                        ? 'bg-red-100 text-red-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                      : 'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {aTests
+                                      ? tousReussis === true ? 'Conforme' 
+                                        : tousReussis === false ? 'Non Conforme' 
+                                        : 'Partiel'
+                                      : 'Non Testé'
+                                    }
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={() => testRapideReussite(item, categorieActive)}
+                                  className="px-4 py-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 text-sm font-medium transition-all"
+                                >
+                                  <CheckCircle className="w-4 h-4 inline mr-1" />
+                                  Tout Valider
+                                </button>
+                                
+                                <button
+                                  onClick={() => testRapideEchec(item, categorieActive)}
+                                  className="px-4 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 text-sm font-medium transition-all"
+                                >
+                                  <XCircle className="w-4 h-4 inline mr-1" />
+                                  Tout Rejeter
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Interface de test révolutionnaire - Switch Toggle Style */}
+                            <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-100">
+                              <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-2">
+                                  <TestTube className="w-4 h-4 text-slate-600" />
+                                  <span className="text-sm font-medium text-slate-700">
+                                    Tests Qualité
+                                  </span>
+                                </div>
+                                {aTests && (
+                                  <div className="text-xs text-slate-600 font-medium">
+                                    {new Date(testProduit.dernierTest).toLocaleDateString('fr-FR')}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Tests side-by-side améliorés */}
+                              <div className={`grid gap-4 ${testsCategorie.length === 1 ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                                {testsCategorie.map((test) => {
+                                  const testsActuels = testProduit?.tests || {};
+                                  const testActuel = testsActuels[test.id] || { reussi: null, teste: false };
+                                  
+                                  return (
+                                    <div key={test.id} className="bg-white rounded-lg p-4 border border-blue-100">
+                                      {/* En-tête test */}
+                                      <div className="flex items-center space-x-2 mb-4">
+                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                          test.color === 'blue' ? 'bg-blue-500' :
+                                          test.color === 'indigo' ? 'bg-indigo-500' :
+                                          test.color === 'purple' ? 'bg-purple-500' : 'bg-emerald-500'
+                                        }`}>
+                                          <test.icon className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div>
+                                          <h6 className="text-sm font-medium text-slate-900">
+                                            {test.name}
+                                          </h6>
+                                          {testActuel.teste && (
+                                            <div className={`text-xs font-medium ${
+                                              testActuel.reussi === true ? 'text-emerald-600' : 'text-red-600'
+                                            }`}>
+                                              {testActuel.reussi === true ? 'Validé' : 'Rejeté'}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Toggle Switch Style */}
+                                      <div className="space-y-2">
+                                        <button
+                                          onClick={() => mettreAJourResultatTest(item, categorieActive, test.id, true)}
+                                          className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                            testActuel.reussi === true
+                                              ? 'bg-emerald-500 text-white shadow-md scale-105'
+                                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                          }`}
+                                        >
+                                          <CheckCircle className="w-4 h-4 inline mr-2" />
+                                          Valider
+                                        </button>
+
+                                        <button
+                                          onClick={() => mettreAJourResultatTest(item, categorieActive, test.id, false)}
+                                          className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                            testActuel.reussi === false
+                                              ? 'bg-red-500 text-white shadow-md scale-105'
+                                              : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                                          }`}
+                                        >
+                                          <XCircle className="w-4 h-4 inline mr-2" />
+                                          Rejeter
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Pied de page */}
+        <div className="px-6 py-4 bg-white border-t border-blue-100 flex-shrink-0">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <div className={`flex items-center space-x-2 text-sm ${obtenirCouleurKPI()}`}>
+                <TrendingUp className="w-4 h-4" />
+                <span className="font-medium">{kpi}% Performance KPI</span>
+              </div>
+              <div className="text-sm text-slate-700 font-medium">
+                {stats.reussis}/{stats.total} produits conformes
+              </div>
+              <div className="text-sm text-blue-600 font-medium">
+                Seuil: ≥{seuilKPI}%
+              </div>
+              {kpiPerdu && (
+                <div className="text-sm text-red-600 font-medium">
+                  Objectif non atteint
+                </div>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
               <button
                 onClick={onCancel}
-                className={`px-6 py-3 rounded-xl text-sm font-semibold transition-colors ${
-                  isDark 
-                    ? 'text-slate-300 hover:bg-slate-800 hover:text-white' 
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+                className="px-4 py-2 rounded-lg bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700 text-sm font-medium transition-all"
               >
                 Annuler
               </button>
               <button
-                onClick={handleSubmit}
-                className="px-8 py-3 rounded-xl text-sm font-semibold text-white transition-colors bg-emerald-600 hover:bg-emerald-700"
+                onClick={gererSoumission}
+                className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-all flex items-center space-x-2 shadow-sm"
               >
-                <div className="flex items-center space-x-2">
-                  <Save className="w-4 h-4" />
-                  <span>Enregistrer</span>
-                </div>
+                <Save className="w-4 h-4" />
+                <span>Enregistrer</span>
               </button>
             </div>
           </div>

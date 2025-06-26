@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { 
   Shield, AlertTriangle, Calendar, Target, Save, X, Plus, Trash2, 
   Clock, User, Award, Activity, TrendingUp, UserRound, Users, 
-  Edit3
+  Edit3, ChevronLeft, ChevronRight, CalendarDays
 } from 'lucide-react';
 
-// Default team members
+// Default team members with unique colors
 const DEFAULT_EMPLOYEES = [
-  'Rihem', 'Hamza', 'Mohamed', 'Nassim', 'Tarek', 'Youssef'
+  { name: 'Rihem', color: 'from-purple-500 to-purple-600' },
+  { name: 'Hamza', color: 'from-blue-500 to-blue-600' },
+  { name: 'Mohamed', color: 'from-green-500 to-green-600' },
+  { name: 'Nassim', color: 'from-orange-500 to-orange-600' },
+  { name: 'Tarek', color: 'from-pink-500 to-pink-600' },
+  { name: 'Youssef', color: 'from-teal-500 to-teal-600' }
 ];
 
 // Simplified incident types for quick selection
@@ -27,252 +32,346 @@ const SEVERITY_LEVELS = [
   { id: 'critical', label: 'Critique', color: 'red' }
 ];
 
-// Incident Card Component
-const IncidentCard = ({ incident, onDelete, isDark }) => {
-  const getTypeData = (type) => QUICK_INCIDENTS.find(t => t.id === type);
-  const getSeverityData = (severity) => SEVERITY_LEVELS.find(s => s.id === severity);
-  
-  const typeData = getTypeData(incident.type);
-  const severityData = getSeverityData(incident.severity);
+export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isDark = false }) => {
+  // Custom scrollbar styles
+  const scrollbarStyles = `
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #ef4444 transparent;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .custom-scrollbar-light::-webkit-scrollbar-track {
+      background: rgba(239, 68, 68, 0.08);
+      border-radius: 12px;
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .custom-scrollbar-light::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 25%, #b91c1c 75%, #991b1b 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 
+        0 2px 8px rgba(239, 68, 68, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.4),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .custom-scrollbar-light::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 25%, #991b1b 75%, #7f1d1d 100%);
+      box-shadow: 
+        0 4px 16px rgba(239, 68, 68, 0.5),
+        inset 0 1px 3px rgba(255, 255, 255, 0.5),
+        inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+      transform: scaleY(1.1);
+    }
+    
+    .custom-scrollbar-dark::-webkit-scrollbar-track {
+      background: rgba(71, 85, 105, 0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 25%, #b91c1c 75%, #991b1b 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 
+        0 2px 8px rgba(239, 68, 68, 0.4),
+        inset 0 1px 2px rgba(255, 255, 255, 0.2),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 25%, #991b1b 75%, #7f1d1d 100%);
+      box-shadow: 
+        0 4px 16px rgba(239, 68, 68, 0.6),
+        inset 0 1px 3px rgba(255, 255, 255, 0.3),
+        inset 0 -1px 3px rgba(0, 0, 0, 0.3);
+      transform: scaleY(1.1);
+    }
+    
+    .custom-scrollbar {
+      scroll-behavior: smooth;
+    }
+  `;
 
-  const getSeverityColor = () => {
-    const colors = {
-      minor: isDark ? 'bg-green-900/30 text-green-400 border-green-700/50' : 'bg-green-100 text-green-700 border-green-300',
-      moderate: isDark ? 'bg-yellow-900/30 text-yellow-400 border-yellow-700/50' : 'bg-yellow-100 text-yellow-700 border-yellow-300',
-      major: isDark ? 'bg-orange-900/30 text-orange-400 border-orange-700/50' : 'bg-orange-100 text-orange-700 border-orange-300',
-      critical: isDark ? 'bg-red-900/30 text-red-400 border-red-700/50' : 'bg-red-100 text-red-700 border-red-300'
+  // Obtenir la date actuelle du système
+  const aujourdhui = new Date();
+
+  // Obtenir le nom du mois
+  const obtenirNomMois = (date) => {
+    const mois = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    return mois[new Date(date).getMonth()];
+  };
+
+  // Custom date formatting function
+  const formatDate = (date, formatStr) => {
+    const monthNames = [
+      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ];
+    
+    const d = new Date(date);
+    const day = d.getDate();
+    const month = monthNames[d.getMonth()];
+    const year = d.getFullYear();
+    
+    if (formatStr === 'MMMM yyyy') {
+      return `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`;
+    }
+    if (formatStr === 'dd MMM yyyy') {
+      return `${day.toString().padStart(2, '0')} ${month.substring(0, 3)} ${year}`;
+    }
+    return `${day}/${d.getMonth() + 1}/${year}`;
+  };
+
+  // Fonctions utilitaires pour les mois
+  const obtenirPremierJourMois = (date) => {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  };
+
+  const obtenirDernierJourMois = (date) => {
+    const d = new Date(date);
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  };
+
+  const [incidents, setIncidents] = useState(existingData?.incidents || []);
+  const [selectedDate, setSelectedDate] = useState(existingData?.date || aujourdhui.toISOString().split('T')[0]);
+  const [monthlyTarget, setMonthlyTarget] = useState(existingData?.monthlyTarget || 10);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Get employee color
+  const getEmployeeColor = (employeeName) => {
+    const employee = DEFAULT_EMPLOYEES.find(emp => emp.name === employeeName);
+    return employee ? employee.color : 'from-slate-500 to-slate-600';
+  };
+
+  // Custom Calendar Component
+  const CustomCalendar = () => {
+    const currentDate = new Date();
+    const [viewDate, setViewDate] = useState(new Date(selectedDate));
+    
+    const monthNames = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    
+    const weekDays = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    
+    const getDaysInMonth = (date) => {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+      
+      const days = [];
+      
+      // Previous month's trailing days
+      const prevMonth = new Date(year, month - 1, 0);
+      for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+        days.push({
+          day: prevMonth.getDate() - i,
+          isCurrentMonth: false,
+          isToday: false,
+          isSelected: false,
+          date: new Date(year, month - 1, prevMonth.getDate() - i)
+        });
+      }
+      
+      // Current month's days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayDate = new Date(year, month, day);
+        const isToday = dayDate.toDateString() === currentDate.toDateString();
+        const isSelected = dayDate.toDateString() === new Date(selectedDate).toDateString();
+        
+        days.push({
+          day,
+          isCurrentMonth: true,
+          isToday,
+          isSelected,
+          date: dayDate
+        });
+      }
+      
+      // Next month's leading days
+      const totalCells = Math.ceil(days.length / 7) * 7;
+      const remainingCells = totalCells - days.length;
+      for (let day = 1; day <= remainingCells; day++) {
+        days.push({
+          day,
+          isCurrentMonth: false,
+          isToday: false,
+          isSelected: false,
+          date: new Date(year, month + 1, day)
+        });
+      }
+      
+      return days;
     };
-    return colors[incident.severity] || colors.minor;
-  };
-
-  return (
-    <div className={`p-3 rounded-xl border transition-all duration-200 hover:shadow-lg group min-w-0 ${
-      isDark 
-        ? 'bg-slate-800/80 border-slate-700 hover:border-slate-600' 
-        : 'bg-white border-slate-200 hover:border-slate-300'
-    }`}>
-      
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2 min-w-0">
-        <div className="flex items-center space-x-2 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-            incident.severity === 'critical' ? 'bg-red-600 text-white' :
-            incident.severity === 'major' ? 'bg-orange-600 text-white' :
-            incident.severity === 'moderate' ? 'bg-amber-600 text-white' :
-            'bg-green-600 text-white'
-          }`}>
-            {incident.employee.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
-              {incident.employee}
+    
+    const days = getDaysInMonth(viewDate);
+    
+    const navigateMonth = (direction) => {
+      const newDate = new Date(viewDate);
+      newDate.setMonth(newDate.getMonth() + direction);
+      setViewDate(newDate);
+    };
+    
+    const selectDay = (dayObj) => {
+      setSelectedDate(dayObj.date.toISOString().split('T')[0]);
+      setShowCalendar(false);
+    };
+    
+    return (
+      <div className={`absolute top-full mt-3 z-50 rounded-xl shadow-xl border overflow-hidden ${
+        isDark 
+          ? 'bg-slate-900 border-slate-700 shadow-slate-900/50' 
+          : 'bg-white border-red-200 shadow-red-100/50'
+      }`} style={{ width: '280px' }}>
+        
+        {/* Calendar Header */}
+        <div className={`px-3 py-3 ${
+          isDark ? 'bg-gradient-to-r from-slate-800 to-slate-900' : 'bg-gradient-to-r from-red-500 to-red-600'
+        }`}>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigateMonth(-1)}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 ${
+                isDark 
+                  ? 'bg-slate-700 hover:bg-slate-600 text-white' 
+                  : 'bg-white/20 hover:bg-white/30 text-white'
+              }`}
+            >
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+            
+            <div className="text-center">
+              <h3 className="text-base font-bold text-white">
+                {monthNames[viewDate.getMonth()]}
+              </h3>
+              <p className="text-xs text-white/80 font-medium">
+                {viewDate.getFullYear()}
+              </p>
             </div>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
+            
+            <button
+              onClick={() => navigateMonth(1)}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 ${
+                isDark 
+                  ? 'bg-slate-700 hover:bg-slate-600 text-white' 
+                  : 'bg-white/20 hover:bg-white/30 text-white'
+              }`}
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Calendar Grid */}
+        <div className="p-3">
+          {/* Week days header */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {weekDays.map(day => (
+              <div key={day} className={`text-center py-1 text-xs font-bold uppercase tracking-wide ${
+                isDark ? 'text-slate-400' : 'text-slate-600'
               }`}>
-                🕐 {incident.time}
-              </span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${getSeverityColor()}`}>
-                {severityData?.label}
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        <button
-          onClick={() => onDelete(incident.id)}
-          className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
-            isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'
-          }`}
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Incident Details */}
-      <div className="space-y-2">
-        <div className="flex items-center space-x-2">
-          <span className={`text-xs px-2 py-1 rounded-lg font-medium border ${
-            typeData?.color === 'blue' ? (isDark ? 'bg-blue-900/30 text-blue-400 border-blue-700/50' : 'bg-blue-100 text-blue-700 border-blue-300') :
-            typeData?.color === 'purple' ? (isDark ? 'bg-purple-900/30 text-purple-400 border-purple-700/50' : 'bg-purple-100 text-purple-700 border-purple-300') :
-            typeData?.color === 'green' ? (isDark ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50' : 'bg-emerald-100 text-emerald-700 border-emerald-300') :
-            typeData?.color === 'yellow' ? (isDark ? 'bg-amber-900/30 text-amber-400 border-amber-700/50' : 'bg-amber-100 text-amber-700 border-amber-300') :
-            typeData?.color === 'red' ? (isDark ? 'bg-red-900/30 text-red-400 border-red-700/50' : 'bg-red-100 text-red-700 border-red-300') :
-            isDark ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-slate-100 text-slate-700 border-slate-300'
-          }`}>
-            {typeData?.icon} {typeData?.label}
-          </span>
-        </div>
-        
-        <div className={`text-xs p-2 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-          <p className={`${isDark ? 'text-slate-300' : 'text-slate-700'} leading-tight`}>
-            {incident.description}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Employee Safety Card Component
-const EmployeeSafetyCard = ({ employee, incidents, onQuickAdd, isDark, calculateEmployeeSafetyKPI }) => {
-  const employeeIncidents = incidents.filter(inc => inc.employee === employee);
-  const criticalIncidents = employeeIncidents.filter(inc => inc.severity === 'critical').length;
-  const totalIncidents = employeeIncidents.length;
-  const employeeSafetyScore = calculateEmployeeSafetyKPI(employeeIncidents);
-  
-  const getSafetyStatus = () => {
-    if (criticalIncidents > 0) return { status: 'critical', color: 'red', level: 'critical' };
-    if (employeeSafetyScore < 60) return { status: 'danger', color: 'red', level: 'high' };
-    if (employeeSafetyScore < 80) return { status: 'warning', color: 'orange', level: 'medium' };
-    if (totalIncidents > 0) return { status: 'caution', color: 'amber', level: 'low' };
-    return { status: 'safe', color: 'slate', level: 'none' };
-  };
-
-  const safetyStatus = getSafetyStatus();
-
-  return (
-    <div className={`p-3 rounded-xl border transition-all duration-200 hover:shadow-lg group min-w-0 ${
-      isDark 
-        ? 'bg-slate-800/80 border-slate-700 hover:border-slate-600' 
-        : 'bg-white border-slate-200 hover:border-slate-300'
-    }`}>
-      
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2 min-w-0">
-        <div className="flex items-center space-x-2 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-            safetyStatus.color === 'red' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' :
-            safetyStatus.color === 'orange' ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' :
-            safetyStatus.color === 'amber' ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white' :
-            'bg-gradient-to-r from-slate-500 to-slate-600 text-white'
-          }`}>
-            {employee.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
-              {employee}
-            </div>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                safetyStatus.color === 'red' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') :
-                safetyStatus.color === 'orange' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700') :
-                safetyStatus.color === 'amber' ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700') :
-                isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {safetyStatus.status === 'critical' ? '🚨 Critique' :
-                 safetyStatus.status === 'danger' ? '⚠️ Danger' :
-                 safetyStatus.status === 'warning' ? '⚠️ Attention' :
-                 safetyStatus.status === 'caution' ? '⚠️ Prudence' :
-                 '✅ Sécurisé'}
-              </span>
-            </div>
-          </div>
-        </div>
-        
-        <button
-          onClick={() => onQuickAdd(employee)}
-          className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ${
-            isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500'
-          }`}
-        >
-          <Plus className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Enhanced Stats Grid */}
-      <div className="grid grid-cols-3 gap-2 mb-2">
-        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-          <div 
-            className={`text-lg font-bold cursor-help ${
-              employeeSafetyScore >= 90 ? 'text-slate-600' :
-              employeeSafetyScore >= 70 ? 'text-amber-600' :
-              employeeSafetyScore >= 50 ? 'text-orange-600' : 'text-red-600'
-            }`}
-            title={`Score Sécurité Individuel:
-
-Score = 100 - (Pénalités par Gravité)
-
-Pénalités par incident:
-• Mineur: -5 points
-• Modéré: -10 points  
-• Majeur: -20 points
-• Critique: -40 points
-
-Incidents de ${employee}:
-• Mineur: ${employeeIncidents.filter(i => i.severity === 'minor').length}
-• Modéré: ${employeeIncidents.filter(i => i.severity === 'moderate').length}
-• Majeur: ${employeeIncidents.filter(i => i.severity === 'major').length}
-• Critique: ${employeeIncidents.filter(i => i.severity === 'critical').length}
-
-Score final: ${employeeSafetyScore}%`}
-          >
-            {employeeSafetyScore}%
-          </div>
-          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>
-            Score
-          </div>
-        </div>
-        
-        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-          <div className={`text-lg font-bold ${
-            totalIncidents === 0 ? 'text-slate-600' : 'text-red-600'
-          }`}>
-            {totalIncidents}
-          </div>
-          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>
-            Total
-          </div>
-        </div>
-        
-        <div className={`p-2 rounded-lg text-center ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
-          <div className={`text-lg font-bold ${
-            criticalIncidents === 0 ? 'text-slate-600' : 'text-red-600'
-          }`}>
-            {criticalIncidents}
-          </div>
-          <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'} truncate`}>Critiques</div>
-        </div>
-      </div>
-
-      {/* Recent Incidents */}
-      {employeeIncidents.length > 0 && (
-        <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-700/30' : 'bg-slate-100'}`}>
-          <div className="flex justify-between items-center mb-1">
-            <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} truncate`}>
-              Derniers incidents
-            </span>
-          </div>
-          <div className="space-y-1">
-            {employeeIncidents.slice(-2).map((inc, idx) => (
-              <div key={idx} className={`text-xs p-1 rounded ${isDark ? 'bg-slate-600/50' : 'bg-white'}`}>
-                <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {QUICK_INCIDENTS.find(t => t.id === inc.type)?.icon} {inc.time} - {SEVERITY_LEVELS.find(s => s.id === inc.severity)?.label}
-                </span>
+                {day}
               </div>
             ))}
           </div>
+          
+          {/* Days grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((dayObj, index) => (
+              <button
+                key={index}
+                onClick={() => selectDay(dayObj)}
+                className={`
+                  h-8 w-8 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-105
+                  ${dayObj.isCurrentMonth 
+                    ? isDark ? 'text-white hover:bg-red-600' : 'text-slate-900 hover:bg-red-500 hover:text-white'
+                    : isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-500'
+                  }
+                  ${dayObj.isSelected 
+                    ? 'bg-red-600 text-white font-bold ring-2 ring-red-300 shadow-lg' 
+                    : ''
+                  }
+                  ${dayObj.isToday && !dayObj.isSelected
+                    ? isDark 
+                      ? 'bg-red-900/40 text-red-300 ring-1 ring-red-500' 
+                      : 'bg-red-100 text-red-800 ring-1 ring-red-300'
+                    : ''
+                  }
+                `}
+              >
+                {dayObj.day}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
-    </div>
-  );
-};
+        
+        {/* Quick Actions */}
+        <div className={`px-3 py-2 border-t ${
+          isDark ? 'border-slate-700 bg-slate-800/50' : 'border-red-100 bg-red-50/50'
+        }`}>
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => {
+                setSelectedDate(currentDate.toISOString().split('T')[0]);
+                setShowCalendar(false);
+              }}
+              className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
+                isDark 
+                  ? 'bg-red-600 hover:bg-red-700 text-white' 
+                  : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
+            >
+              Aujourd'hui
+            </button>
+            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              {formatDate(new Date(selectedDate), 'dd MMM yyyy')}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isDark = false }) => {
-  const [incidents, setIncidents] = useState(existingData?.incidents || []);
-  const [selectedDate, setSelectedDate] = useState(existingData?.date || new Date().toISOString().split('T')[0]);
-  const [weeklyTarget, setWeeklyTarget] = useState(existingData?.weeklyTarget || 3);
-  // Auto-calculate monthly target based on weekly (4 weeks)
-  const monthlyTarget = weeklyTarget * 4;
-  const [selectedEmployee, setSelectedEmployee] = useState('');
-
-  // Enhanced KPI calculation with severity weighting and instant penalty
-  const calculateKPI = () => {
-    if (incidents.length === 0) return 100; // Perfect score with no incidents
+  // Get monthly incidents for KPI calculation
+  const getMonthlyIncidents = () => {
+    const debutMois = obtenirPremierJourMois(selectedDate);
+    const finMois = obtenirDernierJourMois(selectedDate);
     
-    // INSTANT PENALTY: If exceeding weekly target, score drops to 0
-    if (incidents.length > weeklyTarget) {
+    return incidents.filter(incident => {
+      const incidentDate = new Date(incident.date);
+      return incidentDate >= debutMois && incidentDate <= finMois;
+    });
+  };
+
+  // Enhanced KPI calculation with severity weighting - MONTHLY
+  const calculateKPI = () => {
+    const monthlyIncidents = getMonthlyIncidents();
+    
+    if (monthlyIncidents.length === 0) return 100; // Perfect score with no incidents
+    
+    // INSTANT PENALTY: If exceeding monthly target, score drops to 0
+    if (monthlyIncidents.length > monthlyTarget) {
       return 0;
     }
     
@@ -280,7 +379,7 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
     const severityWeights = { minor: 5, moderate: 10, major: 20, critical: 40 };
     const totals = { minor: 0, moderate: 0, major: 0, critical: 0 };
     
-    incidents.forEach(inc => {
+    monthlyIncidents.forEach(inc => {
       if (totals[inc.severity] !== undefined) {
         totals[inc.severity]++;
       }
@@ -317,8 +416,8 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
   };
 
   const addQuickEmployee = (name) => {
-    // Set selected employee for quick incident creation
     setSelectedEmployee(name);
+    setShowAddForm(true);
   };
 
   const addIncident = (employee, type = 'equipment', severity = 'minor', description = '') => {
@@ -344,8 +443,8 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
   const getEmployeeStats = () => {
     const stats = {};
     DEFAULT_EMPLOYEES.forEach(emp => {
-      const empIncidents = incidents.filter(inc => inc.employee === emp);
-      stats[emp] = {
+      const empIncidents = incidents.filter(inc => inc.employee === emp.name);
+      stats[emp.name] = {
         total: empIncidents.length,
         critical: empIncidents.filter(inc => inc.severity === 'critical').length,
         today: empIncidents.filter(inc => inc.date === selectedDate).length
@@ -359,7 +458,6 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
     const safetyData = {
       value: kpiScore,
       date: selectedDate,
-      weeklyTarget,
       monthlyTarget,
       incidents,
       totalIncidents: incidents.length,
@@ -369,163 +467,313 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
     onSave('safety', 'safety_incidents', safetyData, '');
   };
 
+  // Obtenir couleur KPI basée sur l'objectif
+  const obtenirCouleurKPI = () => {
+    const currentKPI = calculateKPI();
+    if (currentKPI >= 90) return 'text-emerald-600';
+    if (currentKPI >= 70) return 'text-amber-600';
+    if (currentKPI >= 50) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
   const currentKPI = calculateKPI();
-  const totalIncidents = incidents.length;
-  const criticalIncidents = incidents.filter(inc => inc.severity === 'critical').length;
-  const isAtTarget = totalIncidents <= weeklyTarget;
+  const monthlyIncidents = getMonthlyIncidents();
+  const totalMonthlyIncidents = monthlyIncidents.length;
+  const criticalIncidents = monthlyIncidents.filter(inc => inc.severity === 'critical').length;
+  const isAtTarget = totalMonthlyIncidents <= monthlyTarget;
   const stats = getEmployeeStats();
+  const selectedDateObj = new Date(selectedDate);
+  const moisActuel = obtenirNomMois(selectedDate);
+  const anneeActuelle = new Date(selectedDate).getFullYear();
+
+  // Détection du mois actuel
+  const dateMoisSelectionne = new Date(selectedDate);
+  const estMoisActuel = dateMoisSelectionne.getMonth() === aujourdhui.getMonth() && 
+                       dateMoisSelectionne.getFullYear() === aujourdhui.getFullYear();
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div className={`w-full max-w-7xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden ${
-        isDark ? 'bg-slate-900' : 'bg-white'
-      }`}>
-        
-        {/* Header */}
-        <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
-                currentKPI >= 90 ? 'bg-gradient-to-br from-slate-500 to-slate-600' :
-                currentKPI >= 70 ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
-                currentKPI >= 50 ? 'bg-gradient-to-br from-orange-500 to-orange-600' :
-                'bg-gradient-to-br from-red-500 to-red-600'
-              }`}>
-                <Shield className="w-6 h-6 text-white" />
+    <>
+      <style>{scrollbarStyles}</style>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+        <div className={`w-full max-w-7xl h-[95vh] sm:h-[85vh] rounded-xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden border ${
+          isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-red-100'
+        }`}>
+          
+          {/* En-tête moderne */}
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b ${
+            isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-red-100'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className={`text-lg sm:text-xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
+                    Sécurité & Incidents
+                  </h1>
+                  <p className={`text-xs sm:text-sm ${isDark ? 'text-slate-400' : 'text-slate-700'} truncate`}>
+                    Suivi mensuel avec scoring de sécurité
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Sécurité & Incidents
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Suivi moderne des incidents de sécurité
-                </p>
-              </div>
-            </div>
-            
-            {/* Team Stats */}
-            <div className="flex items-center space-x-6">
-              <div className="text-center">
-                <div 
-                  className={`text-2xl font-bold cursor-help ${
-                    currentKPI >= 90 ? 'text-slate-600' :
-                    currentKPI >= 70 ? 'text-amber-500' :
-                    currentKPI >= 50 ? 'text-orange-500' : 'text-red-500'
-                  }`}
-                  title={`Formule Score Sécurité Globale:
+              
+              <div className="flex items-center space-x-3 sm:space-x-4 flex-shrink-0">
+                <div className="text-right">
+                  <div className={`text-xs font-medium uppercase tracking-wide ${
+                    isDark ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    KPI Mensuel
+                  </div>
+                  <div 
+                    className={`text-2xl sm:text-3xl font-light cursor-help transition-all hover:scale-105 ${obtenirCouleurKPI()}`}
+                    title={`🛡️ FORMULE SCORE SÉCURITÉ MENSUEL
 
-⚠️ RÈGLE CRITIQUE: Si incidents > ${weeklyTarget} → Score = 0% (échec instant)
+⚠️ RÈGLE CRITIQUE: Si incidents > ${monthlyTarget} → Score = 0% (échec instant)
 
-Si incidents ≤ ${weeklyTarget}:
+Si incidents ≤ ${monthlyTarget}:
 Score = 100 - (Pénalités par gravité)
 
-Pénalités par gravité:
+💥 PÉNALITÉS PAR GRAVITÉ:
 • Mineur: -5 points par incident
 • Modéré: -10 points par incident  
 • Majeur: -20 points par incident
 • Critique: -40 points par incident
 
-Situation actuelle:
-• Total incidents: ${totalIncidents} (limite: ${weeklyTarget})
-• Mineur: ${incidents.filter(i => i.severity === 'minor').length}
-• Modéré: ${incidents.filter(i => i.severity === 'moderate').length}
-• Majeur: ${incidents.filter(i => i.severity === 'major').length}
-• Critique: ${incidents.filter(i => i.severity === 'critical').length}
+📊 SITUATION MENSUELLE:
+• Mois: ${moisActuel} ${anneeActuelle}
+• Total incidents: ${totalMonthlyIncidents} (limite: ${monthlyTarget})
+• Mineur: ${monthlyIncidents.filter(i => i.severity === 'minor').length}
+• Modéré: ${monthlyIncidents.filter(i => i.severity === 'moderate').length}
+• Majeur: ${monthlyIncidents.filter(i => i.severity === 'major').length}
+• Critique: ${monthlyIncidents.filter(i => i.severity === 'critical').length}
 
-${totalIncidents > weeklyTarget ? '🚨 LIMITE DÉPASSÉE - SCORE = 0%' : `Score final: ${currentKPI}%`}
+📈 CALCUL DÉTAILLÉ:
+${totalMonthlyIncidents > monthlyTarget ? '🚨 LIMITE DÉPASSÉE - SCORE = 0%' : `Score final: ${currentKPI}%`}
 
-Limite mensuelle: ${monthlyTarget} (${weeklyTarget} × 4 semaines)`}
+🎯 OBJECTIF MENSUEL:
+• Limite: ${monthlyTarget} incidents maximum par mois
+
+💡 INTERPRÉTATION:
+• 90-100%: Sécurité excellente
+• 70-89%: Sécurité acceptable
+• 50-69%: Attention requise
+• <50%: Action corrective urgente
+
+${currentKPI >= 90 ? '✅ EXCELLENTE SÉCURITÉ' : currentKPI >= 70 ? '⚠️ SÉCURITÉ ACCEPTABLE' : currentKPI >= 50 ? '🚨 ATTENTION REQUISE' : '🆘 ACTION URGENTE'}`}
+                  >
+                    {currentKPI}%
+                  </div>
+                </div>
+                <button 
+                  onClick={onCancel} 
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-all flex-shrink-0"
                 >
-                  {currentKPI}%
-                </div>
-                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Score Sécurité
-                </div>
+                  <X className="w-4 h-4 text-red-600" />
+                </button>
               </div>
+            </div>
+          </div>
+
+          {/* Panneau de contrôle intelligent */}
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b ${
+            isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-red-50/50 border-red-100'
+          }`}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
               
-              <div className="text-center">
-                <div className={`text-2xl font-bold ${
-                  totalIncidents === 0 ? 'text-slate-600' : 'text-red-500'
+              {/* Sélecteur de date avec calendrier */}
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl border font-medium transition-all hover:scale-105 ${
+                      isDark 
+                        ? 'bg-slate-800 border-slate-600 text-white hover:border-red-500 shadow-lg' 
+                        : 'bg-white border-red-200 text-slate-900 hover:border-red-400 shadow-lg hover:shadow-xl'
+                    }`}
+                  >
+                    <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm">{formatDate(selectedDateObj, 'dd MMM yyyy')}</span>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${showCalendar ? 'rotate-90' : ''} flex-shrink-0`} />
+                  </button>
+
+                  {/* Custom Calendar Dropdown */}
+                  {showCalendar && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setShowCalendar(false)}
+                      />
+                      <CustomCalendar />
+                    </>
+                  )}
+                </div>
+                
+                <div className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium ${
+                  estMoisActuel 
+                    ? isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+                    : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                 }`}>
-                  {totalIncidents}
-                </div>
-                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Incidents
+                  {estMoisActuel ? '📅 Mois actuel' : '📋 Historique'}
                 </div>
               </div>
-              
-              <button onClick={onCancel} className={`p-2 rounded-lg transition-colors ${
-                isDark ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-900 hover:text-slate-800'
-              }`}>
-                <X className="w-5 h-5" />
+
+              {/* Métriques en temps réel */}
+              <div className="flex items-center space-x-4 overflow-x-auto">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    
+
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                   
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <div>
+
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Objectif modifiable */}
+                <div className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 rounded-xl border flex-shrink-0 ${
+                  isDark 
+                    ? 'bg-slate-800 border-slate-600' 
+                    : 'bg-white border-red-200'
+                }`}>
+                  <Target className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-600'} flex-shrink-0`} />
+                  <div className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'} hidden sm:block`}>Limite:</div>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setMonthlyTarget(Math.max(0, monthlyTarget - 1))}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-all text-xs font-bold ${
+                        isDark 
+                          ? 'bg-red-700 hover:bg-red-600 text-white' 
+                          : 'bg-red-100 hover:bg-red-200 text-red-700'
+                      }`}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={monthlyTarget}
+                      onChange={(e) => setMonthlyTarget(Math.max(0, Math.min(50, parseInt(e.target.value) || 0)))}
+                      className={`w-12 text-center text-sm font-semibold rounded-md py-1 outline-none ${
+                        isDark 
+                          ? 'bg-slate-700 border-slate-600 text-white focus:border-red-500' 
+                          : 'bg-white border-red-200 text-slate-900 focus:border-red-500'
+                      } border`}
+                    />
+                    <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>/mois</span>
+                    <button
+                      onClick={() => setMonthlyTarget(Math.min(50, monthlyTarget + 1))}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-all text-xs font-bold ${
+                        isDark 
+                          ? 'bg-red-700 hover:bg-red-600 text-white' 
+                          : 'bg-red-100 hover:bg-red-200 text-red-700'
+                      }`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton ajout */}
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all flex-shrink-0 ${
+                  showAddForm
+                    ? isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    : isDark ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm' : 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{showAddForm ? 'Annuler' : 'Signaler Incident'}</span>
+                  <span className="sm:hidden">{showAddForm ? 'Fermer' : 'Ajouter'}</span>
+                </div>
               </button>
             </div>
           </div>
-        </div>
 
-        <div className="flex h-[calc(90vh-160px)]">
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* Contenu principal */}
+          <div className="flex flex-col lg:flex-row flex-1 min-h-0">
             
-            {/* Quick Settings */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                />
+            {/* Formulaire d'ajout (si affiché) */}
+            {showAddForm && (
+              <div className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r flex flex-col ${
+                isDark 
+                  ? 'border-slate-700 bg-slate-800/30' 
+                  : 'border-red-100 bg-red-50/30'
+              }`}>
+                {/* Form Header */}
+                <div className="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0">
+                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Signaler un Incident
+                  </h3>
+                  <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                    Déclarez rapidement un incident de sécurité
+                  </p>
+                </div>
+                
+                {/* Scrollable Form Content */}
+                <div className={`flex-1 px-4 sm:px-6 overflow-y-auto custom-scrollbar ${
+                  isDark ? 'custom-scrollbar-dark' : 'custom-scrollbar-light'
+                }`}>
+                  <div className="pb-4">
+                    <IncidentForm 
+                      onAddIncident={addIncident}
+                      selectedEmployee={selectedEmployee}
+                      setSelectedEmployee={setSelectedEmployee}
+                      isDark={isDark}
+                      setShowAddForm={setShowAddForm}
+                    />
+                  </div>
+                </div>
               </div>
-              
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Limite Hebdo (Mensuel: {monthlyTarget})
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={weeklyTarget}
-                  onChange={(e) => setWeeklyTarget(Number(e.target.value))}
-                  className={`w-full px-3 py-2 rounded-lg border ${
-                    isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                />
-              </div>
-            </div>
+            )}
 
-            {/* Employee Safety Cards or Incidents List */}
-            {incidents.length > 0 ? (
-              <div>
-                <h4 className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  Incidents Signalés ({incidents.length})
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 min-w-0">
-                  {incidents.map(incident => (
+            {/* Liste des incidents ou état de sécurité */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className={`text-lg sm:text-xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
+                      {monthlyIncidents.length > 0 ? `Incidents de ${moisActuel}` : `État de Sécurité par Employé`}
+                    </h2>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'} truncate`}>
+                      {monthlyIncidents.length > 0 
+                        ? `${totalMonthlyIncidents} incident(s) • ${criticalIncidents} critique(s) • Score: ${currentKPI}%`
+                        : `Surveillance de la sécurité de l'équipe • Limite: ${monthlyTarget} incidents/mois`
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {monthlyIncidents.length > 0 ? (
+                <div className="space-y-3">
+                  {monthlyIncidents.map(incident => (
                     <IncidentCard
                       key={incident.id}
                       incident={incident}
                       onDelete={removeIncident}
                       isDark={isDark}
+                      getEmployeeColor={getEmployeeColor}
                     />
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div>
-                <h4 className={`text-lg font-bold mb-4 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  État de Sécurité par Employé
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 min-w-0">
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                   {DEFAULT_EMPLOYEES.map(employee => (
                     <EmployeeSafetyCard
-                      key={employee}
+                      key={employee.name}
                       employee={employee}
                       incidents={incidents}
                       onQuickAdd={addQuickEmployee}
@@ -534,92 +782,255 @@ Limite mensuelle: ${monthlyTarget} (${weeklyTarget} × 4 semaines)`}
                     />
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className={`w-80 border-l ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
-            <div className="p-4 space-y-3">
-              <h4 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                Signaler Incident
-              </h4>
-
-              {/* Quick Incident Form */}
-              <IncidentForm 
-                onAddIncident={addIncident}
-                selectedEmployee={selectedEmployee}
-                setSelectedEmployee={setSelectedEmployee}
-                isDark={isDark}
-              />
-
-              {/* Compact Team Overview */}
-              {Object.keys(stats).some(emp => stats[emp].total > 0) && (
-                <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
-                  <h5 className={`text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Résumé
-                  </h5>
-                  
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Incidents:</span>
-                      <span className={isDark ? 'text-slate-200' : 'text-slate-800'}>{totalIncidents}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Critiques:</span>
-                      <span className={`font-semibold ${criticalIncidents === 0 ? 'text-slate-500' : 'text-red-500'}`}>
-                        {criticalIncidents}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Score:</span>
-                      <span className={`font-semibold ${
-                        currentKPI >= 90 ? 'text-slate-500' :
-                        currentKPI >= 70 ? 'text-amber-500' :
-                        currentKPI >= 50 ? 'text-orange-500' : 'text-red-500'
-                      }`}>
-                        {currentKPI}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className={`px-6 py-4 border-t flex-shrink-0 ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex justify-between items-center">
-            <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'} flex-1 min-w-0 pr-4`}>
-              <span className="truncate">
-                Score: <span className={`font-bold ${
-                  totalIncidents > weeklyTarget ? 'text-red-600' :
-                  currentKPI >= 90 ? 'text-slate-600' :
-                  currentKPI >= 70 ? 'text-amber-600' :
-                  currentKPI >= 50 ? 'text-orange-600' : 'text-red-600'
-                }`}>
-                  {currentKPI}%
-                </span> • {totalIncidents}/{weeklyTarget} incidents {totalIncidents > weeklyTarget ? '(LIMITE DÉPASSÉE)' : ''} • {criticalIncidents} critique(s)
+          {/* Pied de page */}
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex-shrink-0 ${
+            isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-red-100'
+          }`}>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                <div className={`flex items-center space-x-2 ${obtenirCouleurKPI()}`}>
+                  <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium">{currentKPI}% Score Sécurité</span>
+                </div>
+                <div className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  {totalMonthlyIncidents}/{monthlyTarget} incidents • {criticalIncidents} critique(s)
+                </div>
+                <div className={`font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  {moisActuel} {anneeActuelle}
+                </div>
+              </div>
+              
+              <div className="flex space-x-3 flex-shrink-0">
+                <button
+                  onClick={onCancel}
+                  className={`px-4 py-2 rounded-lg border font-medium text-sm transition-all ${
+                    isDark 
+                      ? 'border-red-600 hover:border-red-500 hover:bg-red-900/20 text-red-400' 
+                      : 'border-red-200 hover:border-red-300 hover:bg-red-50 text-red-700'
+                  }`}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className={`px-6 py-2 rounded-lg font-medium text-sm transition-all flex items-center space-x-2 shadow-sm ${
+                    isDark 
+                      ? 'bg-red-600 hover:bg-red-700 text-white' 
+                      : 'bg-red-600 hover:bg-red-700 text-white'
+                  }`}
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Enregistrer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// Incident Card Component with modern styling
+const IncidentCard = ({ incident, onDelete, isDark, getEmployeeColor }) => {
+  const getTypeData = (type) => QUICK_INCIDENTS.find(t => t.id === type);
+  const getSeverityData = (severity) => SEVERITY_LEVELS.find(s => s.id === severity);
+  
+  const typeData = getTypeData(incident.type);
+  const severityData = getSeverityData(incident.severity);
+
+  // Simplified severity indicator - just a colored dot
+  const getSeverityIndicator = () => {
+    const colors = {
+      minor: 'bg-emerald-500',
+      moderate: 'bg-amber-500', 
+      major: 'bg-orange-500',
+      critical: 'bg-red-500'
+    };
+    return colors[incident.severity] || colors.minor;
+  };
+
+  return (
+    <div className={`group p-4 rounded-xl border transition-all duration-200 hover:shadow-lg ${
+      isDark 
+        ? 'bg-slate-800/50 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800' 
+        : 'bg-white/80 border-slate-200/50 hover:border-slate-300 hover:bg-white'
+    }`}>
+      
+      {/* Header Row */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          {/* Subtle Employee Avatar */}
+          <div className={`w-9 h-9 rounded-lg bg-gradient-to-r ${getEmployeeColor(incident.employee)} flex items-center justify-center flex-shrink-0 text-white text-sm font-medium shadow-sm`}>
+            {incident.employee.charAt(0).toUpperCase()}
+          </div>
+          
+          {/* Employee Name & Type */}
+          <div>
+            <div className="flex items-center space-x-2">
+              <h4 className={`font-medium text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                {incident.employee}
+              </h4>
+              <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                • {typeData?.label}
               </span>
             </div>
-            
-            <div className="flex space-x-3 flex-shrink-0">
-              <button
-                onClick={onCancel}
-                className={`px-4 py-2 rounded-lg ${isDark ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="px-6 py-2 rounded-lg font-medium bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700"
-              >
-                Enregistrer
-              </button>
+            <div className="flex items-center space-x-2 mt-0.5">
+              {/* Severity Indicator Dot */}
+              <div className={`w-2 h-2 rounded-full ${getSeverityIndicator()}`}></div>
+              <span className={`text-xs capitalize ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {severityData?.label}
+              </span>
+              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                {incident.time}
+              </span>
             </div>
+          </div>
+        </div>
+        
+        {/* Delete Button */}
+        <button
+          onClick={() => onDelete(incident.id)}
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 ${
+            isDark 
+              ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' 
+              : 'hover:bg-red-50 text-slate-400 hover:text-red-500'
+          }`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      
+      {/* Description */}
+      <div className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+        {incident.description}
+      </div>
+    </div>
+  );
+};
+
+// Employee Safety Card Component with modern styling and colorful avatars
+const EmployeeSafetyCard = ({ employee, incidents, onQuickAdd, isDark, calculateEmployeeSafetyKPI }) => {
+  const employeeIncidents = incidents.filter(inc => inc.employee === employee.name);
+  const criticalIncidents = employeeIncidents.filter(inc => inc.severity === 'critical').length;
+  const totalIncidents = employeeIncidents.length;
+  const employeeSafetyScore = calculateEmployeeSafetyKPI(employeeIncidents);
+  
+  const getSafetyStatus = () => {
+    if (criticalIncidents > 0) return { status: 'critical', color: 'red', level: 'critical' };
+    if (employeeSafetyScore < 60) return { status: 'danger', color: 'red', level: 'high' };
+    if (employeeSafetyScore < 80) return { status: 'warning', color: 'orange', level: 'medium' };
+    if (totalIncidents > 0) return { status: 'caution', color: 'amber', level: 'low' };
+    return { status: 'safe', color: 'slate', level: 'none' };
+  };
+
+  const safetyStatus = getSafetyStatus();
+
+  return (
+    <div className={`p-3 rounded-xl border transition-all hover:shadow-lg ${
+      isDark 
+        ? 'bg-slate-800 border-slate-700 hover:border-red-500/50' 
+        : 'bg-white border-slate-200 hover:border-red-300'
+    }`}>
+      <div className="flex items-start space-x-3">
+        {/* Avatar employé avec couleurs vives */}
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${employee.color} flex items-center justify-center flex-shrink-0 text-white font-bold shadow-lg`}>
+          {employee.name.charAt(0).toUpperCase()}
+        </div>
+        
+        {/* Contenu principal */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center space-x-2 mb-2">
+                <h4 className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
+                  {employee.name}
+                </h4>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  safetyStatus.color === 'red' ? (isDark ? 'bg-red-900/50 text-red-400' : 'bg-red-100 text-red-700') :
+                  safetyStatus.color === 'orange' ? (isDark ? 'bg-orange-900/50 text-orange-400' : 'bg-orange-100 text-orange-700') :
+                  safetyStatus.color === 'amber' ? (isDark ? 'bg-amber-900/50 text-amber-400' : 'bg-amber-100 text-amber-700') :
+                  isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {safetyStatus.status === 'critical' ? '🚨' :
+                   safetyStatus.status === 'danger' ? '⚠️' :
+                   safetyStatus.status === 'warning' ? '⚠️' :
+                   safetyStatus.status === 'caution' ? '⚠️' :
+                   '✅'}
+                </span>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Score:
+                  </span>
+                  <div 
+                    className={`text-sm font-bold cursor-help ${
+                      employeeSafetyScore >= 90 ? 'text-emerald-600' :
+                      employeeSafetyScore >= 70 ? 'text-amber-600' :
+                      employeeSafetyScore >= 50 ? 'text-orange-600' : 'text-red-600'
+                    }`}
+                    title={`Score Sécurité Individuel:
+
+Score = 100 - (Pénalités par Gravité)
+
+Pénalités par incident:
+• Mineur: -5 points
+• Modéré: -10 points  
+• Majeur: -20 points
+• Critique: -40 points
+
+Incidents de ${employee.name}:
+• Mineur: ${employeeIncidents.filter(i => i.severity === 'minor').length}
+• Modéré: ${employeeIncidents.filter(i => i.severity === 'moderate').length}
+• Majeur: ${employeeIncidents.filter(i => i.severity === 'major').length}
+• Critique: ${employeeIncidents.filter(i => i.severity === 'critical').length}
+
+Score final: ${employeeSafetyScore}%`}
+                  >
+                    {employeeSafetyScore}%
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Total:
+                  </span>
+                  <div className={`text-sm font-medium ${
+                    totalIncidents === 0 ? 'text-slate-600' : 'text-red-600'
+                  }`}>
+                    {totalIncidents}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Critiques:
+                  </span>
+                  <div className={`text-sm font-medium ${
+                    criticalIncidents === 0 ? 'text-slate-600' : 'text-red-600'
+                  }`}>
+                    {criticalIncidents}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => onQuickAdd(employee.name)}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
+                isDark 
+                  ? 'hover:bg-red-900/30 text-red-400' 
+                  : 'hover:bg-red-50 text-red-500'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -627,8 +1038,8 @@ Limite mensuelle: ${monthlyTarget} (${weeklyTarget} × 4 semaines)`}
   );
 };
 
-// Separate Incident Form Component
-const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, isDark }) => {
+// Separate Incident Form Component with modern styling
+const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, isDark, setShowAddForm }) => {
   const [incidentData, setIncidentData] = useState({
     type: 'equipment',
     severity: 'minor',
@@ -641,41 +1052,46 @@ const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, is
     onAddIncident(selectedEmployee, incidentData.type, incidentData.severity, incidentData.description);
     setIncidentData({ type: 'equipment', severity: 'minor', description: '' });
     setSelectedEmployee('');
+    setShowAddForm(false);
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
-        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          Employé
+        <label className={`block text-xs font-medium mb-1 ${
+          isDark ? 'text-slate-300' : 'text-slate-700'
+        }`}>
+          Employé concerné
         </label>
         <select
           value={selectedEmployee}
           onChange={(e) => setSelectedEmployee(e.target.value)}
-          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${
+          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${
             isDark 
-              ? 'bg-slate-700 border-slate-600 text-white' 
-              : 'bg-white border-slate-300 text-slate-900'
+              ? 'bg-slate-800 border-slate-600 text-white' 
+              : 'bg-white border-red-200 text-slate-900'
           }`}
         >
-          <option value="">Sélectionner...</option>
+          <option value="">Sélectionner un employé...</option>
           {DEFAULT_EMPLOYEES.map(emp => (
-            <option key={emp} value={emp}>{emp}</option>
+            <option key={emp.name} value={emp.name}>{emp.name}</option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        <label className={`block text-xs font-medium mb-1 ${
+          isDark ? 'text-slate-300' : 'text-slate-700'
+        }`}>
           Type d'incident
         </label>
         <select
           value={incidentData.type}
           onChange={(e) => setIncidentData(prev => ({ ...prev, type: e.target.value }))}
-          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${
+          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${
             isDark 
-              ? 'bg-slate-700 border-slate-600 text-white' 
-              : 'bg-white border-slate-300 text-slate-900'
+              ? 'bg-slate-800 border-slate-600 text-white' 
+              : 'bg-white border-red-200 text-slate-900'
           }`}
         >
           {QUICK_INCIDENTS.map(type => (
@@ -685,16 +1101,18 @@ const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, is
       </div>
 
       <div>
-        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          Gravité
+        <label className={`block text-xs font-medium mb-1 ${
+          isDark ? 'text-slate-300' : 'text-slate-700'
+        }`}>
+          Niveau de gravité
         </label>
         <select
           value={incidentData.severity}
           onChange={(e) => setIncidentData(prev => ({ ...prev, severity: e.target.value }))}
-          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${
+          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${
             isDark 
-              ? 'bg-slate-700 border-slate-600 text-white' 
-              : 'bg-white border-slate-300 text-slate-900'
+              ? 'bg-slate-800 border-slate-600 text-white' 
+              : 'bg-white border-red-200 text-slate-900'
           }`}
         >
           {SEVERITY_LEVELS.map(level => (
@@ -704,18 +1122,20 @@ const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, is
       </div>
 
       <div>
-        <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-          Description
+        <label className={`block text-xs font-medium mb-1 ${
+          isDark ? 'text-slate-300' : 'text-slate-700'
+        }`}>
+          Description détaillée
         </label>
         <textarea
           value={incidentData.description}
           onChange={(e) => setIncidentData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Décrire l'incident..."
-          rows="3"
-          className={`w-full px-2 py-1.5 text-xs rounded-lg border resize-none ${
+          placeholder="Décrivez l'incident en détail..."
+          rows="4"
+          className={`w-full px-3 py-2 rounded-lg border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500 ${
             isDark 
-              ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
-              : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500'
+              ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400' 
+              : 'bg-white border-red-200 text-slate-900 placeholder-slate-500'
           }`}
         />
       </div>
@@ -723,14 +1143,36 @@ const IncidentForm = ({ onAddIncident, selectedEmployee, setSelectedEmployee, is
       <button
         onClick={handleSubmit}
         disabled={!selectedEmployee || !incidentData.description.trim()}
-        className={`w-full py-2 text-sm font-medium rounded-lg transition-colors ${
+        className={`w-full py-3 font-medium rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 ${
           selectedEmployee && incidentData.description.trim()
-            ? 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'
-            : isDark ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+            ? isDark 
+              ? 'bg-red-600 hover:bg-red-700 text-white'
+              : 'bg-red-600 hover:bg-red-700 text-white'
+            : 'bg-slate-400 text-white cursor-not-allowed'
         }`}
       >
-        Signaler Incident
+        <div className="flex items-center justify-center space-x-2">
+          <AlertTriangle className="w-4 h-4" />
+          <span>Signaler l'Incident</span>
+        </div>
       </button>
+
+      {/* Info section */}
+      <div className={`p-3 rounded-lg border ${
+        isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-red-50 border-red-200'
+      }`}>
+        <div className="flex items-center space-x-2 mb-2">
+          <Shield className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+          <p className={`text-xs font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>
+            Impact Sécurité
+          </p>
+        </div>
+        <div className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <div>• Chaque incident impacte le score mensuel</div>
+          <div>• Soyez précis dans la description</div>
+          <div>• Les incidents critiques ont un impact majeur</div>
+        </div>
+      </div>
     </div>
   );
 };

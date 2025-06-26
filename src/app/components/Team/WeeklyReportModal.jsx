@@ -34,7 +34,7 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
     // Get current week data
     const currentWeek = weekNumber || getWeekNumber(new Date());
     
-    // Extract real data from KPI structure
+    // Extract real data from KPI structure using the correct property names
     const attendanceData = (analytics['team_productivity_attendance'] || []).filter(entry => 
       getWeekNumber(new Date(entry.date)) === currentWeek
     );
@@ -52,8 +52,15 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
       ? Math.round(attendanceData.reduce((sum, entry) => sum + (entry.value || 0), 0) / attendanceData.length)
       : 0;
 
-    const totalIncidents = safetyData.reduce((sum, entry) => sum + (entry.data?.totalIncidents || 0), 0);
-    const latestSafetyScore = safetyData.length > 0 ? safetyData[safetyData.length - 1].value : 100;
+    // For safety, get the latest safety score and count total incidents
+    const latestSafetyEntry = safetyData.length > 0 ? safetyData[safetyData.length - 1] : null;
+    const safetyScore = latestSafetyEntry?.value || 100;
+    const totalIncidents = safetyData.reduce((sum, entry) => {
+      if (entry.data?.incidents) {
+        return sum + entry.data.incidents.length;
+      }
+      return sum + (entry.data?.totalIncidents || 0);
+    }, 0);
     
     const efficiencyAvg = efficiencyData.length > 0
       ? Math.round(efficiencyData.reduce((sum, entry) => sum + (entry.value || 0), 0) / efficiencyData.length)
@@ -87,26 +94,28 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
       });
     });
 
-    // Process safety data
+    // Process safety data - incidents are stored differently
     safetyData.forEach(entry => {
-      (entry.data?.incidents || []).forEach(incident => {
-        if (incident.employee?.trim()) {
-          if (!allEmployees.has(incident.employee)) {
-            allEmployees.set(incident.employee, {
-              name: incident.employee,
-              productivity: [],
-              incidents: 0,
-              efficiency: [],
-              workHours: 0,
-              tasks: [],
-              daysActive: 0,
-              attendanceDays: 0
-            });
+      if (entry.data?.incidents) {
+        entry.data.incidents.forEach(incident => {
+          if (incident.employee?.trim()) {
+            if (!allEmployees.has(incident.employee)) {
+              allEmployees.set(incident.employee, {
+                name: incident.employee,
+                productivity: [],
+                incidents: 0,
+                efficiency: [],
+                workHours: 0,
+                tasks: [],
+                daysActive: 0,
+                attendanceDays: 0
+              });
+            }
+            const employee = allEmployees.get(incident.employee);
+            employee.incidents++;
           }
-          const employee = allEmployees.get(incident.employee);
-          employee.incidents++;
-        }
-      });
+        });
+      }
     });
 
     // Process efficiency data
@@ -156,9 +165,14 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
         attendance: attendanceData.find(entry => 
           new Date(entry.date).toDateString() === date.toDateString()
         )?.value || 0,
-        incidents: safetyData.find(entry => 
-          new Date(entry.date).toDateString() === date.toDateString()
-        )?.data?.totalIncidents || 0,
+        incidents: safetyData.filter(entry => {
+          const entryDate = new Date(entry.date).toDateString();
+          const targetDate = date.toDateString();
+          if (entryDate === targetDate && entry.data?.incidents) {
+            return entry.data.incidents.length;
+          }
+          return 0;
+        }).reduce((sum, entry) => sum + (entry.data?.incidents?.length || 0), 0),
         efficiency: efficiencyData.find(entry => 
           new Date(entry.date).toDateString() === date.toDateString()
         )?.value || 0
@@ -170,7 +184,7 @@ export const WeeklyReportModal = ({ analytics, isDark, onClose, weekNumber }) =>
       weekNumber: currentWeek,
       attendanceAvg,
       totalIncidents,
-      safetyScore: latestSafetyScore,
+      safetyScore: safetyScore,
       efficiencyAvg,
       employees: employeeArray,
       dailyBreakdown,

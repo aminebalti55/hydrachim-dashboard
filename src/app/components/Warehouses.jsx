@@ -1,40 +1,25 @@
-import React, { useContext, useState, useMemo } from 'react';
+import React, { useContext, useState, useMemo, useEffect } from 'react';
 import {
   Package,
   Plus,
   Target,
   TrendingUp,
-  BarChart3,
-  Clock,
   CheckCircle,
   AlertTriangle,
   X,
-  ArrowUpRight,
   CheckCircle2,
-  Sparkles,
-  Calculator,
-  Info,
-  Save,
-  Truck,
-  Zap,
-  Activity,
-  Eye,
   Calendar,
   FileText,
-  Boxes,
-  Warehouse,
-  Gauge,
-  RotateCcw,
   Euro,
-  DollarSign,
-  Wallet
 } from 'lucide-react';
 import { kpiDefinitions } from '../utils/kpiDefinitions';
-import { useKPIData } from '../hook/useKPIData';
+import { useWarehouseData } from '../hooks/useWarehouseData';
 import { KPIForm } from '../components/KPIForm';
-import { ChartDisplay } from '../components/ChartDisplay';
 import { AppContext } from '../context/AppContext';
-import ReactECharts from 'echarts-for-react';
+
+// Import the warehouse components
+import WarehouseChartsSection from './warehouse/WarehouseChartsSection';
+import WarehouseMonthlyReport from './warehouse/WarehouseMonthlyReport';
 import CostTracker from './warehouse/CostTracker';
 import StockIssuesTracker from './warehouse/StockIssuesTracker';
 
@@ -45,329 +30,6 @@ const kpiStatusDisplayFr = {
   'fair': 'Passable',
   'needs-attention': 'Attention Requise',
   'no-data': 'Aucune Donnée'
-};
-
-// Weekly Report Modal for Warehouse
-const WarehouseWeeklyReportModal = ({ analytics, isDark, onClose }) => {
-  const weeklyData = useMemo(() => {
-    if (!analytics) return null;
-
-    const currentWeek = new Date();
-    const weekStart = new Date(currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay()));
-    
-    const warehouseData = analytics.warehouse || [];
-
-    const weekWarehouse = warehouseData.filter(entry => 
-      new Date(entry.date) >= weekStart
-    );
-
-    const avgWarehouse = weekWarehouse.length > 0 
-      ? Math.round(weekWarehouse.reduce((sum, entry) => sum + entry.value, 0) / weekWarehouse.length)
-      : 0;
-
-    const totalCost = weekWarehouse.reduce((sum, entry) => sum + (entry.totalCost || 0), 0);
-    const budgetUtilization = weekWarehouse.reduce((sum, entry) => sum + (entry.budgetUtilization || 0), 0) / weekWarehouse.length || 0;
-
-    return {
-      weekNumber: Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000)),
-      avgWarehouse,
-      totalCost,
-      budgetUtilization: Math.round(budgetUtilization),
-      weekWarehouse
-    };
-  }, [analytics]);
-
-  if (!weeklyData) {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
-          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-        }`}>
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
-              isDark ? 'bg-slate-700' : 'bg-slate-100'
-            }`}>
-              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-            </div>
-            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
-            </h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'entrepôt trouvée pour cette semaine.
-            </p>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className={`w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
-        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-      }`}>
-        
-        {/* Header */}
-        <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Hebdomadaire Entrepôt - Semaine {weeklyData.weekNumber}
-                </h2>
-                <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Analyse complète des performances logistiques et budgétaires
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
-                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-          <div className="p-8 space-y-8">
-            
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-violet-600 flex items-center justify-center">
-                    <Package className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Performance Budget
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.avgWarehouse}%
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  gestion budgétaire
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center">
-                    <Euro className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Coût Total
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.totalCost.toLocaleString()}€
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  matières & emballage
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                    <Target className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Utilisation Budget
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.budgetUtilization}%
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  du budget alloué
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Section */}
-            <div className={`p-6 rounded-xl border ${
-              isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-violet-50/50 border-slate-200'
-            }`}>
-              <h3 className={`text-lg font-semibold mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Résumé de la Semaine
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Réussites
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {weeklyData.avgWarehouse >= 90 && <li>• Budget respecté</li>}
-                    {weeklyData.budgetUtilization <= 100 && <li>• Gestion optimisée</li>}
-                    {weeklyData.totalCost > 0 && <li>• Coûts maîtrisés</li>}
-                    <li>• Suivi transparent</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Points d'Attention
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {weeklyData.avgWarehouse < 80 && <li>• Performance à améliorer</li>}
-                    {weeklyData.budgetUtilization > 100 && <li>• Dépassement budget</li>}
-                    {weeklyData.totalCost === 0 && <li>• Aucun coût enregistré</li>}
-                    <li>• Révision périodique</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Actions Recommandées
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    <li>• Optimiser les achats</li>
-                    <li>• Négocier les prix</li>
-                    <li>• Surveiller les coûts</li>
-                    <li>• Planifier les budgets</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Monthly Report Modal for Warehouse
-const WarehouseMonthlyReportModal = ({ analytics, isDark, onClose }) => {
-  const monthlyData = useMemo(() => {
-    if (!analytics) return null;
-
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    const monthData = {
-      warehouse: (analytics.warehouse || []).filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-      })
-    };
-
-    const avgWarehouse = monthData.warehouse.length > 0 
-      ? Math.round(monthData.warehouse.reduce((sum, entry) => sum + entry.value, 0) / monthData.warehouse.length)
-      : 0;
-
-    return {
-      monthName: new Date(currentYear, currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
-      avgWarehouse,
-      monthData
-    };
-  }, [analytics]);
-
-  if (!monthlyData) {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
-          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-        }`}>
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
-              isDark ? 'bg-slate-700' : 'bg-slate-100'
-            }`}>
-              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-            </div>
-            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
-            </h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'entrepôt trouvée pour ce mois.
-            </p>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className={`w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
-        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-      }`}>
-        
-        {/* Header */}
-        <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Mensuel Entrepôt - {monthlyData.monthName}
-                </h2>
-                <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Analyse mensuelle complète des performances logistiques
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
-                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-          <div className="p-8">
-            <div className="text-center">
-              <h3 className={`text-xl font-semibold mb-8 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Résumé Mensuel - {monthlyData.monthName}
-              </h3>
-              <div className="max-w-sm mx-auto">
-                <div className={`p-8 rounded-xl border ${
-                  isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <h4 className={`font-medium mb-4 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Performance Budget
-                  </h4>
-                  <div className={`text-4xl font-bold ${isDark ? 'text-violet-400' : 'text-violet-600'}`}>
-                    {monthlyData.avgWarehouse}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 // Enhanced Warehouse KPI Selector Component
@@ -623,20 +285,22 @@ export const WarehousesPage = () => {
 
   const [showKPIForm, setShowKPIForm] = useState(false);
   const [selectedKPI, setSelectedKPI] = useState(null);
-  const [showReports, setShowReports] = useState(false);
-  const [reportType, setReportType] = useState('weekly');
-  const [showReportsMenu, setShowReportsMenu] = useState(false);
+  const [showMonthlyReportModal, setShowMonthlyReportModal] = useState(false);
+  const [warehouseAnalytics, setWarehouseAnalytics] = useState(null);
 
+  // Use the new Supabase-based hook
   const {
     kpiData,
     updateKPIValue,
     getKPIHistory,
     getDepartmentSummary,
     getKPITrend,
-    getWarehouseAnalytics,
     getLatestKPIValue,
-    isLoading
-  } = useKPIData();
+    getAnalyticsData,
+    isLoading,
+    error,
+    refreshData
+  } = useWarehouseData();
 
   const departmentId = 'warehouses';
   const department = kpiDefinitions[departmentId];
@@ -646,8 +310,19 @@ export const WarehousesPage = () => {
     return getDepartmentSummary(departmentId);
   }, [getDepartmentSummary, departmentId, kpiData]);
 
-  const getWarehouseAnalyticsData = () => {
-    return getWarehouseAnalytics(departmentId);
+  // Load analytics data when modal is opened
+  const handleOpenMonthlyReport = async () => {
+    try {
+      setShowMonthlyReportModal(true);
+      const analyticsData = await getAnalyticsData(12);
+      setWarehouseAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Error loading warehouse analytics:', error);
+      setWarehouseAnalytics({
+        cost_per_formulation: [],
+        stock_issues_rate: []
+      });
+    }
   };
 
   const handleAddData = (specificKPI = null) => {
@@ -655,18 +330,14 @@ export const WarehousesPage = () => {
       setSelectedKPI(specificKPI);
       setShowKPIForm(true);
     } else {
-      setSelectedKPI(null);
+      setSelectedKPI(null); 
       setShowKPIForm(true);
     }
   };
 
-  const handleSaveKPI = async (deptId, kpiId, value, notes) => {
+  const handleSaveKPI = async (deptId, kpiId, value, notes, additionalData) => {
     try {
-      await updateKPIValue(deptId, kpiId, value, notes);
-      setTimeout(() => {
-        console.log('KPI sauvegardé avec succès :', { deptId, kpiId, value, notes });
-        console.log('Données localStorage actuelles :', localStorage.getItem('hydrachim_kpi_data'));
-      }, 100);
+      await updateKPIValue(deptId, kpiId, value, notes, additionalData);
       setShowKPIForm(false);
       setSelectedKPI(null);
     } catch (error) {
@@ -681,7 +352,6 @@ export const WarehousesPage = () => {
   };
 
   const getStats = () => {
-    // Calculate stats based on the updated KPI structure - only cost KPI
     const kpisWithData = departmentKPIs.filter(kpi => {
       const latestValue = getLatestKPIValue(departmentId, kpi.id);
       return latestValue !== null;
@@ -690,29 +360,18 @@ export const WarehousesPage = () => {
     const excellentKpis = departmentKPIs.filter(kpi => {
       const latestValue = getLatestKPIValue(departmentId, kpi.id);
       if (!latestValue) return false;
-      
-      // For cost tracking, 100% is excellent (within budget)
-      if (kpi.id === 'cost_per_formulation') {
-        return latestValue.value === 100;
-      }
-      
+      if (kpi.id === 'cost_per_formulation') return latestValue.value === 100;
       return latestValue.value >= kpi.target;
     });
 
     const needsAttentionKpis = departmentKPIs.filter(kpi => {
       const latestValue = getLatestKPIValue(departmentId, kpi.id);
       if (!latestValue) return false;
-      
-      // For cost tracking, 0% needs attention (over budget)
-      if (kpi.id === 'cost_per_formulation') {
-        return latestValue.value === 0;
-      }
-      
+      if (kpi.id === 'cost_per_formulation') return latestValue.value === 0;
       const tolerance = kpi.target * 0.2;
       return latestValue.value < (kpi.target - tolerance);
     });
 
-    // Calculate overall efficiency based on budget performance
     let efficiency = 0;
     if (kpisWithData.length > 0) {
       const costKPI = kpisWithData.find(kpi => kpi.id === 'cost_per_formulation');
@@ -758,7 +417,7 @@ export const WarehousesPage = () => {
     ];
   };
 
-  const generateChartData = () => {
+  const generateChartDataForWarehouseCharts = () => {
     const trendData = [];
     const categoryData = [];
 
@@ -779,145 +438,92 @@ export const WarehousesPage = () => {
           name: kpi.name?.fr || kpi.name?.en || kpi.id,
           value: latest.value,
           target: kpi.target,
-          progress: latest.value // For cost KPI, the value is already a percentage
+          progress: kpi.id === 'cost_per_formulation' ? latest.value : Math.min(100, (latest.value / (kpi.target || 1)) * 100)
         });
       }
     });
-
     return { trendData, categoryData };
   };
-
-  const { trendData, categoryData } = useMemo(generateChartData, [
+  
+  const { trendData, categoryData } = useMemo(generateChartDataForWarehouseCharts, [
     departmentKPIs, getKPIHistory, getKPITrend, departmentId, kpiData
   ]);
-
-  const renderKPIChart = (kpi) => {
-    const history = getKPIHistory(departmentId, kpi.id);
-    if (history.length === 0) return null;
-
-    const chartData = history.slice(0, 10).reverse().map(entry => ({
-      date: new Date(entry.date).toLocaleDateString('fr-FR'),
-      value: entry.value,
-      target: kpi.target
-    }));
-
-    const chartOptions = {
-      backgroundColor: 'transparent',
-      textStyle: {
-        color: isDark ? '#E2E8F0' : '#475569',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '15%',
-        top: '10%',
-        containLabel: true
-      },
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-        borderColor: isDark ? '#475569' : '#E2E8F0',
-        borderWidth: 1,
-        textStyle: {
-          color: isDark ? '#E2E8F0' : '#1E293B'
-        }
-      },
-      xAxis: {
-        type: 'category',
-        data: chartData.map(item => item.date),
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-      },
-      yAxis: {
-        type: 'value',
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-      },
-      series: [
-        {
-          name: kpi.name?.fr || kpi.name?.en,
-          type: 'line',
-          data: chartData.map(item => item.value),
-          smooth: true,
-          lineStyle: { color: '#8B5CF6', width: 3 },
-          itemStyle: { color: '#8B5CF6' },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 0, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#8B5CF640' },
-                { offset: 1, color: '#8B5CF610' }
-              ]
-            }
-          }
-        },
-        {
-          name: 'Cible',
-          type: 'line',
-          data: chartData.map(item => item.target),
-          lineStyle: { color: '#F59E0B', type: 'dashed', width: 2 },
-          itemStyle: { color: '#F59E0B' },
-          symbol: 'none'
-        }
-      ]
-    };
-
-    return (
-      <div key={kpi.id} className={`p-6 rounded-xl border ${
-        isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'
-      }`}>
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-violet-600 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              {kpi.name?.fr || kpi.name?.en}
-            </h3>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Évolution sur 10 dernières entrées
-            </p>
-          </div>
-        </div>
-        
-        <ReactECharts 
-          option={chartOptions} 
-          style={{ height: '300px' }}
-          opts={{ renderer: 'svg' }}
-        />
-      </div>
-    );
-  };
 
   const stats = getStats();
   const deptName = department?.name?.fr || department?.name?.en || 'Entrepôts & Logistique';
 
-  React.useEffect(() => {
-    console.log('Page Entrepôts montée. Données localStorage actuelles :', localStorage.getItem('hydrachim_kpi_data'));
+  useEffect(() => {
+    console.log('Page Entrepôts montée avec Supabase');
     console.log('État kpiData actuel :', kpiData);
     console.log('Résumé du département :', departmentSummary);
   }, [kpiData, departmentSummary]);
+
+  const getKPIIcon = (kpiId) => {
+    if (kpiId === 'cost_per_formulation') {
+      return Euro;
+    } else if (kpiId === 'stock_issues_rate') {
+      return AlertTriangle;
+    } else {
+      return Package; 
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className={`text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Chargement des données d'entrepôt...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Erreur de chargement
+          </h2>
+          <p className={`text-sm mb-4 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+            {error}
+          </p>
+          <button
+            onClick={refreshData}
+            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
       <div className="max-w-7xl mx-auto p-6 space-y-8">
 
-        {/* KPI Form Modal */}
+        {/* KPI Form Modal Logic */}
         {showKPIForm && (
           <>
             {selectedKPI && selectedKPI.id === 'cost_per_formulation' ? (
               <CostTracker
-                onSave={handleSaveKPI}
+                onSave={(deptId, kpiId, value, notes) => handleSaveKPI(deptId, kpiId, value, notes, value)}
                 onCancel={handleCancelKPI}
                 existingData={getLatestKPIValue(departmentId, selectedKPI.id)?.data}
                 isDark={isDark}
               />
             ) : selectedKPI && selectedKPI.id === 'stock_issues_rate' ? (
               <StockIssuesTracker
-                onSave={handleSaveKPI}
+                onSave={(deptId, kpiId, value, notes) => handleSaveKPI(deptId, kpiId, value, notes, value)}
                 onCancel={handleCancelKPI}
                 existingData={getLatestKPIValue(departmentId, selectedKPI.id)?.data}
                 isDark={isDark}
@@ -933,7 +539,9 @@ export const WarehousesPage = () => {
               <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
                 <div className="w-full max-w-6xl max-h-[90vh]">
                   <WarehouseKPISelector
-                    onSelect={(kpi) => setSelectedKPI(kpi)}
+                    onSelect={(kpi) => {
+                        setSelectedKPI(kpi); 
+                    }}
                     onCancel={handleCancelKPI}
                     isDark={isDark}
                     departmentKPIs={departmentKPIs}
@@ -944,19 +552,14 @@ export const WarehousesPage = () => {
           </>
         )}
 
-        {showReports && reportType === 'weekly' && (
-          <WarehouseWeeklyReportModal 
-            analytics={getWarehouseAnalyticsData()}
+        {showMonthlyReportModal && warehouseAnalytics && (
+          <WarehouseMonthlyReport 
+            analytics={warehouseAnalytics}
             isDark={isDark}
-            onClose={() => setShowReports(false)}
-          />
-        )}
-
-        {showReports && reportType === 'monthly' && (
-          <WarehouseMonthlyReportModal 
-            analytics={getWarehouseAnalyticsData()}
-            isDark={isDark}
-            onClose={() => setShowReports(false)}
+            onClose={() => {
+              setShowMonthlyReportModal(false);
+              setWarehouseAnalytics(null);
+            }}
           />
         )}
 
@@ -977,125 +580,16 @@ export const WarehousesPage = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Reports Dropdown */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowReportsMenu(!showReportsMenu)}
-                className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
-                  showReportsMenu
-                    ? isDark 
-                      ? 'border-violet-500 bg-violet-900/20 text-violet-300 shadow-violet-500/20' 
-                      : 'border-violet-500 bg-violet-50 text-violet-700 shadow-violet-500/20'
-                    : isDark 
-                      ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
-                      : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Rapports</span>
-                <svg 
-                  className={`w-4 h-4 transition-transform duration-200 ${showReportsMenu ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* Backdrop for click outside */}
-              {showReportsMenu && (
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setShowReportsMenu(false)}
-                />
-              )}
-              
-              {/* Dropdown Menu */}
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl border shadow-xl z-20 transition-all duration-200 transform ${
-                showReportsMenu 
-                  ? 'opacity-100 visible translate-y-0' 
-                  : 'opacity-0 invisible translate-y-2'
-              } ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                
-                {/* Menu Header */}
-                <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                  <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Rapports d'Entrepôt
-                  </h3>
-                  <p className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Analyses budgétaires et performances logistiques
-                  </p>
-                </div>
-                
-                {/* Menu Items */}
-                <div className="p-3">
-                  <button
-                    onClick={() => { 
-                      setReportType('weekly'); 
-                      setShowReports(true); 
-                      setShowReportsMenu(false);
-                    }}
-                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
-                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                      <Eye className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Rapport Hebdomadaire
-                      </div>
-                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Analyse budgétaire de la semaine
-                      </div>
-                    </div>
-                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isDark ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      <ArrowUpRight className="w-5 h-5" />
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => { 
-                      setReportType('monthly'); 
-                      setShowReports(true); 
-                      setShowReportsMenu(false);
-                    }}
-                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
-                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                      <Calendar className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Rapport Mensuel
-                      </div>
-                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Synthèse mensuelle des coûts
-                      </div>
-                    </div>
-                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isDark ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      <ArrowUpRight className="w-5 h-5" />
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Primary Action Button */}
-            <button
-              onClick={() => handleAddData()}
-              className="flex items-center space-x-2.5 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+            <button 
+              onClick={handleOpenMonthlyReport}
+              className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
+                isDark 
+                    ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
+                    : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>Ajouter Données</span>
+              <Calendar className="w-4 h-4" />
+              <span>Rapport Mensuel</span>
             </button>
           </div>
         </div>
@@ -1120,14 +614,6 @@ export const WarehousesPage = () => {
                   'bg-slate-600'
                 }`}>
                   <stat.icon className="w-5 h-5 text-white" />
-                </div>
-                <div className={`p-1 rounded-lg transition-all ${
-                  stat.color === 'violet' ? 'bg-violet-100 text-violet-700 dark:bg-violet-800 dark:text-violet-300' :
-                  stat.color === 'blue' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' :
-                  stat.color === 'emerald' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300' :
-                  'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300'
-                }`}>
-                  <ArrowUpRight className="w-3 h-3" />
                 </div>
               </div>
 
@@ -1175,14 +661,6 @@ export const WarehousesPage = () => {
                 {departmentKPIs.filter(kpi => getLatestKPIValue(departmentId, kpi.id)).length || 0} / {departmentKPIs.length || 0} configurés • Gestion budgétaire des coûts matières et emballages
               </p>
             </div>
-            <div className={`px-4 py-2 rounded-lg border ${
-              isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-800'
-            }`}>
-              <div className="flex items-center space-x-2 text-sm">
-                <Sparkles className="w-4 h-4" />
-                <span>Suivi intelligent</span>
-              </div>
-            </div>
           </div>
 
           {departmentKPIs && departmentKPIs.length > 0 ? (
@@ -1190,24 +668,21 @@ export const WarehousesPage = () => {
               {departmentKPIs.map((kpi) => {
                 const latestValue = getLatestKPIValue(departmentId, kpi.id);
                 
-                const getKPIStatus = (kpi, latestValue) => {
-                  if (!latestValue) return 'no-data';
-                  
-                  // For cost tracking: 100% = excellent (within budget), 0% = needs attention (over budget)
-                  if (kpi.id === 'cost_per_formulation') {
-                    return latestValue.value === 100 ? 'excellent' : 'needs-attention';
+                const getKPIStatus = (kpiDef, val) => {
+                  if (!val) return 'no-data';
+                  if (kpiDef.id === 'cost_per_formulation') {
+                    return val.value === 100 ? 'excellent' : (val.value > 0 ? 'fair' : 'needs-attention');
                   }
-                  
-                  const tolerance = kpi.target * 0.1;
-                  if (latestValue.value >= kpi.target) return 'excellent';
-                  if (latestValue.value >= kpi.target - tolerance) return 'good';
+                  const tolerance = kpiDef.target * 0.1;
+                  if (val.value >= kpiDef.target) return 'excellent';
+                  if (val.value >= kpiDef.target - tolerance) return 'good';
                   return 'needs-attention';
                 };
 
                 const status = getKPIStatus(kpi, latestValue);
 
-                const getStatusColor = (status) => {
-                  switch (status) {
+                const getStatusColor = (s) => {
+                  switch (s) {
                     case 'excellent': return 'text-emerald-800 bg-emerald-200 dark:bg-emerald-800 dark:text-emerald-100 border border-emerald-300 dark:border-emerald-700';
                     case 'good': return 'text-violet-800 bg-violet-200 dark:bg-violet-800 dark:text-violet-100 border border-violet-300 dark:border-violet-700';
                     case 'fair': return 'text-amber-800 bg-amber-200 dark:bg-amber-800 dark:text-amber-100 border border-amber-300 dark:border-amber-700';
@@ -1218,30 +693,13 @@ export const WarehousesPage = () => {
 
                 const getProgress = () => {
                   if (!latestValue) return 0;
-                  
-                  // For cost tracking, the value is already a percentage
-                  if (kpi.id === 'cost_per_formulation') {
-                    return latestValue.value;
-                  }
-                  
-                  return Math.min(100, (latestValue.value / kpi.target) * 100);
+                  if (kpi.id === 'cost_per_formulation') return latestValue.value;
+                  return Math.min(100, (latestValue.value / (kpi.target || 1)) * 100);
                 };
 
                 const progress = getProgress();
                 const kpiName = kpi.name?.fr || kpi.name?.en || kpi.id;
                 const statusText = kpiStatusDisplayFr[status] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Indéfini');
-
-                // Function to get appropriate icon for each KPI
-                const getKPIIcon = (kpiId) => {
-                  if (kpiId === 'cost_per_formulation') {
-                    return Euro;
-                  } else if (kpiId === 'stock_issues_rate') {
-                    return AlertTriangle;
-                  } else {
-                    return Package; // Default fallback
-                  }
-                };
-
                 const KPIIcon = getKPIIcon(kpi.id);
 
                 return (
@@ -1259,11 +717,6 @@ export const WarehousesPage = () => {
                       <div className="flex items-center space-x-3">
                         <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
                           {statusText}
-                        </div>
-                        <div className={`opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1 ${
-                          isDark ? 'text-violet-400' : 'text-violet-600'
-                        }`}>
-                          <ArrowUpRight className="w-4 h-4" />
                         </div>
                       </div>
                     </div>
@@ -1286,10 +739,14 @@ export const WarehousesPage = () => {
                           <div className="text-right">
                             <div className={`text-xs font-semibold ${
                               progress === 100 ? 'text-emerald-600' :
-                              progress === 0 ? 'text-red-600' : 'text-amber-600'
+                              (kpi.id === 'cost_per_formulation' && progress === 0) ? 'text-red-600' :
+                              progress < 100 && progress > 0 ? 'text-amber-600' :
+                              progress === 0 && kpi.id !== 'cost_per_formulation' ? 'text-red-600' :
+                              'text-amber-600'
                             }`}>
                               {progress === 100 ? '✅ Budget OK' :
-                               progress === 0 ? '❌ Dépassement' : `${progress.toFixed(0)}%`}
+                               (kpi.id === 'cost_per_formulation' && progress === 0) ? '❌ Dépassement' : 
+                               `${progress.toFixed(0)}%`}
                             </div>
                             {latestValue.data?.totalCost && (
                               <div className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -1303,9 +760,10 @@ export const WarehousesPage = () => {
                           <div
                             className={`h-2 rounded-full transition-all duration-700 shadow-sm ${
                               progress === 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
-                              progress === 0 ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-amber-500 to-amber-600'
+                              (kpi.id === 'cost_per_formulation' && progress === 0) ? 'bg-gradient-to-r from-red-500 to-red-600' :
+                              'bg-gradient-to-r from-amber-500 to-amber-600'
                             }`}
-                            style={{ width: progress === 0 ? '100%' : `${Math.min(progress, 100)}%` }}
+                            style={{ width: (kpi.id === 'cost_per_formulation' && progress === 0) ? '100%' : `${Math.min(progress, 100)}%` }}
                           />
                         </div>
 
@@ -1370,49 +828,20 @@ export const WarehousesPage = () => {
           )}
         </div>
 
-        {/* Charts Section */}
+        {/* WarehouseChartsSection */}
         {departmentKPIs.some(kpi => getKPIHistory(departmentId, kpi.id).length > 0) && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h3 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Analyse de Performance Budgétaire
-              </h3>
-              <div className="flex items-center space-x-2 text-sm">
-                <BarChart3 className="w-4 h-4 text-violet-600" />
-                <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>Évolution temporelle des coûts</span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {departmentKPIs.map(kpi => renderKPIChart(kpi)).filter(Boolean)}
-            </div>
-          </div>
+           <WarehouseChartsSection
+              departmentKPIs={departmentKPIs}
+              getKPIHistory={getKPIHistory}
+              getKPITrend={getKPITrend}
+              getLatestKPIValue={getLatestKPIValue}
+              departmentId={departmentId}
+              isDark={isDark}
+              trendData={trendData}
+              categoryData={categoryData}
+            />
         )}
 
-        {/* Traditional Charts if needed */}
-        {trendData.length > 0 && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <ChartDisplay
-              data={trendData}
-              title={'Évolution des Performances Budgétaires'}
-              height={300}
-              dataKey="value"
-              xAxisKey="date"
-              color="#8B5CF6"
-              className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
-            />
-            <ChartDisplay
-              data={categoryData}
-              title={'Performance Budget vs Cible'}
-              type="bar"
-              height={300}
-              dataKey="progress"
-              xAxisKey="name"
-              color="#A855F7"
-              className={isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

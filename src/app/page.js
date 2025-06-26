@@ -344,7 +344,7 @@ const Layout = ({ children, currentPage, setCurrentPage }) => {
   const navItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Tableau de Bord', iconBg: 'bg-gradient-to-br from-indigo-600 to-purple-600' },
     { id: 'rnd', icon: FlaskConical, label: 'R&D et Innovation', iconBg: 'bg-gradient-to-br from-purple-600 to-indigo-600' },
-    { id: 'quality', icon: ShieldCheck, label: 'Assurance Qualité', iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-600' },
+    { id: 'quality', icon: ShieldCheck, label: 'Management Qualité', iconBg: 'bg-gradient-to-br from-emerald-600 to-teal-600' },
     { id: 'production', icon: Factory, label: 'Production', iconBg: 'bg-gradient-to-br from-orange-600 to-red-600' },
     { id: 'warehouses', icon: Package, label: 'Magasin', iconBg: 'bg-gradient-to-br from-violet-600 to-purple-600' },
     { id: 'team', icon: Users, label: 'Gestion d\'Équipe', iconBg: 'bg-gradient-to-br from-pink-600 to-rose-600' }

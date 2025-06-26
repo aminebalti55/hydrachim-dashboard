@@ -232,7 +232,7 @@ export const kpiDefinitions = {
         id: 'cost_per_formulation',
         name: {
           en: 'Raw Material Costs',
-          fr: 'Coût des Matières Premières'
+          fr: 'Coût des Matières Premières et Emballage'
         },
         description: {
           en: 'Comprehensive cost tracking of raw materials and packaging with intelligent budget management',

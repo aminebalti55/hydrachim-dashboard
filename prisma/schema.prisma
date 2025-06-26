@@ -1,0 +1,542 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==============================================
+// 🔐 AUTHENTICATION & USER MANAGEMENT
+// ==============================================
+
+model Utilisateur {
+  id             String   @id @default(uuid()) @db.Uuid
+  nomUtilisateur String   @unique @map("nom_utilisateur")
+  motDePasse     String   @map("mot_de_passe")
+  role           Role     @default(USER)
+  creeLe         DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  sessions SessionUtilisateur[]
+
+  @@map("utilisateurs")
+}
+
+model SessionUtilisateur {
+  id             String   @id @default(uuid()) @db.Uuid
+  utilisateurId  String   @map("utilisateur_id") @db.Uuid
+  heureConnexion DateTime @default(now()) @map("heure_connexion") @db.Timestamptz
+  actif          Boolean  @default(true)
+
+  // Relations
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  @@map("sessions_utilisateur")
+}
+
+enum Role {
+  ADMIN @map("admin")
+  USER  @map("user")
+}
+
+// ==============================================
+// 👥 TEAM MODULE TABLES
+// ==============================================
+
+model Employe {
+  id     String   @id @default(uuid()) @db.Uuid
+  nom    String
+  creeLe DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  pointages         Pointage[]
+  efficacites       Efficacite[]
+  taches            Tache[]
+  incidentsSecurite IncidentSecurite[]
+
+  @@map("employes")
+}
+
+model Pointage {
+  id            String    @id @default(uuid()) @db.Uuid
+  employeId     String    @map("employe_id") @db.Uuid
+  date          DateTime  @db.Date
+  entree        DateTime? @db.Time
+  sortie        DateTime? @db.Time
+  heuresTravail Float?    @map("heures_travail")
+  productivite  Int?      @db.SmallInt
+  creeLe        DateTime  @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  employe Employe @relation(fields: [employeId], references: [id], onDelete: Cascade)
+
+  @@map("pointages")
+}
+
+model Efficacite {
+  id         String   @id @default(uuid()) @db.Uuid
+  employeId  String   @map("employe_id") @db.Uuid
+  date       DateTime @db.Date
+  efficacite Int      @db.SmallInt
+  creeLe     DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  employe Employe @relation(fields: [employeId], references: [id], onDelete: Cascade)
+
+  @@map("efficacites")
+}
+
+model Tache {
+  id                  String    @id @default(uuid()) @db.Uuid
+  employeId           String    @map("employe_id") @db.Uuid
+  description         String
+  priorite            Priorite?
+  dureeEstimeeMinutes Int?      @map("duree_estimee_minutes")
+  terminee            Boolean   @default(false)
+  creeLe              DateTime  @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  employe Employe @relation(fields: [employeId], references: [id], onDelete: Cascade)
+
+  @@map("taches")
+}
+
+model IncidentSecurite {
+  id          String    @id @default(uuid()) @db.Uuid
+  employeId   String    @map("employe_id") @db.Uuid
+  date        DateTime  @db.Date
+  heure       DateTime? @db.Time
+  type        String?
+  gravite     Gravite?
+  description String?
+  creeLe      DateTime  @default(now()) @map("cree_le") @db.Timestamptz
+
+  // Relations
+  employe Employe @relation(fields: [employeId], references: [id], onDelete: Cascade)
+
+  @@map("incidents_securite")
+}
+
+model StatistiqueKpi {
+  id      String   @id @default(uuid()) @db.Uuid
+  typeKpi TypeKpi  @map("type_kpi")
+  date    DateTime @db.Date
+  valeur  Int?
+  donnees Json?
+  creeLe  DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("statistiques_kpi")
+}
+
+enum Priorite {
+  BASSE   @map("basse")
+  MOYENNE @map("moyenne")
+  HAUTE   @map("haute")
+}
+
+enum Gravite {
+  MINEUR   @map("mineur")
+  MODERE   @map("modere")
+  MAJEUR   @map("majeur")
+  CRITIQUE @map("critique")
+}
+
+enum TypeKpi {
+  POINTAGE   @map("pointage")
+  EFFICACITE @map("efficacite")
+  SECURITE   @map("securite")
+}
+
+// ==============================================
+// 🔬 R&D MODULE TABLES
+// ==============================================
+
+model ProjetDeveloppement {
+  id                 String   @id @default(uuid()) @db.Uuid
+  nom                String
+  dateDebut          DateTime @map("date_debut") @db.Date
+  dateFin            DateTime @map("date_fin") @db.Date
+  dureeCibleSemaines Decimal  @map("duree_cible_semaines") @db.Decimal(5, 2)
+  termine            Boolean  @default(false)
+  creeLe             DateTime @default(now()) @map("cree_le") @db.Timestamptz
+  modifieLe          DateTime @default(now()) @map("modifie_le") @db.Timestamptz
+
+  @@map("projets_developpement")
+}
+
+model KpiDeveloppement {
+  id              String   @id @default(uuid()) @db.Uuid
+  dateKpi         DateTime @map("date_kpi") @db.Date
+  kpiGlobal       Int      @map("kpi_global") @db.SmallInt
+  projetsTotal    Int      @map("projets_total")
+  projetsTermines Int      @map("projets_termines")
+  projetsEnCours  Int      @map("projets_en_cours")
+  projetsRetard   Int      @map("projets_retard")
+  projetsATemps   Int      @map("projets_a_temps")
+  tauxReussite    Int      @map("taux_reussite") @db.SmallInt
+  creeLe          DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_developpement")
+}
+
+model Formule {
+  id             String    @id @default(uuid()) @db.Uuid
+  nom            String
+  dateCreation   DateTime  @map("date_creation") @db.Date
+  dateCompletion DateTime? @map("date_completion") @db.Date
+  reussie        Boolean   @default(false)
+  iterations     Int       @default(0)
+  responsable    String?
+  creeLe         DateTime  @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("formules")
+}
+
+model KpiFormulation {
+  id                 String   @id @default(uuid()) @db.Uuid
+  dateKpi            DateTime @map("date_kpi") @db.Date
+  formulesTotal      Int      @map("formules_total")
+  formulesCompletees Int      @map("formules_completees")
+  objectifMensuel    Int      @default(0) @map("objectif_mensuel")
+  creeLe             DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_formulation")
+}
+
+model ResumeKpiRnd {
+  id                String      @id @default(uuid()) @db.Uuid
+  typePeriode       TypePeriode @map("type_periode")
+  valeurPeriode     String      @map("valeur_periode")
+  moyenneDev        Int         @map("moyenne_dev")
+  moyenneFormules   Int         @map("moyenne_formules")
+  totalProjets      Int         @map("total_projets")
+  totalFormules     Int         @map("total_formules")
+  objectifsRealises Int         @map("objectifs_realises")
+  creeLe            DateTime    @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("resume_kpi_rnd")
+}
+
+enum TypePeriode {
+  HEBDOMADAIRE @map("hebdomadaire")
+  MENSUELLE    @map("mensuelle")
+}
+
+// ==============================================
+// 🧪 QUALITY MODULE TABLES
+// ==============================================
+
+model ReceptionMatierePreMiere {
+  id          String      @id @default(uuid()) @db.Uuid
+  date        DateTime    @db.Date
+  heure       DateTime    @db.Time
+  nomProduit  String      @map("nom_produit")
+  typeProduit TypeProduit @map("type_produit")
+  quantite    Int
+  conforme    Boolean?
+  creeLe      DateTime    @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("receptions_matiere_premiere")
+}
+
+model KpiReception {
+  id              String   @id @default(uuid()) @db.Uuid
+  debutSemaine    DateTime @map("debut_semaine") @db.Date
+  finSemaine      DateTime @map("fin_semaine") @db.Date
+  valeurKpi       Int      @map("valeur_kpi") @db.SmallInt
+  objectifHebdo   Int      @default(90) @map("objectif_hebdo")
+  totalReceptions Int      @map("total_receptions")
+  conformes       Int
+  nonConformes    Int      @map("non_conformes")
+  enAttente       Int      @map("en_attente")
+  creeLe          DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_receptions")
+}
+
+model GaspillageProduction {
+  id             String   @id @default(uuid()) @db.Uuid
+  date           DateTime @db.Date
+  typeGaspillage String   @map("type_gaspillage")
+  quantiteKg     Float    @map("quantite_kg")
+  cause          String?
+  commentaire    String?
+  creeLe         DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("gaspillage_production")
+}
+
+model KpiGaspillage {
+  id                 String   @id @default(uuid()) @db.Uuid
+  debutSemaine       DateTime @map("debut_semaine") @db.Date
+  finSemaine         DateTime @map("fin_semaine") @db.Date
+  totalKgPerdu       Float    @map("total_kg_perdu")
+  moyenneJournaliere Float    @map("moyenne_journaliere")
+  creeLe             DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_gaspillage")
+}
+
+model ControleStockQualite {
+  id         String    @id @default(uuid()) @db.Uuid
+  date       DateTime  @db.Date
+  nomArticle String    @map("nom_article")
+  numeroLot  String?   @map("numero_lot")
+  etat       EtatStock
+  quantite   Int
+  remarques  String?
+  creeLe     DateTime  @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("controle_stock_qualite")
+}
+
+model KpiStockQualite {
+  id                    String   @id @default(uuid()) @db.Uuid
+  debutSemaine          DateTime @map("debut_semaine") @db.Date
+  finSemaine            DateTime @map("fin_semaine") @db.Date
+  totalArticlesVerifies Int      @map("total_articles_verifies")
+  conformes             Int
+  nonConformes          Int      @map("non_conformes")
+  tauxConformite        Int      @map("taux_conformite") @db.SmallInt
+  creeLe                DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_stock_qualite")
+}
+
+model ResumeQualite {
+  id                  String      @id @default(uuid()) @db.Uuid
+  typePeriode         TypePeriode @map("type_periode")
+  valeurPeriode       String      @map("valeur_periode")
+  qualiteMoyenne      Int         @map("qualite_moyenne")
+  tauxConformiteMoyen Int         @map("taux_conformite_moyen")
+  totalTests          Int         @map("total_tests")
+  sessionsControle    Int         @map("sessions_controle")
+  objectifsAtteints   Int         @map("objectifs_atteints")
+  creeLe              DateTime    @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("resume_qualite")
+}
+
+enum TypeProduit {
+  MATIERE_PREMIERE @map("matiere_premiere")
+  EMBALLAGE        @map("emballage")
+}
+
+enum EtatStock {
+  OK     @map("ok")
+  ABIME  @map("abime")
+  EXPIRE @map("expire")
+}
+
+// ==============================================
+// 🏭 PRODUCTION MODULE TABLES
+// ==============================================
+
+model DonneeProduction {
+  id          String   @id @default(uuid()) @db.Uuid
+  kpiId       String   @map("kpi_id")
+  valeur      Decimal  @db.Decimal(10, 2)
+  date        DateTime @db.Date
+  notes       String?
+  donneesJson Json?    @map("donnees_json")
+  creeLe      DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("donnees_production")
+}
+
+model KpiProduction {
+  id            String     @id
+  nomFr         String     @map("nom_fr")
+  descriptionFr String?    @map("description_fr")
+  type          TypeValeur
+  cible         Decimal    @db.Decimal(10, 2)
+  unite         String?
+  actif         Boolean    @default(true)
+
+  @@map("kpi_production")
+}
+
+model RapportHebdomadaireProduction {
+  id                String   @id @default(uuid()) @db.Uuid
+  semaineIso        String   @map("semaine_iso")
+  productionMoyenne Decimal? @map("production_moyenne") @db.Decimal(5, 2)
+  productionTotale  Int?     @map("production_totale")
+  efficaciteMoyenne Decimal? @map("efficacite_moyenne") @db.Decimal(5, 2)
+  sessions          Int?
+  objectifsAtteints Int?     @map("objectifs_atteints")
+  creeLe            DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("rapport_hebdomadaire_production")
+}
+
+model RapportMensuelProduction {
+  id                String   @id @default(uuid()) @db.Uuid
+  mois              String
+  productionMoyenne Decimal? @map("production_moyenne") @db.Decimal(5, 2)
+  kpisAnalyse       Json?    @map("kpis_analyse")
+  creeLe            DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("rapport_mensuel_production")
+}
+
+model ConsommationEnergie {
+  id              String   @id @default(uuid()) @db.Uuid
+  date            DateTime @db.Date
+  zone            String
+  consommationKwh Decimal  @map("consommation_kwh") @db.Decimal(10, 2)
+  commentaires    String?
+  creeLe          DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("consommation_energie")
+}
+
+enum TypeValeur {
+  POURCENTAGE @map("pourcentage")
+  VALEUR      @map("valeur")
+  TEMPS       @map("temps")
+}
+
+// ==============================================
+// 📦 WAREHOUSES MODULE TABLES
+// ==============================================
+
+model ProblemeStock {
+  id          String   @id @default(uuid()) @db.Uuid
+  date        DateTime @db.Date
+  heure       DateTime @db.Time
+  description String
+  creeLe      DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("problemes_stock")
+}
+
+model KpiProblemeStock {
+  id             String   @id @default(uuid()) @db.Uuid
+  dateSemaine    DateTime @map("date_semaine") @db.Date
+  objectifHebdo  Int      @default(5) @map("objectif_hebdo")
+  totalProblemes Int      @map("total_problemes")
+  valeurKpi      Int      @map("valeur_kpi") @db.SmallInt
+  creeLe         DateTime @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_problemes_stock")
+}
+
+model CoutLogistique {
+  id          String              @id @default(uuid()) @db.Uuid
+  date        DateTime            @db.Date
+  categorie   CategorieLogistique
+  montant     Decimal             @db.Decimal(10, 2)
+  commentaire String?
+  creeLe      DateTime            @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("couts_logistique")
+}
+
+model KpiCoutLogistique {
+  id                 String      @id @default(uuid()) @db.Uuid
+  periodeType        TypePeriode @map("periode_type")
+  periodeValeur      String      @map("periode_valeur")
+  coutTotal          Decimal     @map("cout_total") @db.Decimal(12, 2)
+  moyenneJournaliere Decimal?    @map("moyenne_journaliere") @db.Decimal(10, 2)
+  objectif           Decimal?    @db.Decimal(10, 2)
+  depassement        Boolean     @default(false)
+  creeLe             DateTime    @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("kpi_couts_logistique")
+}
+
+model Entrepot {
+  id               String         @id @default(uuid()) @db.Uuid
+  nom              String
+  capaciteMaximum  Int            @map("capacite_maximum")
+  capaciteActuelle Int            @map("capacite_actuelle")
+  statut           StatutEntrepot @default(ACTIF)
+  localisation     String?
+  responsable      String?
+  creeLe           DateTime       @default(now()) @map("cree_le") @db.Timestamptz
+
+  @@map("entrepots")
+}
+
+enum CategorieLogistique {
+  TRANSPORT   @map("transport")
+  STOCKAGE    @map("stockage")
+  RETOUR      @map("retour")
+  MAIN_OEUVRE @map("main_oeuvre")
+  AUTRE       @map("autre")
+}
+
+enum StatutEntrepot {
+  ACTIF       @map("actif")
+  INACTIF     @map("inactif")
+  MAINTENANCE @map("maintenance")
+}
+
+// ==============================================
+// 📊 GLOBAL KPI TRACKING TABLES
+// ==============================================
+
+model KpiEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  departmentId String   @map("department_id")
+  kpiId        String   @map("kpi_id")
+  value        Decimal  @db.Decimal(10, 2)
+  data         Json?
+  notes        String?
+  date         DateTime @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@unique([departmentId, kpiId, date], name: "kpi_entries_dept_kpi_date_idx")
+  @@map("kpi_entries")
+}
+
+model Department {
+  id          String   @id
+  nameFr      String   @map("name_fr")
+  nameEn      String   @map("name_en")
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  kpiEntries     KpiEntry[]
+  kpiDefinitions KpiDefinition[]
+
+  @@map("departments")
+}
+
+model KpiDefinition {
+  id            String        @map("id")
+  departmentId  String        @map("department_id")
+  nameFr        String        @map("name_fr")
+  nameEn        String        @map("name_en")
+  descriptionFr String?       @map("description_fr")
+  descriptionEn String?       @map("description_en")
+  unit          String?
+  targetValue   Decimal?      @map("target_value") @db.Decimal(10, 2)
+  kpiType       TypeKpiGlobal @map("kpi_type")
+  trackingType  String?       @map("tracking_type")
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@id([departmentId, id])
+  @@map("kpi_definitions")
+}
+
+enum TypeKpiGlobal {
+  PERCENTAGE @map("percentage")
+  NUMBER     @map("number")
+  TIME       @map("time")
+  CURRENCY   @map("currency")
+}

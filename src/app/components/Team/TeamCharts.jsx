@@ -1,14 +1,14 @@
 import React from 'react';
 import ReactECharts from 'echarts-for-react';
-import { TrendingUp, Users, Shield, BarChart3, Calendar, Clock } from 'lucide-react';
+import { TrendingUp, Users, Shield, BarChart3, Calendar, Clock, Activity, Star, Target, Zap, Award, Sparkles } from 'lucide-react';
 
 export const TeamCharts = ({ analytics, isDark, className = '' }) => {
   // French text labels
   const t = {
     addDataToSeeChart: "Ajoutez des données pour voir le graphique",
-    attendanceChart: "Tendance de Présence",
-    safetyChart: "Incidents de Sécurité", 
-    efficiencyChart: "Tendance d'Efficacité",
+    attendanceChart: "Productivité & Présence",
+    safetyChart: "Score de Sécurité", 
+    efficiencyChart: "Efficacité Opérationnelle",
     weeklyTrend: "Tendance hebdomadaire",
     weeklyPerformance: "Performance Hebdomadaire",
     teamComparison: "Comparaison d'équipe",
@@ -31,139 +31,115 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
 
   if (!analytics) {
     return (
-      <div className={`text-center py-8 ${className}`}>
-        <BarChart3 className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-        <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+      <div className={`text-center py-16 ${className}`}>
+        <div className={`w-20 h-20 rounded-3xl ${
+          isDark ? 'bg-gradient-to-br from-slate-800 to-slate-700' : 'bg-gradient-to-br from-slate-100 to-slate-200'
+        } flex items-center justify-center mx-auto mb-8 shadow-2xl backdrop-blur-lg`}>
+          <BarChart3 className={`w-10 h-10 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+        </div>
+        <h3 className={`text-2xl font-bold mb-4 ${isDark ? 'text-slate-300' : 'text-slate-900'}`}>
+          Aucune donnée disponible
+        </h3>
+        <p className={`text-lg ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
           {t.addDataToSeeChart}
         </p>
       </div>
     );
   }
 
-  const chartColors = {
-    primary: '#3B82F6',
-    secondary: '#10B981',
-    accent: '#F59E0B',
-    danger: '#EF4444',
-    purple: '#8B5CF6',
-    pink: '#EC4899'
+  // Modern color palette with gradients
+  const modernColors = {
+    primary: ['#6366F1', '#8B5CF6'],
+    secondary: ['#10B981', '#059669'],
+    accent: ['#F59E0B', '#D97706'],
+    danger: ['#EF4444', '#DC2626'],
+    purple: ['#8B5CF6', '#7C3AED'],
+    pink: ['#EC4899', '#BE185D'],
+    emerald: ['#10B981', '#047857'],
+    violet: ['#7C3AED', '#5B21B6'],
+    rose: ['#F43F5E', '#E11D48'],
+    blue: ['#3B82F6', '#1D4ED8'],
+    cyan: ['#06B6D4', '#0891B2'],
+    amber: ['#F59E0B', '#D97706']
   };
 
-  // Common ECharts theme configuration
-  const getCommonOptions = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '10%',
-      top: '15%',
-      containLabel: true
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      borderWidth: 1,
-      textStyle: {
-        color: isDark ? '#E2E8F0' : '#1E293B'
-      },
-      confine: true
-    },
-    legend: {
-      top: '5%',
-      textStyle: {
-        color: isDark ? '#CBD5E1' : '#64748B'
-      }
-    }
-  });
-
-  // Extract real data from the analytics object based on actual KPI structure
+  // Extract real data from Supabase structure
   const extractKPIData = (kpiId) => {
     if (!analytics || !analytics[kpiId]) return [];
     
-    // Get the KPI data array and sort by date (newest first)
     const kpiData = Array.isArray(analytics[kpiId]) ? analytics[kpiId] : [];
-    return kpiData.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10).reverse();
+    return kpiData.sort((a, b) => new Date(b.kpi_date) - new Date(a.kpi_date)).slice(0, 15).reverse();
   };
 
-  // Extract attendance data from team_productivity_attendance KPI
+  // Extract and transform data
   const attendanceData = extractKPIData('team_productivity_attendance');
-  const attendanceTrendData = attendanceData.map(entry => ({
-    date: new Date(entry.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
-    productivity: entry.value || 0,
-    target: entry.data?.weeklyTarget || 95,
-    employees: (entry.data?.employees || []).length,
-    presentEmployees: (entry.data?.employees || []).filter(emp => emp.workHours > 0).length
-  }));
-
-  // Extract safety data from safety_incidents KPI
   const safetyData = extractKPIData('safety_incidents');
-  const safetyTrendData = safetyData.map(entry => ({
-    date: new Date(entry.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
-    safetyScore: entry.value || 100,
-    incidents: entry.data?.totalIncidents || 0,
-    criticalIncidents: (entry.data?.incidents || []).filter(inc => inc.severity === 'critical').length,
-    target: entry.data?.weeklyTarget || 3
-  }));
-
-  // Extract efficiency data from operator_efficiency KPI
   const efficiencyData = extractKPIData('operator_efficiency');
-  const efficiencyTrendData = efficiencyData.map(entry => ({
-    date: new Date(entry.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
-    efficiency: entry.value || 0,
-    target: entry.data?.weeklyTarget || 85,
-    operators: (entry.data?.employees || []).length,
-    totalTasks: (entry.data?.employees || []).reduce((sum, emp) => sum + (emp.tasks?.length || 0), 0),
-    completedTasks: (entry.data?.employees || []).reduce((sum, emp) => sum + (emp.tasks?.filter(t => t.completed).length || 0), 0)
+
+  const attendanceTrendData = attendanceData.map(entry => ({
+    date: new Date(entry.kpi_date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
+    productivity: entry.kpi_value || 0,
+    target: entry.monthly_target || 95,
+    employees: (entry.employees || []).length,
+    presentEmployees: (entry.employees || []).filter(emp => emp.workHours > 0).length,
+    avgWorkHours: entry.employees?.length > 0 ? 
+      entry.employees.reduce((sum, emp) => sum + (emp.workHours || 0), 0) / entry.employees.length : 0
   }));
 
-  // Prepare combined performance data for recent entries
+  const safetyTrendData = safetyData.map(entry => ({
+    date: new Date(entry.kpi_date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
+    safetyScore: entry.kpi_value || 100,
+    incidents: entry.total_incidents || 0,
+    criticalIncidents: (entry.incidents || []).filter(inc => inc.severity === 'critical').length,
+    target: entry.monthly_target || 3
+  }));
+
+  const efficiencyTrendData = efficiencyData.map(entry => ({
+    date: new Date(entry.kpi_date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
+    efficiency: entry.kpi_value || 0,
+    target: entry.monthly_target || 85,
+    operators: (entry.employees || []).length,
+    totalTasks: (entry.employees || []).reduce((sum, emp) => sum + (emp.tasks?.length || 0), 0),
+    completedTasks: (entry.employees || []).reduce((sum, emp) => sum + (emp.tasks?.filter(t => t.completed).length || 0), 0)
+  }));
+
+  // Combined performance data
   const getRecentPerformanceData = () => {
-    const maxEntries = 8;
-    const combinedData = [];
-    
-    // Get unique dates from all KPIs
     const allDates = new Set([
-      ...attendanceData.map(d => d.date),
-      ...safetyData.map(d => d.date),
-      ...efficiencyData.map(d => d.date)
+      ...attendanceData.map(d => d.kpi_date),
+      ...safetyData.map(d => d.kpi_date),
+      ...efficiencyData.map(d => d.kpi_date)
     ]);
     
-    const sortedDates = Array.from(allDates).sort().slice(-maxEntries);
+    const sortedDates = Array.from(allDates).sort().slice(-12);
     
     return sortedDates.map(date => {
-      const attendanceEntry = attendanceData.find(d => d.date === date);
-      const safetyEntry = safetyData.find(d => d.date === date);
-      const efficiencyEntry = efficiencyData.find(d => d.date === date);
+      const attendanceEntry = attendanceData.find(d => d.kpi_date === date);
+      const safetyEntry = safetyData.find(d => d.kpi_date === date);
+      const efficiencyEntry = efficiencyData.find(d => d.kpi_date === date);
       
       return {
         date: new Date(date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' }),
-        attendance: attendanceEntry?.value || 0,
-        safety: safetyEntry?.value || 100,
-        efficiency: efficiencyEntry?.value || 0
+        attendance: attendanceEntry?.kpi_value || 0,
+        safety: safetyEntry?.kpi_value || 100,
+        efficiency: efficiencyEntry?.kpi_value || 0
       };
     });
   };
 
   const recentPerformanceData = getRecentPerformanceData();
 
-  // Extract individual employee performance from latest data
+  // Employee performance
   const getEmployeePerformanceData = () => {
     const latestAttendance = attendanceData[attendanceData.length - 1];
     const latestEfficiency = efficiencyData[efficiencyData.length - 1];
     
     if (!latestAttendance && !latestEfficiency) return [];
 
-    // Combine employee data from both sources
     const employeeMap = new Map();
     
-    // Add attendance data
-    if (latestAttendance?.data?.employees) {
-      latestAttendance.data.employees.forEach(emp => {
+    if (latestAttendance?.employees) {
+      latestAttendance.employees.forEach(emp => {
         if (emp.name?.trim()) {
           employeeMap.set(emp.name, {
             name: emp.name,
@@ -175,9 +151,8 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
       });
     }
     
-    // Add efficiency data
-    if (latestEfficiency?.data?.employees) {
-      latestEfficiency.data.employees.forEach(emp => {
+    if (latestEfficiency?.employees) {
+      latestEfficiency.employees.forEach(emp => {
         if (emp.name?.trim()) {
           const existing = employeeMap.get(emp.name) || { name: emp.name, productivity: 0, efficiency: 0, workHours: 0 };
           existing.efficiency = emp.efficiency || 0;
@@ -193,9 +168,9 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
 
   const employeePerformanceData = getEmployeePerformanceData();
 
-  // Calculate performance status distribution based on recent data
+  // Status distribution
   const getStatusDistribution = () => {
-    const recentData = recentPerformanceData.slice(-4); // Last 4 entries
+    const recentData = recentPerformanceData.slice(-6);
     
     let excellent = 0, good = 0, needsAttention = 0;
     
@@ -207,84 +182,215 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
     });
     
     return [
-      { name: t.excellent, value: excellent, color: chartColors.secondary },
-      { name: t.good, value: good, color: chartColors.primary },
-      { name: t.needsAttention, value: needsAttention, color: chartColors.danger }
+      { name: t.excellent, value: excellent, color: modernColors.emerald[0] },
+      { name: t.good, value: good, color: modernColors.blue[0] },
+      { name: t.needsAttention, value: needsAttention, color: modernColors.danger[0] }
     ];
   };
 
   const statusDistribution = getStatusDistribution();
 
-  // ECharts Options for Attendance Trend (Area Chart)
+  // Enhanced modern chart options
+  const getModernChartOptions = () => ({
+    backgroundColor: 'transparent',
+    textStyle: {
+      color: isDark ? '#E2E8F0' : '#475569',
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      fontSize: 13,
+      fontWeight: 500
+    },
+    grid: {
+      left: '5%',
+      right: '5%',
+      bottom: '15%',
+      top: '20%',
+      containLabel: true
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+      borderColor: isDark ? '#475569' : '#E2E8F0',
+      borderWidth: 1,
+      borderRadius: 16,
+      textStyle: {
+        color: isDark ? '#F1F5F9' : '#0F172A',
+        fontSize: 14,
+        fontWeight: 500
+      },
+      padding: [16, 20],
+      shadowBlur: 25,
+      shadowColor: 'rgba(0, 0, 0, 0.15)',
+      extraCssText: `
+        box-shadow: 0 20px 40px rgba(0, 0, 0, ${isDark ? '0.4' : '0.1'});
+        backdrop-filter: blur(20px);
+        border: 1px solid ${isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(226, 232, 240, 0.8)'};
+      `
+    },
+    legend: {
+      top: '8%',
+      textStyle: {
+        color: isDark ? '#CBD5E1' : '#64748B',
+        fontSize: 13,
+        fontWeight: 600
+      },
+      itemGap: 25,
+      icon: 'roundRect',
+      itemWidth: 14,
+      itemHeight: 14
+    },
+    animation: true,
+    animationDuration: 1200,
+    animationEasing: 'cubicInOut',
+    animationDelay: (idx) => idx * 100
+  });
+
+  // Attendance Chart
   const getAttendanceOptions = () => ({
-    ...getCommonOptions(),
-    title: { show: false },
+    ...getModernChartOptions(),
     xAxis: {
       type: 'category',
       data: attendanceTrendData.map(item => item.date),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        margin: 12
+      },
+      axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      max: 100,
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        formatter: '{value}%'
+      },
+      splitLine: { 
+        lineStyle: { 
+          color: isDark ? '#334155' : '#F1F5F9', 
+          type: 'dashed',
+          width: 1
+        } 
+      }
     },
     series: [
       {
         name: t.productivity,
         type: 'line',
         data: attendanceTrendData.map(item => item.productivity),
-        smooth: true,
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 10,
         areaStyle: {
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: chartColors.primary + '40' },
-              { offset: 1, color: chartColors.primary + '10' }
+              { offset: 0, color: `${modernColors.blue[0]}60` },
+              { offset: 0.5, color: `${modernColors.blue[0]}30` },
+              { offset: 1, color: `${modernColors.blue[0]}10` }
             ]
           }
         },
-        lineStyle: { color: chartColors.primary, width: 3 },
-        itemStyle: { color: chartColors.primary }
+        lineStyle: { 
+          color: {
+            type: 'linear',
+            colorStops: [
+              { offset: 0, color: modernColors.blue[0] },
+              { offset: 1, color: modernColors.blue[1] }
+            ]
+          },
+          width: 4,
+          shadowColor: `${modernColors.blue[0]}60`,
+          shadowBlur: 15,
+          shadowOffsetY: 8
+        },
+        itemStyle: { 
+          color: modernColors.blue[0],
+          borderWidth: 3,
+          borderColor: '#FFFFFF',
+          shadowColor: `${modernColors.blue[0]}80`,
+          shadowBlur: 12
+        }
       },
       {
         name: t.target,
         type: 'line',
         data: attendanceTrendData.map(item => item.target),
-        lineStyle: { color: chartColors.accent, type: 'dashed', width: 2 },
-        itemStyle: { color: chartColors.accent },
-        symbol: 'none'
+        lineStyle: { 
+          color: modernColors.amber[0], 
+          type: 'dashed', 
+          width: 3,
+          opacity: 0.9
+        },
+        itemStyle: { 
+          color: modernColors.amber[0],
+          opacity: 0.9
+        },
+        symbol: 'diamond',
+        symbolSize: 8
       }
     ]
   });
 
-  // ECharts Options for Safety Incidents (Combined Chart)
+  // Safety Chart
   const getSafetyOptions = () => ({
-    ...getCommonOptions(),
+    ...getModernChartOptions(),
     xAxis: {
       type: 'category',
       data: safetyTrendData.map(item => item.date),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        margin: 12
+      },
+      axisTick: { show: false }
     },
     yAxis: [
       {
         type: 'value',
         name: 'Score (%)',
-        nameTextStyle: { color: isDark ? '#94A3B8' : '#64748B' },
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+        nameTextStyle: { 
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 13,
+          fontWeight: 600
+        },
+        axisLine: { show: false },
+        axisLabel: { 
+          color: isDark ? '#94A3B8' : '#64748B', 
+          fontSize: 12,
+          fontWeight: 600,
+          formatter: '{value}%'
+        },
+        splitLine: { 
+          lineStyle: { 
+            color: isDark ? '#334155' : '#F1F5F9', 
+            type: 'dashed',
+            width: 1
+          } 
+        }
       },
       {
         type: 'value',
         name: 'Incidents',
-        nameTextStyle: { color: isDark ? '#94A3B8' : '#64748B' },
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+        nameTextStyle: { 
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 13,
+          fontWeight: 600
+        },
+        axisLine: { show: false },
+        axisLabel: { 
+          color: isDark ? '#94A3B8' : '#64748B', 
+          fontSize: 12,
+          fontWeight: 600
+        },
+        splitLine: { show: false }
       }
     ],
     series: [
@@ -293,45 +399,118 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
         type: 'line',
         yAxisIndex: 0,
         data: safetyTrendData.map(item => item.safetyScore),
-        smooth: true,
-        lineStyle: { color: chartColors.secondary, width: 3 },
-        itemStyle: { color: chartColors.secondary }
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 10,
+        lineStyle: { 
+          color: {
+            type: 'linear',
+            colorStops: [
+              { offset: 0, color: modernColors.emerald[0] },
+              { offset: 1, color: modernColors.emerald[1] }
+            ]
+          },
+          width: 4,
+          shadowColor: `${modernColors.emerald[0]}60`,
+          shadowBlur: 15,
+          shadowOffsetY: 8
+        },
+        itemStyle: { 
+          color: modernColors.emerald[0],
+          borderWidth: 3,
+          borderColor: '#FFFFFF',
+          shadowColor: `${modernColors.emerald[0]}80`,
+          shadowBlur: 12
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: `${modernColors.emerald[0]}40` },
+              { offset: 1, color: `${modernColors.emerald[0]}05` }
+            ]
+          }
+        }
       },
       {
         name: t.incidentCount,
         type: 'bar',
         yAxisIndex: 1,
         data: safetyTrendData.map(item => item.incidents),
-        itemStyle: { color: chartColors.danger, borderRadius: [4, 4, 0, 0] },
-        barWidth: '40%'
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: modernColors.danger[0] },
+              { offset: 1, color: `${modernColors.danger[0]}80` }
+            ]
+          },
+          borderRadius: [8, 8, 0, 0],
+          shadowColor: `${modernColors.danger[0]}40`,
+          shadowBlur: 12,
+          shadowOffsetY: 6
+        },
+        barWidth: '45%'
       }
     ]
   });
 
-  // ECharts Options for Efficiency Trend (Line Chart with Tasks)
+  // Efficiency Chart
   const getEfficiencyOptions = () => ({
-    ...getCommonOptions(),
+    ...getModernChartOptions(),
     xAxis: {
       type: 'category',
       data: efficiencyTrendData.map(item => item.date),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        margin: 12
+      },
+      axisTick: { show: false }
     },
     yAxis: [
       {
         type: 'value',
         name: 'Efficacité (%)',
-        nameTextStyle: { color: isDark ? '#94A3B8' : '#64748B' },
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+        nameTextStyle: { 
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 13,
+          fontWeight: 600
+        },
+        axisLine: { show: false },
+        axisLabel: { 
+          color: isDark ? '#94A3B8' : '#64748B', 
+          fontSize: 12,
+          fontWeight: 600,
+          formatter: '{value}%'
+        },
+        splitLine: { 
+          lineStyle: { 
+            color: isDark ? '#334155' : '#F1F5F9', 
+            type: 'dashed',
+            width: 1
+          } 
+        }
       },
       {
         type: 'value',
         name: 'Tâches',
-        nameTextStyle: { color: isDark ? '#94A3B8' : '#64748B' },
-        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+        nameTextStyle: { 
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 13,
+          fontWeight: 600
+        },
+        axisLine: { show: false },
+        axisLabel: { 
+          color: isDark ? '#94A3B8' : '#64748B', 
+          fontSize: 12,
+          fontWeight: 600
+        },
+        splitLine: { show: false }
       }
     ],
     series: [
@@ -340,169 +519,349 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
         type: 'line',
         yAxisIndex: 0,
         data: efficiencyTrendData.map(item => item.efficiency),
-        smooth: true,
-        lineStyle: { color: chartColors.purple, width: 3 },
-        itemStyle: { color: chartColors.purple }
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 10,
+        lineStyle: { 
+          color: {
+            type: 'linear',
+            colorStops: [
+              { offset: 0, color: modernColors.purple[0] },
+              { offset: 1, color: modernColors.purple[1] }
+            ]
+          },
+          width: 4,
+          shadowColor: `${modernColors.purple[0]}60`,
+          shadowBlur: 15,
+          shadowOffsetY: 8
+        },
+        itemStyle: { 
+          color: modernColors.purple[0],
+          borderWidth: 3,
+          borderColor: '#FFFFFF',
+          shadowColor: `${modernColors.purple[0]}80`,
+          shadowBlur: 12
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: `${modernColors.purple[0]}50` },
+              { offset: 1, color: `${modernColors.purple[0]}08` }
+            ]
+          }
+        }
       },
       {
         name: t.target,
         type: 'line',
         yAxisIndex: 0,
         data: efficiencyTrendData.map(item => item.target),
-        lineStyle: { color: chartColors.accent, type: 'dashed', width: 2 },
-        itemStyle: { color: chartColors.accent },
-        symbol: 'none'
+        lineStyle: { 
+          color: modernColors.amber[0], 
+          type: 'dashed', 
+          width: 3,
+          opacity: 0.9
+        },
+        itemStyle: { 
+          color: modernColors.amber[0],
+          opacity: 0.9
+        },
+        symbol: 'diamond',
+        symbolSize: 8
       },
       {
         name: 'Tâches Terminées',
         type: 'bar',
         yAxisIndex: 1,
         data: efficiencyTrendData.map(item => item.completedTasks),
-        itemStyle: { color: chartColors.secondary + '80', borderRadius: [2, 2, 0, 0] },
-        barWidth: '30%'
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: `${modernColors.emerald[0]}CC` },
+              { offset: 1, color: `${modernColors.emerald[0]}60` }
+            ]
+          },
+          borderRadius: [6, 6, 0, 0],
+          shadowColor: `${modernColors.emerald[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetY: 5
+        },
+        barWidth: '35%'
       }
     ]
   });
 
-  // ECharts Options for Recent Performance (Grouped Bar Chart)
-  const getRecentPerformanceOptions = () => ({
-    ...getCommonOptions(),
+  // Combined Performance Chart
+  const getCombinedPerformanceOptions = () => ({
+    ...getModernChartOptions(),
     xAxis: {
       type: 'category',
       data: recentPerformanceData.map(item => item.date),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        margin: 12
+      },
+      axisTick: { show: false }
     },
     yAxis: {
       type: 'value',
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      max: 100,
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        formatter: '{value}%'
+      },
+      splitLine: { 
+        lineStyle: { 
+          color: isDark ? '#334155' : '#F1F5F9', 
+          type: 'dashed',
+          width: 1
+        } 
+      }
     },
     series: [
       {
         name: 'Productivité',
         type: 'bar',
         data: recentPerformanceData.map(item => item.attendance),
-        itemStyle: { color: chartColors.primary, borderRadius: [2, 2, 0, 0] }
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: modernColors.blue[0] },
+              { offset: 1, color: `${modernColors.blue[0]}CC` }
+            ]
+          },
+          borderRadius: [6, 6, 0, 0],
+          shadowColor: `${modernColors.blue[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetY: 5
+        },
+        barWidth: '28%'
       },
       {
         name: t.safetyScore,
         type: 'bar',
         data: recentPerformanceData.map(item => item.safety),
-        itemStyle: { color: chartColors.secondary, borderRadius: [2, 2, 0, 0] }
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: modernColors.emerald[0] },
+              { offset: 1, color: `${modernColors.emerald[0]}CC` }
+            ]
+          },
+          borderRadius: [6, 6, 0, 0],
+          shadowColor: `${modernColors.emerald[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetY: 5
+        },
+        barWidth: '28%'
       },
       {
         name: t.efficiency,
         type: 'bar',
         data: recentPerformanceData.map(item => item.efficiency),
-        itemStyle: { color: chartColors.purple, borderRadius: [2, 2, 0, 0] }
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: modernColors.purple[0] },
+              { offset: 1, color: `${modernColors.purple[0]}CC` }
+            ]
+          },
+          borderRadius: [6, 6, 0, 0],
+          shadowColor: `${modernColors.purple[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetY: 5
+        },
+        barWidth: '28%'
       }
     ]
   });
 
-  // ECharts Options for Employee Performance (Horizontal Bar Chart)
+  // Employee Performance Chart
   const getEmployeePerformanceOptions = () => ({
-    ...getCommonOptions(),
+    ...getModernChartOptions(),
     grid: {
-      left: '15%',
-      right: '4%',
-      bottom: '10%',
+      left: '20%',
+      right: '5%',
+      bottom: '12%',
       top: '15%',
       containLabel: true
     },
     xAxis: {
       type: 'value',
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      max: 100,
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600,
+        formatter: '{value}%'
+      },
+      splitLine: { 
+        lineStyle: { 
+          color: isDark ? '#334155' : '#F1F5F9', 
+          type: 'dashed',
+          width: 1
+        } 
+      }
     },
     yAxis: {
       type: 'category',
       data: employeePerformanceData.map(item => item.name),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+      axisLine: { show: false },
+      axisLabel: { 
+        color: isDark ? '#94A3B8' : '#64748B', 
+        fontSize: 12,
+        fontWeight: 600
+      },
+      axisTick: { show: false }
     },
     series: [
       {
         name: t.productivity,
         type: 'bar',
         data: employeePerformanceData.map(item => item.productivity),
-        itemStyle: { color: chartColors.primary, borderRadius: [0, 2, 2, 0] }
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 1, y2: 0,
+            colorStops: [
+              { offset: 0, color: `${modernColors.blue[0]}60` },
+              { offset: 1, color: modernColors.blue[0] }
+            ]
+          },
+          borderRadius: [0, 8, 8, 0],
+          shadowColor: `${modernColors.blue[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetX: 5
+        },
+        barWidth: '40%'
       },
       {
         name: t.efficiency,
         type: 'bar',
         data: employeePerformanceData.map(item => item.efficiency),
-        itemStyle: { color: chartColors.purple, borderRadius: [0, 2, 2, 0] }
+        itemStyle: { 
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 1, y2: 0,
+            colorStops: [
+              { offset: 0, color: `${modernColors.purple[0]}60` },
+              { offset: 1, color: modernColors.purple[0] }
+            ]
+          },
+          borderRadius: [0, 8, 8, 0],
+          shadowColor: `${modernColors.purple[0]}40`,
+          shadowBlur: 10,
+          shadowOffsetX: 5
+        },
+        barWidth: '40%'
       }
     ]
   });
 
-  // ECharts Options for Status Distribution (Pie Chart)
+  // Status Distribution Donut
   const getStatusDistributionOptions = () => ({
-    ...getCommonOptions(),
+    ...getModernChartOptions(),
+    grid: {
+      left: '5%',
+      right: '5%',
+      bottom: '5%',
+      top: '5%',
+      containLabel: true
+    },
     tooltip: {
       trigger: 'item',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
       borderColor: isDark ? '#475569' : '#E2E8F0',
       borderWidth: 1,
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
+      borderRadius: 16,
+      textStyle: { 
+        color: isDark ? '#F1F5F9' : '#0F172A',
+        fontSize: 14,
+        fontWeight: 500
+      },
+      formatter: '{a} <br/>{b}: {c} ({d}%)',
+      padding: [16, 20],
+      shadowBlur: 25,
+      shadowColor: 'rgba(0, 0, 0, 0.15)'
     },
     legend: {
-      orient: 'horizontal',
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B' }
+      show: false  // Disable legend to avoid overlap, we'll use custom cards below
     },
     series: [
       {
         name: 'Performance',
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '45%'],
+        radius: ['45%', '75%'],
+        center: ['50%', '50%'],
         data: statusDistribution.map(item => ({
           value: item.value,
           name: item.name,
-          itemStyle: { color: item.color }
+          itemStyle: { 
+            color: item.color,
+            shadowBlur: 15,
+            shadowColor: 'rgba(0, 0, 0, 0.15)'
+          }
         })),
         emphasis: {
           itemStyle: {
-            shadowBlur: 10,
+            shadowBlur: 20,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+            shadowColor: 'rgba(0, 0, 0, 0.25)',
+            scale: 1.08
           }
         },
         labelLine: { show: false },
         label: {
           show: true,
           position: 'inside',
-          formatter: '{c}',
+          formatter: (params) => {
+            return params.value > 0 ? params.value : '';  // Only show label if value > 0
+          },
           color: 'white',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          fontSize: 18
         }
       }
     ]
   });
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-10 ${className}`}>
       
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      {/* Modern Charts Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         
         {/* Attendance Trend Chart */}
         {attendanceTrendData.length > 0 && (
-          <div className={`p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/30">
+                  <TrendingUp className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {t.attendanceChart}
                   </h3>
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -511,31 +870,33 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
                 </div>
               </div>
               <div className={`text-right ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                <div className="text-xs">Dernière: {attendanceTrendData[attendanceTrendData.length - 1]?.productivity}%</div>
-                <div className="text-xs">{attendanceTrendData[attendanceTrendData.length - 1]?.presentEmployees}/{attendanceTrendData[attendanceTrendData.length - 1]?.employees} présents</div>
+                <div className="text-lg font-bold text-blue-600">{attendanceTrendData[attendanceTrendData.length - 1]?.productivity}%</div>
+                <div className="text-sm">{attendanceTrendData[attendanceTrendData.length - 1]?.presentEmployees}/{attendanceTrendData[attendanceTrendData.length - 1]?.employees} présents</div>
               </div>
             </div>
             
             <ReactECharts 
               option={getAttendanceOptions()} 
-              style={{ height: '300px' }}
+              style={{ height: '350px' }}
               opts={{ renderer: 'svg' }}
             />
           </div>
         )}
 
-        {/* Safety Incidents Chart */}
+        {/* Safety Chart */}
         {safetyTrendData.length > 0 && (
-          <div className={`p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-green-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/30">
+                  <Shield className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {t.safetyChart}
                   </h3>
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -544,31 +905,33 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
                 </div>
               </div>
               <div className={`text-right ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                <div className="text-xs">Score: {safetyTrendData[safetyTrendData.length - 1]?.safetyScore}%</div>
-                <div className="text-xs">{safetyTrendData[safetyTrendData.length - 1]?.incidents} incidents</div>
+                <div className="text-lg font-bold text-emerald-600">{safetyTrendData[safetyTrendData.length - 1]?.safetyScore}%</div>
+                <div className="text-sm">{safetyTrendData[safetyTrendData.length - 1]?.incidents} incidents</div>
               </div>
             </div>
             
             <ReactECharts 
               option={getSafetyOptions()} 
-              style={{ height: '300px' }}
+              style={{ height: '350px' }}
               opts={{ renderer: 'svg' }}
             />
           </div>
         )}
 
-        {/* Efficiency Trend Chart */}
+        {/* Efficiency Chart */}
         {efficiencyTrendData.length > 0 && (
-          <div className={`p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center justify-between mb-8">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-xl shadow-purple-500/30">
+                  <Activity className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                     {t.efficiencyChart}
                   </h3>
                   <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -577,31 +940,33 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
                 </div>
               </div>
               <div className={`text-right ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                <div className="text-xs">Efficacité: {efficiencyTrendData[efficiencyTrendData.length - 1]?.efficiency}%</div>
-                <div className="text-xs">{efficiencyTrendData[efficiencyTrendData.length - 1]?.completedTasks}/{efficiencyTrendData[efficiencyTrendData.length - 1]?.totalTasks} tâches</div>
+                <div className="text-lg font-bold text-purple-600">{efficiencyTrendData[efficiencyTrendData.length - 1]?.efficiency}%</div>
+                <div className="text-sm">{efficiencyTrendData[efficiencyTrendData.length - 1]?.completedTasks}/{efficiencyTrendData[efficiencyTrendData.length - 1]?.totalTasks} tâches</div>
               </div>
             </div>
             
             <ReactECharts 
               option={getEfficiencyOptions()} 
-              style={{ height: '300px' }}
+              style={{ height: '350px' }}
               opts={{ renderer: 'svg' }}
             />
           </div>
         )}
 
-        {/* Recent Performance Comparison */}
+        {/* Combined Performance */}
         {recentPerformanceData.length > 0 && (
-          <div className={`p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-500/5 to-orange-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center space-x-4 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-xl shadow-pink-500/30">
+                <Calendar className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Performance Récente
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Performance Globale
                 </h3>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                   Comparaison multi-KPI
@@ -610,85 +975,100 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
             </div>
             
             <ReactECharts 
-              option={getRecentPerformanceOptions()} 
-              style={{ height: '300px' }}
+              option={getCombinedPerformanceOptions()} 
+              style={{ height: '350px' }}
               opts={{ renderer: 'svg' }}
             />
           </div>
         )}
       </div>
 
-      {/* Individual Performance & Status Distribution */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Bottom Row: Employee Performance & Status */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         
-        {/* Employee Performance Distribution */}
+        {/* Employee Performance */}
         {employeePerformanceData.length > 0 && (
-          <div className={`xl:col-span-2 p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`xl:col-span-2 relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center">
-                <Users className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-indigo-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center space-x-4 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
+                <Users className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   Performance Individuelle
                 </h3>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Données les plus récentes
+                  Données les plus récentes • {employeePerformanceData.length} employés
                 </p>
               </div>
             </div>
             
             <ReactECharts 
               option={getEmployeePerformanceOptions()} 
-              style={{ height: '300px' }}
+              style={{ height: '400px' }}
               opts={{ renderer: 'svg' }}
             />
           </div>
         )}
 
-        {/* Performance Status Distribution */}
+        {/* Status Distribution */}
         {statusDistribution.some(s => s.value > 0) && (
-          <div className={`p-6 rounded-xl border ${
-            isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+          <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl transition-all duration-300 hover:shadow-3xl ${
+            isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
           }`}>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center">
-                <Clock className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-yellow-500/5 pointer-events-none" />
+            
+            <div className="relative flex items-center space-x-4 mb-8">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-xl shadow-amber-500/30">
+                <Target className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Tendance Performance
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Répartition Performance
                 </h3>
                 <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Répartition récente
+                  Dernières 6 entrées
                 </p>
               </div>
             </div>
             
             <ReactECharts 
               option={getStatusDistributionOptions()} 
-              style={{ height: '250px' }}
+              style={{ height: '280px' }}
               opts={{ renderer: 'svg' }}
             />
 
-            {/* Status Summary */}
-            <div className="mt-4 space-y-2">
+            {/* Enhanced Status Cards */}
+            <div className="mt-6 space-y-4">
               {statusDistribution.map((status, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: status.color }}
-                    />
-                    <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>
-                      {status.name}
-                    </span>
+                <div key={index} className={`relative overflow-hidden p-4 rounded-2xl transition-all duration-200 hover:scale-105 ${
+                  isDark ? 'bg-slate-700/40 hover:bg-slate-700/60' : 'bg-slate-50/80 hover:bg-slate-100/80'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div 
+                        className="w-5 h-5 rounded-full shadow-lg"
+                        style={{ backgroundColor: status.color }}
+                      />
+                      <span className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {status.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        {status.value}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        entrées
+                      </span>
+                    </div>
                   </div>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {status.value}
-                  </span>
                 </div>
               ))}
             </div>
@@ -696,61 +1076,108 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
         )}
       </div>
 
-      {/* Data Summary */}
+      {/* Enhanced Summary Section */}
       {(attendanceData.length > 0 || safetyData.length > 0 || efficiencyData.length > 0) && (
-        <div className={`p-6 rounded-xl border ${
-          isDark ? 'bg-slate-800/60 border-slate-700/50' : 'bg-white border-slate-200/80 shadow-sm'
+        <div className={`relative overflow-hidden p-8 rounded-3xl border backdrop-blur-xl shadow-2xl ${
+          isDark ? 'bg-slate-800/80 border-slate-700/60 shadow-slate-900/30' : 'bg-white/90 border-slate-200/60 shadow-slate-200/60'
         }`}>
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-white" />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 pointer-events-none" />
+          
+          <div className="relative flex items-center space-x-4 mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/30">
+              <BarChart3 className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 Résumé des Données
               </h3>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                Aperçu des KPIs configurés
+                Aperçu détaillé des KPIs configurés
               </p>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {attendanceData.length > 0 && (
-              <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-blue-50'}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Clock className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Présence</h4>
+              <div className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-200 hover:scale-105 ${
+                isDark ? 'bg-blue-900/30 border-blue-700/40 hover:bg-blue-900/40' : 'bg-blue-50/80 border-blue-200/60 hover:bg-blue-100/80'
+              }`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent pointer-events-none" />
+                <div className="relative flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <Clock className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className={`text-lg font-bold ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Présence</h4>
                 </div>
-                <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div>{attendanceData.length} entrées de données</div>
-                  <div>Dernière: {new Date(attendanceData[attendanceData.length - 1]?.date).toLocaleDateString('fr-FR')}</div>
+                <div className={`space-y-3 ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Entrées:</span>
+                    <span className="font-bold">{attendanceData.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Dernière:</span>
+                    <span className="font-bold">{new Date(attendanceData[attendanceData.length - 1]?.kpi_date).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Performance:</span>
+                    <span className="font-bold text-xl">{attendanceData[attendanceData.length - 1]?.kpi_value || 0}%</span>
+                  </div>
                 </div>
               </div>
             )}
             
             {safetyData.length > 0 && (
-              <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-red-50'}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Shield className={`w-5 h-5 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
-                  <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Sécurité</h4>
+              <div className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-200 hover:scale-105 ${
+                isDark ? 'bg-emerald-900/30 border-emerald-700/40 hover:bg-emerald-900/40' : 'bg-emerald-50/80 border-emerald-200/60 hover:bg-emerald-100/80'
+              }`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
+                <div className="relative flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className={`text-lg font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>Sécurité</h4>
                 </div>
-                <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div>{safetyData.length} rapports de sécurité</div>
-                  <div>Dernière: {new Date(safetyData[safetyData.length - 1]?.date).toLocaleDateString('fr-FR')}</div>
+                <div className={`space-y-3 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Rapports:</span>
+                    <span className="font-bold">{safetyData.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Dernière:</span>
+                    <span className="font-bold">{new Date(safetyData[safetyData.length - 1]?.kpi_date).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Score:</span>
+                    <span className="font-bold text-xl">{safetyData[safetyData.length - 1]?.kpi_value || 100}%</span>
+                  </div>
                 </div>
               </div>
             )}
             
             {efficiencyData.length > 0 && (
-              <div className={`p-4 rounded-lg ${isDark ? 'bg-slate-700/50' : 'bg-purple-50'}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Users className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
-                  <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Efficacité</h4>
+              <div className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-200 hover:scale-105 ${
+                isDark ? 'bg-purple-900/30 border-purple-700/40 hover:bg-purple-900/40' : 'bg-purple-50/80 border-purple-200/60 hover:bg-purple-100/80'
+              }`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent pointer-events-none" />
+                <div className="relative flex items-center space-x-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Activity className="w-6 h-6 text-white" />
+                  </div>
+                  <h4 className={`text-lg font-bold ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>Efficacité</h4>
                 </div>
-                <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <div>{efficiencyData.length} rapports d'efficacité</div>
-                  <div>Dernière: {new Date(efficiencyData[efficiencyData.length - 1]?.date).toLocaleDateString('fr-FR')}</div>
+                <div className={`space-y-3 ${isDark ? 'text-purple-200' : 'text-purple-700'}`}>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Rapports:</span>
+                    <span className="font-bold">{efficiencyData.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Dernière:</span>
+                    <span className="font-bold">{new Date(efficiencyData[efficiencyData.length - 1]?.kpi_date).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Efficacité:</span>
+                    <span className="font-bold text-xl">{efficiencyData[efficiencyData.length - 1]?.kpi_value || 0}%</span>
+                  </div>
                 </div>
               </div>
             )}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Users, 
   Plus, 
@@ -8,7 +8,6 @@ import {
   Target,
   BarChart3,
   AlertTriangle,
-  ArrowUpRight,
   Settings,
   Calendar,
   CheckCircle2,
@@ -22,376 +21,38 @@ import {
   Activity
 } from 'lucide-react';
 import { kpiDefinitions } from '../utils/kpiDefinitions';
-import { useKPIData } from '../hook/useKPIData';
+import { useTeamsKPIData } from '../hooks/useTeamsKPIData';
 import AttendanceForm from '../components/Team/AttendanceForm';
 import { SafetyIncidentsForm } from '../components/Team/SafetyIncidentsForm';
 import { OperatorEfficiencyForm } from '../components/Team/OperatorEfficiencyForm';
 import { TeamCharts } from '../components/Team/TeamCharts';
-import { WeeklyReportModal } from '../components/Team/WeeklyReportModal';
 import { MonthlyReportModal } from '../components/Team/MonthlyReportModal';
-
-// Weekly Report Modal for Team
-const TeamWeeklyReportModal = ({ analytics, isDark, onClose }) => {
-  const weeklyData = useMemo(() => {
-    if (!analytics) return null;
-
-    const currentWeek = new Date();
-    const weekStart = new Date(currentWeek.setDate(currentWeek.getDate() - currentWeek.getDay()));
-    
-    const teamData = analytics.team || [];
-
-    const weekTeam = teamData.filter(entry => 
-      new Date(entry.date) >= weekStart
-    );
-
-    const avgProductivity = weekTeam.length > 0 
-      ? Math.round(weekTeam.reduce((sum, entry) => sum + entry.value, 0) / weekTeam.length)
-      : 0;
-
-    const totalEmployees = weekTeam.reduce((sum, entry) => sum + (entry.employees?.length || 0), 0);
-    const avgAttendance = weekTeam.reduce((sum, entry) => sum + (entry.attendance || 0), 0) / weekTeam.length || 0;
-
-    return {
-      weekNumber: Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / (7 * 24 * 60 * 60 * 1000)),
-      avgProductivity,
-      totalEmployees,
-      avgAttendance: Math.round(avgAttendance),
-      weekTeam
-    };
-  }, [analytics]);
-
-  if (!weeklyData) {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
-          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-        }`}>
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
-              isDark ? 'bg-slate-700' : 'bg-slate-100'
-            }`}>
-              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-            </div>
-            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
-            </h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'équipe trouvée pour cette semaine.
-            </p>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className={`w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
-        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-      }`}>
-        
-        {/* Header */}
-        <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-pink-600 flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Hebdomadaire Équipe - Semaine {weeklyData.weekNumber}
-                </h2>
-                <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Analyse complète des performances d'équipe
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
-                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-          <div className="p-8 space-y-8">
-            
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Productivité Moyenne
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.avgProductivity}%
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  performance globale
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Présence
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.avgAttendance}%
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  taux de présence
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Employés Actifs
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {weeklyData.totalEmployees}
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  cette semaine
-                </div>
-              </div>
-
-              <div className={`p-6 rounded-xl border ${
-                isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center">
-                    <Target className="w-5 h-5 text-white" />
-                  </div>
-                  <h4 className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Objectifs Atteints
-                  </h4>
-                </div>
-                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  {[weeklyData.avgProductivity >= 85, weeklyData.avgAttendance >= 90].filter(Boolean).length}/2
-                </div>
-                <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  sur 2 KPIs
-                </div>
-              </div>
-            </div>
-
-            {/* Summary Section */}
-            <div className={`p-6 rounded-xl border ${
-              isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-pink-50/50 border-slate-200'
-            }`}>
-              <h3 className={`text-lg font-semibold mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Résumé de la Semaine
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Réussites
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {weeklyData.avgProductivity >= 85 && <li>• Excellente productivité</li>}
-                    {weeklyData.avgAttendance >= 90 && <li>• Présence optimale</li>}
-                    {weeklyData.totalEmployees > 0 && <li>• Équipe active</li>}
-                    {weeklyData.weekTeam.length > 0 && <li>• Suivi régulier</li>}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Points d'Attention
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {weeklyData.avgProductivity < 70 && <li>• Productivité à améliorer</li>}
-                    {weeklyData.avgAttendance < 80 && <li>• Présence à renforcer</li>}
-                    {weeklyData.totalEmployees === 0 && <li>• Aucun employé actif</li>}
-                    {weeklyData.weekTeam.length === 0 && <li>• Aucune activité</li>}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className={`font-medium mb-3 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Actions Recommandées
-                  </h4>
-                  <ul className={`text-sm space-y-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    <li>• Maintenir la motivation</li>
-                    <li>• Optimiser les processus</li>
-                    <li>• Renforcer la communication</li>
-                    <li>• Former les équipes</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Monthly Report Modal for Team
-const TeamMonthlyReportModal = ({ analytics, isDark, onClose }) => {
-  const monthlyData = useMemo(() => {
-    if (!analytics) return null;
-
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    const monthData = {
-      team: (analytics.team || []).filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
-      })
-    };
-
-    const avgProductivity = monthData.team.length > 0 
-      ? Math.round(monthData.team.reduce((sum, entry) => sum + entry.value, 0) / monthData.team.length)
-      : 0;
-
-    return {
-      monthName: new Date(currentYear, currentMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
-      avgProductivity,
-      monthData
-    };
-  }, [analytics]);
-
-  if (!monthlyData) {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-        <div className={`w-full max-w-lg p-8 rounded-2xl shadow-xl ${
-          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-        }`}>
-          <div className="text-center">
-            <div className={`w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center ${
-              isDark ? 'bg-slate-700' : 'bg-slate-100'
-            }`}>
-              <FileText className={`w-8 h-8 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-            </div>
-            <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
-            </h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'équipe trouvée pour ce mois.
-            </p>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <div className={`w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl shadow-xl ${
-        isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'
-      }`}>
-        
-        {/* Header */}
-        <div className={`px-8 py-6 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-pink-600 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Mensuel Équipe - {monthlyData.monthName}
-                </h2>
-                <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Analyse mensuelle complète des performances d'équipe
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className={`p-2.5 rounded-lg hover:bg-opacity-10 transition-colors ${
-                isDark ? 'hover:bg-white text-slate-400' : 'hover:bg-black text-slate-500'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-100px)]">
-          <div className="p-8">
-            <div className="text-center">
-              <h3 className={`text-xl font-semibold mb-8 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                Résumé Mensuel - {monthlyData.monthName}
-              </h3>
-              <div className="max-w-sm mx-auto">
-                <div className={`p-8 rounded-xl border ${
-                  isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <h4 className={`font-medium mb-4 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                    Productivité Moyenne
-                  </h4>
-                  <div className={`text-4xl font-bold ${isDark ? 'text-pink-400' : 'text-pink-600'}`}>
-                    {monthlyData.avgProductivity}%
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export const TeamPage = ({ isDark = false }) => {
   // UI State
   const [activeForm, setActiveForm] = useState(null);
   const [selectedKPI, setSelectedKPI] = useState(null);
   const [showReports, setShowReports] = useState(false);
-  const [reportType, setReportType] = useState('weekly');
   const [showReportsMenu, setShowReportsMenu] = useState(false);
   
   // Force re-render trigger
   const [updateTrigger, setUpdateTrigger] = useState(0);
   
-  // KPI Data Hook
+  // KPI Data Hook - Now using Supabase with date-specific queries
   const {
     kpiData,
     updateKPIValue,
     getDepartmentSummary,
     getTeamAnalytics,
     getLatestKPIValue,
-    isLoading
-  } = useKPIData();
+    isLoading,
+    error,
+    refreshData,
+    // NEW: Date-specific queries
+    getAttendanceByDate,
+    getOperatorEfficiencyByDate,
+    getSafetyIncidentsByDate
+  } = useTeamsKPIData();
   
   // Department configuration
   const departmentId = 'team';
@@ -418,22 +79,38 @@ export const TeamPage = ({ isDark = false }) => {
     return stableGetTeamAnalytics();
   }, [stableGetTeamAnalytics]);
 
-  // Handle form operations
-  const handleOpenForm = (kpiId) => {
+  // UPDATED: Handle form operations with date-specific data loading
+  const handleOpenForm = async (kpiId) => {
     const kpi = departmentKPIs.find(k => k.id === kpiId);
-    setSelectedKPI(kpi);
+    
+    // Get the latest value for display purposes
+    const latestValue = getLatestKPIValue(kpiId);
+    
+    // For forms, we want to load data for today's date by default
+    // or the latest available date if no data exists for today
+    const today = new Date();
+    const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    console.log('🔧 Opening form for KPI:', kpiId, 'with today date:', todayISO);
+    
+    // The AttendanceForm will handle loading the correct date-specific data
+    // via its useEffect when the component mounts with the default date
+    setSelectedKPI({
+      ...kpi,
+      latestValue
+    });
     setActiveForm(kpiId);
   };
 
   // Handle save with proper parameter structure and force re-render
   const handleSaveKPI = async (departmentId, kpiId, dataObject, notes = '') => {
     try {
-      console.log('💾 Saving KPI data:', { departmentId, kpiId, dataObject, notes });
+      console.log('💾 Saving KPI data to Supabase:', { departmentId, kpiId, dataObject, notes });
       
-      // Call the hook's updateKPIValue with the data object
+      // Call the hook's updateKPIValue which saves to Supabase
       await updateKPIValue(departmentId, kpiId, dataObject, notes);
       
-      console.log('✅ KPI data saved successfully');
+      console.log('✅ KPI data saved successfully to Supabase');
       
       // Close form
       setActiveForm(null);
@@ -447,7 +124,7 @@ export const TeamPage = ({ isDark = false }) => {
         console.log('🔄 Forced component update after save');
       }, 100);
     } catch (error) {
-      console.error('❌ Error saving KPI:', error);
+      console.error('❌ Error saving KPI to Supabase:', error);
       alert('Échec de sauvegarde des données KPI. Veuillez réessayer.');
     }
   };
@@ -459,7 +136,7 @@ export const TeamPage = ({ isDark = false }) => {
 
   // Enhanced stats calculation with real data from forms
   const stats = useMemo(() => {
-    console.log('📈 Recalculating stats with latest real data');
+    console.log('📈 Recalculating stats with latest real data from Supabase');
     
     if (!departmentSummary?.kpis) {
       return [
@@ -601,7 +278,7 @@ export const TeamPage = ({ isDark = false }) => {
 
       const data = latestValue.data;
       const mainValue = latestValue.value; // Main KPI value
-      const target = data.weeklyTarget || kpi.target || 85;
+      const target = data.weeklyTarget || data.monthlyTarget || kpi.target || 85;
 
       switch (kpi.id) {
         case 'team_productivity_attendance':
@@ -673,11 +350,6 @@ export const TeamPage = ({ isDark = false }) => {
           <div className="flex items-center space-x-3">
             <div className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
               {getStatusText(status)}
-            </div>
-            <div className={`opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1 ${
-              isDark ? 'text-blue-400' : 'text-blue-600'
-            }`}>
-              <ArrowUpRight className="w-4 h-4" />
             </div>
           </div>
         </div>
@@ -784,16 +456,58 @@ export const TeamPage = ({ isDark = false }) => {
     );
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="max-w-7xl mx-auto p-6 space-y-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
+        <div className="max-w-7xl mx-auto p-6 space-y-8">
+          <div className="flex items-center justify-center py-20">
+            <div className={`text-center p-8 rounded-xl border ${
+              isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+            }`}>
+              <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+              <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Erreur de chargement
+              </h3>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'} mb-4`}>
+                Impossible de charger les données depuis Supabase
+              </p>
+              <button
+                onClick={refreshData}
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+              >
+                Réessayer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
       <div className="max-w-7xl mx-auto p-6 space-y-8">
         
-        {/* Forms */}
+        {/* Forms - UPDATED: No longer passing existingData as forms handle their own date-specific loading */}
         {activeForm === 'team_productivity_attendance' && (
           <AttendanceForm
             onSave={handleSaveKPI}
             onCancel={handleCancelForm}
-            existingData={selectedKPI?.latestValue?.data}
+            existingData={null} // Let the form handle its own data loading
             isDark={isDark}
           />
         )}
@@ -816,17 +530,9 @@ export const TeamPage = ({ isDark = false }) => {
           />
         )}
 
-        {/* Enhanced Report Modals */}
-        {showReports && reportType === 'weekly' && (
-          <TeamWeeklyReportModal 
-            analytics={teamAnalytics}
-            isDark={isDark}
-            onClose={() => setShowReports(false)}
-          />
-        )}
-
-        {showReports && reportType === 'monthly' && (
-          <TeamMonthlyReportModal 
+        {/* Enhanced Monthly Report Modal */}
+        {showReports && (
+          <MonthlyReportModal 
             analytics={teamAnalytics}
             isDark={isDark}
             onClose={() => setShowReports(false)}
@@ -850,125 +556,17 @@ export const TeamPage = ({ isDark = false }) => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Reports Dropdown */}
-            <div className="relative">
-              <button 
-                onClick={() => setShowReportsMenu(!showReportsMenu)}
-                className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
-                  showReportsMenu
-                    ? isDark 
-                      ? 'border-pink-500 bg-pink-900/20 text-pink-300 shadow-pink-500/20' 
-                      : 'border-pink-500 bg-pink-50 text-pink-700 shadow-pink-500/20'
-                    : isDark 
-                      ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
-                      : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Rapports</span>
-                <svg 
-                  className={`w-4 h-4 transition-transform duration-200 ${showReportsMenu ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* Backdrop for click outside */}
-              {showReportsMenu && (
-                <div 
-                  className="fixed inset-0 z-10" 
-                  onClick={() => setShowReportsMenu(false)}
-                />
-              )}
-              
-              {/* Dropdown Menu */}
-              <div className={`absolute right-0 top-full mt-2 w-80 rounded-2xl border shadow-xl z-20 transition-all duration-200 transform ${
-                showReportsMenu 
-                  ? 'opacity-100 visible translate-y-0' 
-                  : 'opacity-0 invisible translate-y-2'
-              } ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                
-                {/* Menu Header */}
-                <div className={`px-6 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-100'}`}>
-                  <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    Rapports d'Équipe
-                  </h3>
-                  <p className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Analyses et synthèses des performances d'équipe
-                  </p>
-                </div>
-                
-                {/* Menu Items */}
-                <div className="p-3">
-                  <button
-                    onClick={() => { 
-                      setReportType('weekly'); 
-                      setShowReports(true); 
-                      setShowReportsMenu(false);
-                    }}
-                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
-                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-pink-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                      <Eye className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Rapport Hebdomadaire
-                      </div>
-                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Analyse détaillée de la semaine en cours
-                      </div>
-                    </div>
-                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isDark ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      <ArrowUpRight className="w-5 h-5" />
-                    </div>
-                  </button>
-                  
-                  <button
-                    onClick={() => { 
-                      setReportType('monthly'); 
-                      setShowReports(true); 
-                      setShowReportsMenu(false);
-                    }}
-                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-left transition-all duration-200 group ${
-                      isDark ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                      <Calendar className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <div className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Rapport Mensuel
-                      </div>
-                      <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                        Vue d'ensemble et tendances du mois
-                      </div>
-                    </div>
-                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isDark ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                      <ArrowUpRight className="w-5 h-5" />
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Primary Action Button */}
+            {/* Monthly Report Button */}
             <button
-              onClick={() => handleOpenForm('team_productivity_attendance')}
-              className="flex items-center space-x-2.5 px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+              onClick={() => setShowReports(true)}
+              className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
+                isDark 
+                  ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
+                  : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>Gérer Équipe</span>
+              <FileText className="w-4 h-4" />
+              <span>Rapport Mensuel</span>
             </button>
           </div>
         </div>
@@ -995,16 +593,6 @@ export const TeamPage = ({ isDark = false }) => {
                   'bg-slate-600'
                 }`}>
                   <stat.icon className="w-5 h-5 text-white" />
-                </div>
-                <div className={`p-1 rounded-lg transition-all ${
-                  stat.color === 'pink' ? 'bg-pink-100 text-pink-700 dark:bg-pink-800 dark:text-pink-300' :
-                  stat.color === 'violet' ? 'bg-violet-100 text-violet-700 dark:bg-violet-800 dark:text-violet-300' :
-                  stat.color === 'blue' ? 'bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300' :
-                  stat.color === 'emerald' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300' :
-                  stat.color === 'amber' ? 'bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300' :
-                  'bg-red-100 text-red-700 dark:bg-red-800 dark:text-red-300'
-                }`}>
-                  <ArrowUpRight className="w-3 h-3" />
                 </div>
               </div>
 
@@ -1055,14 +643,6 @@ export const TeamPage = ({ isDark = false }) => {
               <p className={`text-base mt-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                 {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentKPIs.length || 0} configurés • Gestion intelligente des équipes et performance opérationnelle
               </p>
-            </div>
-            <div className={`px-4 py-2 rounded-lg border ${
-              isDark ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-800'
-            }`}>
-              <div className="flex items-center space-x-2 text-sm">
-                <Sparkles className="w-4 h-4" />
-                <span>Interface unifiée</span>
-              </div>
             </div>
           </div>
 
