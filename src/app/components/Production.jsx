@@ -45,7 +45,7 @@ import { ChartDisplay } from '../components/ChartDisplay';
 import { AppContext } from '../context/AppContext';
 import ReactECharts from 'echarts-for-react';
 import EnergyConsumptionTracker from './production/EnergyConsumptionTracker';
-import ProductionMonthlyReport from './Production/ProductionMonthlyReport';
+import ProductionMonthlyReport from './production/ProductionMonthlyReport';
 import ProductionChartsSection from './production/ProductionChartsSection';
 
 // French display names for KPI statuses
