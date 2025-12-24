@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, AlertTriangle, Calendar, Target, Save, X, Plus, Trash2, 
-  Clock, User, Award, Activity, TrendingUp, UserRound, Users, 
-  Edit3, ChevronLeft, ChevronRight, CalendarDays
+import { useTeamsKPIData } from '../../hooks/useTeamsKPIData';
+import {
+  Shield, AlertTriangle, Calendar, Target, Save, X, Plus, Trash2,
+  Clock, User, Award, Activity, TrendingUp, UserRound, Users,
+  Edit3, ChevronLeft, ChevronRight, CalendarDays, Loader2
 } from 'lucide-react';
 
 // Default team members with unique colors
@@ -33,6 +34,8 @@ const SEVERITY_LEVELS = [
 ];
 
 export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isDark = false }) => {
+  const { getSafetyIncidentsByDate } = useTeamsKPIData();
+
   // Custom scrollbar styles
   const scrollbarStyles = `
     .custom-scrollbar {
@@ -153,6 +156,35 @@ export const SafetyIncidentsForm = ({ onSave, onCancel, existingData = null, isD
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Load safety incidents for selected month
+  const loadSafetyData = async (date) => {
+    if (!date) return;
+
+    try {
+      setIsLoadingData(true);
+      const safetyRecord = await getSafetyIncidentsByDate(date);
+
+      if (safetyRecord) {
+        setIncidents(safetyRecord.incidents || []);
+        setMonthlyTarget(safetyRecord.monthly_target || 10);
+      } else {
+        setIncidents([]);
+        setMonthlyTarget(10);
+      }
+    } catch (error) {
+      console.error('Error loading safety incidents:', error);
+      setIncidents([]);
+      setMonthlyTarget(10);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSafetyData(selectedDate);
+  }, [selectedDate]);
 
   // Get employee color
   const getEmployeeColor = (employeeName) => {
@@ -610,12 +642,21 @@ ${currentKPI >= 90 ? '✅ EXCELLENTE SÉCURITÉ' : currentKPI >= 70 ? '⚠️ S�
                 </div>
                 
                 <div className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium ${
-                  estMoisActuel 
+                  estMoisActuel
                     ? isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
                     : isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'
                 }`}>
                   {estMoisActuel ? '📅 Mois actuel' : '📋 Historique'}
                 </div>
+
+                {isLoadingData && (
+                  <div className={`px-2 sm:px-3 py-1 rounded-lg text-xs font-medium flex items-center space-x-2 ${
+                    isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700'
+                  }`}>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Chargement...</span>
+                  </div>
+                )}
               </div>
 
               {/* Métriques en temps réel */}

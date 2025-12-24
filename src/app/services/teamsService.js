@@ -24,17 +24,27 @@ class TeamsService {
     }
   }
 
-  // NEW: Get attendance data for a specific date
+  // NEW: Get attendance data for a specific date (queries by month)
   async getTeamProductivityAttendanceByDate(date) {
     try {
+      // Extract year and month from the date to query monthly data
+      const dateObj = new Date(date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const monthStart = `${year}-${month}-01`;
+      
+      console.log('🔍 Querying attendance for month:', monthStart, '(from date:', date, ')');
+      
       const { data, error } = await supabase
         .from('team_productivity_attendance')
         .select('*')
         .eq('team_id', DEFAULT_TEAM_ID)
-        .eq('kpi_date', date)
+        .eq('kpi_date', monthStart)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+      
+      console.log('📊 Found attendance data:', data ? 'yes' : 'no');
       return data || null;
     } catch (error) {
       console.error('Error fetching team productivity attendance by date:', error);
@@ -109,17 +119,27 @@ class TeamsService {
     }
   }
 
-  // NEW: Get operator efficiency data for a specific date
+  // NEW: Get operator efficiency data for a specific date (queries by month)
   async getOperatorEfficiencyByDate(date) {
     try {
+      // Extract year and month from the date to query monthly data
+      const dateObj = new Date(date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const monthStart = `${year}-${month}-01`;
+      
+      console.log('🔍 Querying efficiency for month:', monthStart, '(from date:', date, ')');
+      
       const { data, error } = await supabase
         .from('operator_efficiency')
         .select('*')
         .eq('team_id', DEFAULT_TEAM_ID)
-        .eq('kpi_date', date)
+        .eq('kpi_date', monthStart)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
+      
+      console.log('📊 Found efficiency data:', data ? 'yes' : 'no');
       return data || null;
     } catch (error) {
       console.error('Error fetching operator efficiency by date:', error);
@@ -193,17 +213,27 @@ class TeamsService {
     }
   }
 
-  // NEW: Get safety incidents data for a specific date
+  // NEW: Get safety incidents data for a specific date (queries by month)
   async getSafetyIncidentsByDate(date) {
     try {
+      // Extract year and month from the date to query monthly data
+      const dateObj = new Date(date);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const monthStart = `${year}-${month}-01`;
+      
+      console.log('🔍 Querying safety incidents for month:', monthStart, '(from date:', date, ')');
+      
       const { data, error } = await supabase
         .from('safety_incidents')
         .select('*')
         .eq('team_id', DEFAULT_TEAM_ID)
-        .eq('kpi_date', date)
+        .eq('kpi_date', monthStart)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
+      
+      console.log('📊 Found safety data:', data ? 'yes' : 'no');
       return data || null;
     } catch (error) {
       console.error('Error fetching safety incidents by date:', error);
@@ -265,19 +295,30 @@ class TeamsService {
 
   async getAllKPIData() {
     try {
+      console.log('📡 TeamsService: Fetching all KPI data from Supabase...');
+      
       const [attendanceData, efficiencyData, safetyData] = await Promise.all([
         this.getTeamProductivityAttendance(),
         this.getOperatorEfficiency(),
         this.getSafetyIncidents()
       ]);
 
-      return {
+      console.log('📊 TeamsService: Fetched data counts:', {
+        attendance: attendanceData?.length || 0,
+        efficiency: efficiencyData?.length || 0,
+        safety: safetyData?.length || 0
+      });
+
+      const result = {
         team_productivity_attendance: attendanceData,
         operator_efficiency: efficiencyData,
         safety_incidents: safetyData
       };
+      
+      console.log('✅ TeamsService: Returning KPI data:', result);
+      return result;
     } catch (error) {
-      console.error('Error fetching all KPI data:', error);
+      console.error('❌ TeamsService: Error fetching all KPI data:', error);
       return {
         team_productivity_attendance: [],
         operator_efficiency: [],
@@ -406,13 +447,27 @@ class TeamsService {
 
   // Get team analytics (for reports)
   getTeamAnalytics(kpiData, departmentId) {
-    if (!kpiData) return {};
+    console.log('📊 getTeamAnalytics called with:', { 
+      hasKpiData: !!kpiData, 
+      departmentId,
+      attendanceCount: kpiData?.team_productivity_attendance?.length || 0,
+      efficiencyCount: kpiData?.operator_efficiency?.length || 0,
+      safetyCount: kpiData?.safety_incidents?.length || 0
+    });
+    
+    if (!kpiData) {
+      console.warn('⚠️ getTeamAnalytics: kpiData is null/undefined');
+      return {};
+    }
 
-    return {
+    const result = {
       team_productivity_attendance: kpiData.team_productivity_attendance || [],
       operator_efficiency: kpiData.operator_efficiency || [],
       safety_incidents: kpiData.safety_incidents || []
     };
+    
+    console.log('✅ getTeamAnalytics returning:', result);
+    return result;
   }
 
   // Get KPI status based on value

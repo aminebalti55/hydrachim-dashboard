@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ReactECharts from 'echarts-for-react';
 import {
   X,
   Calendar,
-  Shield,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
@@ -15,595 +14,304 @@ import {
   Users,
   Clock,
   Activity,
-  Gauge,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
-  Brain,
-  Lightbulb,
-  Zap,
-  AlertCircle,
-  Star,
   Award,
   PieChart,
   LineChart,
-  FileSpreadsheet,
-  Mail,
-  BookOpen,
-  Layers,
-  Settings,
-  Plus,
-  Sparkles,
-  Eye,
-  Filter,
-  Search,
-  Share,
-  Bookmark,
-  MapPin,
   Timer,
-  Flame,
-  Heart,
-  ShieldCheck
+  Package,
+  User,
+  Loader2,
+  RefreshCw,
+  Filter,
+  Search
 } from 'lucide-react';
+import { teamsService } from '../../services/teamsService';
 
 export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedView, setSelectedView] = useState('overview');
-  const [selectedWeekDetail, setSelectedWeekDetail] = useState(null);
-  const [animatedStats, setAnimatedStats] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [monthlyData, setMonthlyData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => setAnimatedStats(true), 300);
-    return () => clearTimeout(timer);
-  }, []);
+  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
+  // Fetch data for selected month from Supabase
+  const fetchMonthlyData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const year = selectedYear;
+      const month = String(selectedMonth + 1).padStart(2, '0');
+      const monthDate = `${year}-${month}-01`;
+
+      // Fetch attendance and efficiency data for the selected month
+      const [attendanceData, efficiencyData] = await Promise.all([
+        teamsService.getTeamProductivityAttendanceByDate(monthDate),
+        teamsService.getOperatorEfficiencyByDate(monthDate)
+      ]);
+
+      setMonthlyData({
+        attendance: attendanceData,
+        efficiency: efficiencyData,
+        monthDate
+      });
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+      setMonthlyData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    fetchMonthlyData();
+  }, [fetchMonthlyData]);
+
+  // Process and analyze monthly data
   const monthlyAnalysis = useMemo(() => {
-    if (!analytics) return null;
+    if (!monthlyData) return null;
 
-    const monthStart = new Date(selectedYear, selectedMonth, 1);
-    const monthEnd = new Date(selectedYear, selectedMonth + 1, 0);
-    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const { attendance, efficiency } = monthlyData;
 
-    // Extract data for each KPI for the selected month
-    const attendanceData = (analytics.team_productivity_attendance || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
-      return entryDate >= monthStart && entryDate <= monthEnd;
-    });
+    // Extract employees from attendance or efficiency data
+    const employeesMap = new Map();
 
-    const safetyData = (analytics.safety_incidents || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
-      return entryDate >= monthStart && entryDate <= monthEnd;
-    });
+    // Process attendance data
+    if (attendance?.employees) {
+      attendance.employees.forEach(emp => {
+        const existing = employeesMap.get(emp.id) || {
+          id: emp.id,
+          name: emp.name,
+          matricule: emp.matricule,
+          role: emp.role || 'Operator',
+          attendance: {
+            totalDays: 0,
+            presentDays: 0,
+            lateDays: 0,
+            absentDays: 0,
+            totalHours: 0,
+            totalLateMinutes: 0,
+            records: []
+          },
+          production: {
+            totalKg: 0,
+            tasks: [],
+            avgDaily: 0
+          }
+        };
 
-    const efficiencyData = (analytics.operator_efficiency || []).filter(entry => {
-      const entryDate = new Date(entry.kpi_date);
-      return entryDate >= monthStart && entryDate <= monthEnd;
-    });
+        // Process attendance records
+        if (emp.attendance_records && Array.isArray(emp.attendance_records)) {
+          emp.attendance_records.forEach(record => {
+            existing.attendance.totalDays++;
+            existing.attendance.records.push(record);
 
-    if (attendanceData.length === 0 && safetyData.length === 0 && efficiencyData.length === 0) {
-      return null;
+            // Parse presence hours
+            if (record.presence) {
+              const [hours, mins] = record.presence.split(':').map(Number);
+              const presenceHours = hours + (mins || 0) / 60;
+              if (presenceHours > 0 && !['Congé', 'Absence', 'Maladie'].includes(record.motif)) {
+                existing.attendance.presentDays++;
+                existing.attendance.totalHours += presenceHours;
+              }
+            }
+
+            // Parse late minutes
+            if (record.retard) {
+              const [h, m] = record.retard.split(':').map(Number);
+              const lateMinutes = h * 60 + m;
+              if (lateMinutes > 0) {
+                existing.attendance.lateDays++;
+                existing.attendance.totalLateMinutes += lateMinutes;
+              }
+            }
+
+            // Check for absences
+            if (record.motif && ['Absence', 'Congé', 'Maladie'].includes(record.motif)) {
+              existing.attendance.absentDays++;
+            }
+          });
+        }
+
+        employeesMap.set(emp.id, existing);
+      });
     }
 
-    // Weekly breakdown analysis
-    const getWeekNumber = (date) => {
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    };
-
-    const weeklyData = {};
-    const allDetections = [];
-
-    // Process data by week
-    [...attendanceData, ...safetyData, ...efficiencyData].forEach(entry => {
-      const week = getWeekNumber(new Date(entry.kpi_date));
-      if (!weeklyData[week]) {
-        weeklyData[week] = {
-          week,
-          startDate: new Date(entry.kpi_date),
-          attendance: [],
-          safety: [],
-          efficiency: [],
-          detectedEvents: []
+    // Process efficiency/production data
+    if (efficiency?.employees) {
+      efficiency.employees.forEach(emp => {
+        const existing = employeesMap.get(emp.id) || {
+          id: emp.id,
+          name: emp.name,
+          matricule: emp.matricule,
+          role: emp.role || 'Operator',
+          attendance: {
+            totalDays: 0,
+            presentDays: 0,
+            lateDays: 0,
+            absentDays: 0,
+            totalHours: 0,
+            totalLateMinutes: 0,
+            records: []
+          },
+          production: {
+            totalKg: 0,
+            tasks: [],
+            avgDaily: 0
+          }
         };
-      }
 
-      if (attendanceData.includes(entry)) weeklyData[week].attendance.push(entry);
-      if (safetyData.includes(entry)) weeklyData[week].safety.push(entry);
-      if (efficiencyData.includes(entry)) weeklyData[week].efficiency.push(entry);
+        // Process production tasks
+        if (emp.tasks && Array.isArray(emp.tasks)) {
+          emp.tasks.forEach(task => {
+            const quantity = parseFloat(task.quantity_kg) || parseFloat(task.quantity) || 0;
+            existing.production.totalKg += quantity;
+            existing.production.tasks.push(task);
+          });
+          existing.production.avgDaily = emp.tasks.length > 0
+            ? existing.production.totalKg / emp.tasks.length
+            : 0;
+        }
+
+        employeesMap.set(emp.id, existing);
+      });
+    }
+
+    const employees = Array.from(employeesMap.values());
+
+    // Calculate global statistics
+    const totalEmployees = employees.length;
+    const totalPresenceDays = employees.reduce((sum, e) => sum + e.attendance.presentDays, 0);
+    const totalWorkingDays = employees.reduce((sum, e) => sum + e.attendance.totalDays, 0);
+    const totalLateDays = employees.reduce((sum, e) => sum + e.attendance.lateDays, 0);
+    const totalLateMinutes = employees.reduce((sum, e) => sum + e.attendance.totalLateMinutes, 0);
+    const totalProduction = employees.reduce((sum, e) => sum + e.production.totalKg, 0);
+    const totalHoursWorked = employees.reduce((sum, e) => sum + e.attendance.totalHours, 0);
+
+    const attendanceRate = totalWorkingDays > 0
+      ? Math.round((totalPresenceDays / totalWorkingDays) * 100)
+      : 0;
+    const punctualityRate = totalPresenceDays > 0
+      ? Math.round(((totalPresenceDays - totalLateDays) / totalPresenceDays) * 100)
+      : 100;
+    const avgLateMinutes = totalLateDays > 0
+      ? Math.round(totalLateMinutes / totalLateDays)
+      : 0;
+
+    // Get daily breakdown for charts
+    const dailyData = {};
+    employees.forEach(emp => {
+      emp.attendance.records.forEach(record => {
+        if (!record.date) return;
+        if (!dailyData[record.date]) {
+          dailyData[record.date] = {
+            date: record.date,
+            present: 0,
+            late: 0,
+            absent: 0,
+            totalHours: 0
+          };
+        }
+
+        if (record.presence) {
+          const [hours, mins] = record.presence.split(':').map(Number);
+          const presenceHours = hours + (mins || 0) / 60;
+          if (presenceHours > 0 && !['Congé', 'Absence', 'Maladie'].includes(record.motif)) {
+            dailyData[record.date].present++;
+            dailyData[record.date].totalHours += presenceHours;
+          }
+        }
+
+        if (record.retard) {
+          const [h, m] = record.retard.split(':').map(Number);
+          if ((h * 60 + m) > 0) {
+            dailyData[record.date].late++;
+          }
+        }
+
+        if (record.motif && ['Absence', 'Congé', 'Maladie'].includes(record.motif)) {
+          dailyData[record.date].absent++;
+        }
+      });
     });
 
-    // Analyze weekly performance
-    const weeklyBreakdown = Object.values(weeklyData).map(week => {
-      const weekAnalysis = {
-        week: week.week,
-        startDate: week.startDate.toLocaleDateString('fr-FR'),
-        endDate: new Date(week.startDate.getTime() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
-        attendance: { average: 0, entries: week.attendance.length, issues: [] },
-        safety: { average: 100, entries: week.safety.length, issues: [] },
-        efficiency: { average: 0, entries: week.efficiency.length, issues: [] },
-        detectedEvents: [],
-        overallStatus: 'good'
-      };
+    // Get production by day
+    const productionByDay = {};
+    employees.forEach(emp => {
+      emp.production.tasks.forEach(task => {
+        if (!task.date) return;
+        if (!productionByDay[task.date]) {
+          productionByDay[task.date] = { date: task.date, totalKg: 0, tasks: 0 };
+        }
+        productionByDay[task.date].totalKg += parseFloat(task.quantity_kg) || parseFloat(task.quantity) || 0;
+        productionByDay[task.date].tasks++;
+      });
+    });
 
-      // Calculate averages
-      if (week.attendance.length > 0) {
-        weekAnalysis.attendance.average = Math.round(
-          week.attendance.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.attendance.length
-        );
-      }
+    // Employee rankings
+    const topProducers = [...employees]
+      .filter(e => e.production.totalKg > 0)
+      .sort((a, b) => b.production.totalKg - a.production.totalKg)
+      .slice(0, 5);
 
-      if (week.safety.length > 0) {
-        weekAnalysis.safety.average = Math.round(
-          week.safety.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.safety.length
-        );
-      }
+    const bestAttendance = [...employees]
+      .filter(e => e.attendance.totalDays > 0)
+      .sort((a, b) => {
+        const rateA = a.attendance.presentDays / a.attendance.totalDays;
+        const rateB = b.attendance.presentDays / b.attendance.totalDays;
+        return rateB - rateA;
+      })
+      .slice(0, 5);
 
-      if (week.efficiency.length > 0) {
-        weekAnalysis.efficiency.average = Math.round(
-          week.efficiency.reduce((sum, entry) => sum + entry.kpi_value, 0) / week.efficiency.length
-        );
-      }
-
-      // Detect issues
-      if (weekAnalysis.attendance.average < 75) {
-        const detection = {
-          type: 'attendance_degradation',
-          severity: weekAnalysis.attendance.average < 60 ? 'critical' : 'warning',
-          category: 'Productivité Équipe',
-          title: `Productivité faible (${weekAnalysis.attendance.average}%)`,
-          description: `Performance d'équipe en dessous des standards.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      if (weekAnalysis.safety.average < 85) {
-        const detection = {
-          type: 'safety_degradation',
-          severity: weekAnalysis.safety.average < 70 ? 'critical' : 'warning',
-          category: 'Sécurité Workplace',
-          title: `Score sécurité dégradé (${weekAnalysis.safety.average}%)`,
-          description: `Surveillance renforcée requise.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      if (weekAnalysis.efficiency.average < 70) {
-        const detection = {
-          type: 'efficiency_loss',
-          severity: weekAnalysis.efficiency.average < 50 ? 'critical' : 'warning',
-          category: 'Efficacité Opérationnelle',
-          title: `Efficacité faible (${weekAnalysis.efficiency.average}%)`,
-          description: `Optimisation des processus requise.`,
-          week: week.week
-        };
-        allDetections.push(detection);
-        weekAnalysis.detectedEvents.push(detection);
-      }
-
-      // Determine overall status
-      const criticalEvents = weekAnalysis.detectedEvents.filter(e => e.severity === 'critical').length;
-      const warningEvents = weekAnalysis.detectedEvents.filter(e => e.severity === 'warning').length;
-      
-      if (criticalEvents > 0) {
-        weekAnalysis.overallStatus = 'critical';
-      } else if (warningEvents > 0) {
-        weekAnalysis.overallStatus = 'warning';
-      } else if (weekAnalysis.attendance.average >= 90 && weekAnalysis.safety.average >= 95 && weekAnalysis.efficiency.average >= 85) {
-        weekAnalysis.overallStatus = 'excellent';
-      }
-
-      return weekAnalysis;
-    }).sort((a, b) => a.week - b.week);
-
-    // Calculate monthly performance
-    const monthlyPerformance = {
-      attendance: attendanceData.length > 0 ? Math.round(attendanceData.reduce((sum, entry) => sum + entry.kpi_value, 0) / attendanceData.length) : 0,
-      safety: safetyData.length > 0 ? Math.round(safetyData.reduce((sum, entry) => sum + entry.kpi_value, 0) / safetyData.length) : 100,
-      efficiency: efficiencyData.length > 0 ? Math.round(efficiencyData.reduce((sum, entry) => sum + entry.kpi_value, 0) / efficiencyData.length) : 0
-    };
-    monthlyPerformance.overall = Math.round((monthlyPerformance.attendance + monthlyPerformance.safety + monthlyPerformance.efficiency) / 3);
+    const mostLate = [...employees]
+      .filter(e => e.attendance.lateDays > 0)
+      .sort((a, b) => b.attendance.totalLateMinutes - a.attendance.totalLateMinutes)
+      .slice(0, 5);
 
     return {
       monthName: monthNames[selectedMonth],
       year: selectedYear,
-      monthlyPerformance,
-      weeklyBreakdown,
-      detections: allDetections.sort((a, b) => {
-        const severityOrder = { 'critical': 3, 'warning': 2, 'low': 1 };
-        return severityOrder[b.severity] - severityOrder[a.severity];
-      }),
-      statistics: {
-        totalEntries: attendanceData.length + safetyData.length + efficiencyData.length,
-        totalDetections: allDetections.length,
-        criticalIssues: allDetections.filter(d => d.severity === 'critical').length,
-        warningIssues: allDetections.filter(d => d.severity === 'warning').length,
-        excellentWeeks: weeklyBreakdown.filter(w => w.overallStatus === 'excellent').length,
-        weeksAnalyzed: weeklyBreakdown.length,
-        daysInMonth: monthEnd.getDate()
+      employees,
+      stats: {
+        totalEmployees,
+        attendanceRate,
+        punctualityRate,
+        avgLateMinutes,
+        totalPresenceDays,
+        totalWorkingDays,
+        totalLateDays,
+        totalProduction,
+        totalHoursWorked,
+        avgProductionPerEmployee: totalEmployees > 0 ? totalProduction / totalEmployees : 0
       },
-      hasData: true
+      dailyData: Object.values(dailyData).sort((a, b) => new Date(a.date) - new Date(b.date)),
+      productionByDay: Object.values(productionByDay).sort((a, b) => new Date(a.date) - new Date(b.date)),
+      rankings: {
+        topProducers,
+        bestAttendance,
+        mostLate
+      },
+      hasData: employees.length > 0
     };
-  }, [analytics, selectedMonth, selectedYear]);
+  }, [monthlyData, selectedMonth, selectedYear]);
 
-  if (!monthlyAnalysis || !monthlyAnalysis.hasData) {
-    return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className={`w-full max-w-2xl p-8 rounded-2xl border shadow-2xl backdrop-blur-sm ${
-          isDark ? 'bg-slate-900/90 border-slate-700' : 'bg-white/90 border-slate-200'
-        }`}>
-          <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-8 h-8 text-white" />
-            </div>
-            <h3 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              Aucune donnée disponible
-            </h3>
-            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Aucune donnée d'équipe trouvée pour {new Date(selectedYear, selectedMonth).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}.
-            </p>
-            <button 
-              onClick={onClose} 
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      </div>
+  // Filter employees by search
+  const filteredEmployees = useMemo(() => {
+    if (!monthlyAnalysis?.employees) return [];
+    if (!searchQuery.trim()) return monthlyAnalysis.employees;
+
+    const query = searchQuery.toLowerCase();
+    return monthlyAnalysis.employees.filter(emp =>
+      emp.name.toLowerCase().includes(query) ||
+      emp.matricule?.toString().includes(query)
     );
-  }
-
-  // Enhanced chart configurations
-  const getWeeklyTrendChart = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      borderWidth: 1,
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);',
-      axisPointer: {
-        type: 'cross',
-        crossStyle: { color: isDark ? '#64748B' : '#94A3B8' }
-      }
-    },
-    legend: {
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 },
-      itemStyle: { borderRadius: 6 }
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: monthlyAnalysis.weeklyBreakdown.map(week => `S${week.week}`),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      max: 100,
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, formatter: '{value}%' },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-    },
-    series: [
-      {
-        name: 'Productivité',
-        type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.attendance.average),
-        smooth: true,
-        lineStyle: { color: '#3B82F6', width: 4 },
-        itemStyle: { color: '#3B82F6', borderWidth: 3, borderColor: '#FFFFFF' },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.4)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
-            ]
-          }
-        }
-      },
-      {
-        name: 'Sécurité',
-        type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.safety.average),
-        smooth: true,
-        lineStyle: { color: '#6366F1', width: 4 },
-        itemStyle: { color: '#6366F1', borderWidth: 3, borderColor: '#FFFFFF' }
-      },
-      {
-        name: 'Efficacité',
-        type: 'line',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => week.efficiency.average),
-        smooth: true,
-        lineStyle: { color: '#8B5CF6', width: 4 },
-        itemStyle: { color: '#8B5CF6', borderWidth: 3, borderColor: '#FFFFFF' }
-      }
-    ]
-  });
-
-  const getMonthlyComparisonChart = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
-    },
-    legend: {
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }
-    },
-    grid: {
-      left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      max: 100,
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, formatter: '{value}%' },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-    },
-    series: [{
-      name: 'Performance Globale',
-      type: 'bar',
-      data: monthlyAnalysis.weeklyBreakdown.map(week => 
-        Math.round((week.attendance.average + week.safety.average + week.efficiency.average) / 3)
-      ),
-      itemStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: '#3B82F6' },
-            { offset: 1, color: '#1E40AF' }
-          ]
-        },
-        borderRadius: [4, 4, 0, 0]
-      },
-      emphasis: {
-        itemStyle: {
-          color: {
-            type: 'linear',
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: '#60A5FA' },
-              { offset: 1, color: '#3B82F6' }
-            ]
-          }
-        }
-      }
-    }]
-  });
-
-  const getKPIDistributionChart = () => ({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);',
-      formatter: '{b}: {c}%'
-    },
-    series: [{
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['50%', '50%'],
-      data: [
-        { 
-          value: monthlyAnalysis.monthlyPerformance.attendance, 
-          name: 'Productivité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#3B82F6' },
-                { offset: 1, color: '#1E40AF' }
-              ]
-            }
-          }
-        },
-        { 
-          value: monthlyAnalysis.monthlyPerformance.safety, 
-          name: 'Sécurité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#6366F1' },
-                { offset: 1, color: '#4338CA' }
-              ]
-            }
-          }
-        },
-        { 
-          value: monthlyAnalysis.monthlyPerformance.efficiency, 
-          name: 'Efficacité', 
-          itemStyle: { 
-            color: {
-              type: 'linear',
-              x: 0, y: 0, x2: 1, y2: 1,
-              colorStops: [
-                { offset: 0, color: '#8B5CF6' },
-                { offset: 1, color: '#6D28D9' }
-              ]
-            }
-          }
-        }
-      ],
-      label: {
-        color: isDark ? '#E2E8F0' : '#1E293B',
-        fontSize: 12,
-        formatter: '{b}\n{c}%'
-      },
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 20,
-          shadowOffsetX: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.3)'
-        }
-      }
-    }]
-  });
-
-  const getWeeklyDetectionsChart = () => ({
-    backgroundColor: 'transparent',
-    textStyle: {
-      color: isDark ? '#E2E8F0' : '#475569',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    },
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
-    },
-    legend: {
-      bottom: '5%',
-      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }
-    },
-    grid: {
-      left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: monthlyAnalysis.weeklyBreakdown.map(week => `S${week.week}`),
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
-    },
-    yAxis: {
-      type: 'value',
-      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
-      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 },
-      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
-    },
-    series: [
-      {
-        name: 'Détections Critiques',
-        type: 'bar',
-        stack: 'detections',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => 
-          week.detectedEvents.filter(e => e.severity === 'critical').length
-        ),
-        itemStyle: { 
-          color: '#EF4444',
-          borderRadius: [4, 4, 0, 0]
-        }
-      },
-      {
-        name: 'Détections Attention',
-        type: 'bar',
-        stack: 'detections',
-        data: monthlyAnalysis.weeklyBreakdown.map(week => 
-          week.detectedEvents.filter(e => e.severity === 'warning').length
-        ),
-        itemStyle: { 
-          color: '#F59E0B',
-          borderRadius: [0, 0, 4, 4]
-        }
-      }
-    ]
-  });
-
-  const getPerformanceRadarChart = () => ({
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-      borderColor: isDark ? '#475569' : '#E2E8F0',
-      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
-      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
-    },
-    radar: {
-      indicator: [
-        { name: 'Productivité', max: 100 },
-        { name: 'Sécurité', max: 100 },
-        { name: 'Efficacité', max: 100 },
-        { name: 'Qualité', max: 100 },
-        { name: 'Innovation', max: 100 }
-      ],
-      center: ['50%', '50%'],
-      radius: '70%',
-      axisName: {
-        color: isDark ? '#CBD5E1' : '#64748B',
-        fontSize: 12
-      },
-      splitLine: {
-        lineStyle: { color: isDark ? '#475569' : '#E2E8F0' }
-      },
-      splitArea: {
-        areaStyle: {
-          color: [
-            'rgba(59, 130, 246, 0.05)',
-            'rgba(99, 102, 241, 0.05)',
-            'rgba(139, 92, 246, 0.05)'
-          ]
-        }
-      }
-    },
-    series: [{
-      type: 'radar',
-      data: [{
-        value: [
-          monthlyAnalysis.monthlyPerformance.attendance,
-          monthlyAnalysis.monthlyPerformance.safety,
-          monthlyAnalysis.monthlyPerformance.efficiency,
-          85, // Quality score
-          78  // Innovation score
-        ],
-        name: 'Performance Actuelle',
-        areaStyle: {
-          color: 'rgba(59, 130, 246, 0.2)'
-        },
-        lineStyle: {
-          color: '#3B82F6',
-          width: 3
-        },
-        itemStyle: {
-          color: '#3B82F6'
-        }
-      }]
-    }]
-  });
+  }, [monthlyAnalysis?.employees, searchQuery]);
 
   const navigateMonth = (direction) => {
     const newMonth = selectedMonth + direction;
@@ -616,61 +324,335 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     } else {
       setSelectedMonth(newMonth);
     }
+    setSelectedEmployee(null);
+  };
+
+  // Chart Configurations
+  const getAttendanceTrendChart = () => {
+    if (!monthlyAnalysis?.dailyData?.length) return null;
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        borderColor: isDark ? '#475569' : '#E2E8F0',
+        textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+        extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
+      },
+      legend: {
+        bottom: '5%',
+        textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 11 }
+      },
+      grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: monthlyAnalysis.dailyData.map(d => {
+          const date = new Date(d.date);
+          return `${date.getDate()}/${date.getMonth() + 1}`;
+        }),
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 10 },
+        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      },
+      series: [
+        {
+          name: 'Présents',
+          type: 'bar',
+          stack: 'total',
+          data: monthlyAnalysis.dailyData.map(d => d.present),
+          itemStyle: { color: '#10B981', borderRadius: [4, 4, 0, 0] }
+        },
+        {
+          name: 'Retards',
+          type: 'line',
+          data: monthlyAnalysis.dailyData.map(d => d.late),
+          lineStyle: { color: '#F59E0B', width: 3 },
+          itemStyle: { color: '#F59E0B' },
+          symbol: 'circle',
+          symbolSize: 6
+        },
+        {
+          name: 'Absents',
+          type: 'bar',
+          stack: 'total',
+          data: monthlyAnalysis.dailyData.map(d => d.absent),
+          itemStyle: { color: '#EF4444' }
+        }
+      ]
+    };
+  };
+
+  const getProductionTrendChart = () => {
+    if (!monthlyAnalysis?.productionByDay?.length) return null;
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        borderColor: isDark ? '#475569' : '#E2E8F0',
+        textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+        extraCssText: 'border-radius: 12px;',
+        formatter: (params) => {
+          const data = params[0];
+          return `<div style="padding: 8px;">
+            <div style="font-weight: 600; margin-bottom: 4px;">${data.axisValue}</div>
+            <div>Production: <strong>${data.value.toLocaleString()} kg</strong></div>
+          </div>`;
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '10%', top: '10%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: monthlyAnalysis.productionByDay.map(d => {
+          const date = new Date(d.date);
+          return `${date.getDate()}/${date.getMonth() + 1}`;
+        }),
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: {
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 10,
+          formatter: (v) => v >= 1000 ? `${(v/1000).toFixed(1)}t` : `${v}kg`
+        },
+        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      },
+      series: [{
+        name: 'Production',
+        type: 'line',
+        data: monthlyAnalysis.productionByDay.map(d => d.totalKg),
+        smooth: true,
+        lineStyle: { color: '#EC4899', width: 3 },
+        itemStyle: { color: '#EC4899' },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(236, 72, 153, 0.3)' },
+              { offset: 1, color: 'rgba(236, 72, 153, 0.05)' }
+            ]
+          }
+        }
+      }]
+    };
+  };
+
+  const getEmployeeProductionChart = () => {
+    if (!monthlyAnalysis?.employees?.length) return null;
+
+    const sortedEmployees = [...monthlyAnalysis.employees]
+      .filter(e => e.production.totalKg > 0)
+      .sort((a, b) => b.production.totalKg - a.production.totalKg)
+      .slice(0, 10);
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        borderColor: isDark ? '#475569' : '#E2E8F0',
+        textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+        extraCssText: 'border-radius: 12px;',
+        formatter: (params) => {
+          const data = params[0];
+          return `<div style="padding: 8px;">
+            <div style="font-weight: 600; margin-bottom: 4px;">${data.name}</div>
+            <div>Production: <strong>${data.value.toLocaleString()} kg</strong></div>
+          </div>`;
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '5%', top: '5%', containLabel: true },
+      xAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: {
+          color: isDark ? '#94A3B8' : '#64748B',
+          fontSize: 10,
+          formatter: (v) => v >= 1000 ? `${(v/1000).toFixed(1)}t` : `${v}kg`
+        },
+        splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+      },
+      yAxis: {
+        type: 'category',
+        data: sortedEmployees.map(e => e.name),
+        axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+        axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 10 }
+      },
+      series: [{
+        type: 'bar',
+        data: sortedEmployees.map(e => e.production.totalKg),
+        itemStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+            colorStops: [
+              { offset: 0, color: '#EC4899' },
+              { offset: 1, color: '#F43F5E' }
+            ]
+          },
+          borderRadius: [0, 4, 4, 0]
+        }
+      }]
+    };
+  };
+
+  const getAttendancePieChart = () => {
+    if (!monthlyAnalysis?.stats) return null;
+    const { totalPresenceDays, totalLateDays, totalWorkingDays } = monthlyAnalysis.stats;
+    const onTime = totalPresenceDays - totalLateDays;
+    const absent = totalWorkingDays - totalPresenceDays;
+
+    return {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+        borderColor: isDark ? '#475569' : '#E2E8F0',
+        textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+        extraCssText: 'border-radius: 12px;',
+        formatter: '{b}: {c} jours ({d}%)'
+      },
+      series: [{
+        type: 'pie',
+        radius: ['45%', '70%'],
+        center: ['50%', '50%'],
+        data: [
+          { value: onTime, name: 'À l\'heure', itemStyle: { color: '#10B981' } },
+          { value: totalLateDays, name: 'En retard', itemStyle: { color: '#F59E0B' } },
+          { value: absent, name: 'Absents', itemStyle: { color: '#EF4444' } }
+        ],
+        label: {
+          color: isDark ? '#E2E8F0' : '#1E293B',
+          fontSize: 11,
+          formatter: '{b}\n{d}%'
+        },
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 15,
+            shadowColor: 'rgba(0, 0, 0, 0.2)'
+          }
+        }
+      }]
+    };
   };
 
   const exportToPDF = () => {
+    if (!monthlyAnalysis) return;
+
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
         <head>
           <title>Rapport Équipe - ${monthlyAnalysis.monthName} ${monthlyAnalysis.year}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; color: #333; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
-            h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
-            .subtitle { font-size: 1.2em; opacity: 0.9; margin-top: 10px; }
-            .metric { margin: 15px 0; padding: 20px; border: 1px solid #e1e5e9; border-radius: 12px; background: #f8f9fa; }
-            .metric h2 { color: #2c3e50; margin-top: 0; }
-            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
-            .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .critical { background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: white; }
-            .warning { background: linear-gradient(135deg, #feca57, #ff9ff3); color: white; }
-            .excellent { background: linear-gradient(135deg, #48dbfb, #0abde3); color: white; }
+            body { font-family: 'Segoe UI', sans-serif; margin: 30px; color: #1e293b; }
+            .header { background: linear-gradient(135deg, #EC4899, #F43F5E); color: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; }
+            h1 { margin: 0; font-size: 2em; }
+            .subtitle { opacity: 0.9; margin-top: 8px; }
+            .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
+            .stat-card { background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+            .stat-value { font-size: 2em; font-weight: bold; color: #0f172a; }
+            .stat-label { color: #64748b; font-size: 0.9em; margin-top: 4px; }
+            .section { margin: 30px 0; }
+            .section-title { font-size: 1.3em; color: #0f172a; margin-bottom: 16px; border-bottom: 2px solid #EC4899; padding-bottom: 8px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+            th { background: #f8fafc; font-weight: 600; color: #475569; }
+            .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; display: inline-block; }
+            .badge-success { background: #dcfce7; color: #166534; }
+            .badge-warning { background: #fef3c7; color: #92400e; }
+            .badge-danger { background: #fee2e2; color: #991b1b; }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1>📊 Rapport Équipe Mensuel</h1>
-            <div class="subtitle">${monthlyAnalysis.monthName} ${monthlyAnalysis.year} • Performance Globale: ${monthlyAnalysis.monthlyPerformance.overall}%</div>
+            <h1>Rapport Mensuel Équipe</h1>
+            <div class="subtitle">${monthlyAnalysis.monthName} ${monthlyAnalysis.year} - ${monthlyAnalysis.stats.totalEmployees} employés</div>
           </div>
-          
+
           <div class="stats-grid">
             <div class="stat-card">
-              <h3>🎯 Productivité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.attendance}%</h2>
+              <div class="stat-value">${monthlyAnalysis.stats.attendanceRate}%</div>
+              <div class="stat-label">Taux de Présence</div>
             </div>
             <div class="stat-card">
-              <h3>🛡️ Sécurité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.safety}%</h2>
+              <div class="stat-value">${monthlyAnalysis.stats.punctualityRate}%</div>
+              <div class="stat-label">Taux de Ponctualité</div>
             </div>
             <div class="stat-card">
-              <h3>⚡ Efficacité</h3>
-              <h2>${monthlyAnalysis.monthlyPerformance.efficiency}%</h2>
+              <div class="stat-value">${(monthlyAnalysis.stats.totalProduction / 1000).toFixed(1)}t</div>
+              <div class="stat-label">Production Totale</div>
             </div>
             <div class="stat-card">
-              <h3>📈 Semaines Excellentes</h3>
-              <h2>${monthlyAnalysis.statistics.excellentWeeks}</h2>
+              <div class="stat-value">${monthlyAnalysis.stats.totalLateDays}</div>
+              <div class="stat-label">Jours de Retard</div>
             </div>
           </div>
 
-          <div class="metric">
-            <h2>📊 Statistiques Clés</h2>
-            <ul>
-              <li><strong>Semaines analysées:</strong> ${monthlyAnalysis.statistics.weeksAnalyzed}</li>
-              <li><strong>Total entrées:</strong> ${monthlyAnalysis.statistics.totalEntries}</li>
-              <li><strong>Problèmes critiques:</strong> ${monthlyAnalysis.statistics.criticalIssues}</li>
-              <li><strong>Alertes:</strong> ${monthlyAnalysis.statistics.warningIssues}</li>
-            </ul>
+          <div class="section">
+            <div class="section-title">Top Producteurs</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Rang</th>
+                  <th>Employé</th>
+                  <th>Matricule</th>
+                  <th>Production</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${monthlyAnalysis.rankings.topProducers.map((emp, idx) => `
+                  <tr>
+                    <td>#${idx + 1}</td>
+                    <td>${emp.name}</td>
+                    <td>${emp.matricule}</td>
+                    <td><strong>${(emp.production.totalKg / 1000).toFixed(2)} t</strong></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Détail par Employé</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Employé</th>
+                  <th>Présence</th>
+                  <th>Retards</th>
+                  <th>Production</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${monthlyAnalysis.employees.map(emp => {
+                  const rate = emp.attendance.totalDays > 0
+                    ? Math.round((emp.attendance.presentDays / emp.attendance.totalDays) * 100)
+                    : 0;
+                  return `
+                    <tr>
+                      <td>${emp.name}</td>
+                      <td><span class="badge ${rate >= 90 ? 'badge-success' : rate >= 70 ? 'badge-warning' : 'badge-danger'}">${rate}%</span></td>
+                      <td>${emp.attendance.lateDays} jours</td>
+                      <td>${(emp.production.totalKg / 1000).toFixed(2)} t</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 0.9em;">
+            Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
           </div>
         </body>
       </html>
@@ -679,76 +661,115 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
     printWindow.print();
   };
 
-  const getPerformanceColor = (score) => {
-    if (score >= 90) return 'text-emerald-500';
-    if (score >= 75) return 'text-blue-500';
-    if (score >= 60) return 'text-amber-500';
-    return 'text-red-500';
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className={`w-full max-w-md p-8 rounded-2xl border shadow-2xl ${
+          isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex flex-col items-center justify-center">
+            <Loader2 className="w-12 h-12 text-pink-500 animate-spin mb-4" />
+            <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Chargement des données...
+            </h3>
+            <p className={`text-sm mt-2 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              {monthNames[selectedMonth]} {selectedYear}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'excellent': return { icon: Award, color: 'text-emerald-500' };
-      case 'good': return { icon: CheckCircle, color: 'text-blue-500' };
-      case 'warning': return { icon: AlertTriangle, color: 'text-amber-500' };
-      case 'critical': return { icon: AlertCircle, color: 'text-red-500' };
-      default: return { icon: Clock, color: 'text-slate-500' };
-    }
-  };
+  // No data state
+  if (!monthlyAnalysis?.hasData) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className={`w-full max-w-lg p-8 rounded-2xl border shadow-2xl ${
+          isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+        }`}>
+          <div className="text-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center mx-auto mb-6">
+              <FileText className="w-10 h-10 text-white" />
+            </div>
+            <h3 className={`text-xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              Aucune donnée disponible
+            </h3>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Aucune donnée d'équipe trouvée pour <strong>{monthNames[selectedMonth]} {selectedYear}</strong>.
+            </p>
 
-  const getOverallStatus = () => {
-    const score = monthlyAnalysis.monthlyPerformance.overall;
-    if (score >= 90) return { status: 'excellent', text: 'Excellent', color: 'emerald' };
-    if (score >= 75) return { status: 'good', text: 'Bon', color: 'blue' };
-    if (score >= 60) return { status: 'warning', text: 'Satisfaisant', color: 'amber' };
-    return { status: 'critical', text: 'Amélioration Nécessaire', color: 'red' };
-  };
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <button
+                onClick={() => navigateMonth(-1)}
+                className={`px-4 py-2 rounded-xl border flex items-center gap-2 transition-all ${
+                  isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Mois précédent
+              </button>
+              <button
+                onClick={() => navigateMonth(1)}
+                className={`px-4 py-2 rounded-xl border flex items-center gap-2 transition-all ${
+                  isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                Mois suivant
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
 
-  const overallStatus = getOverallStatus();
+            <button
+              onClick={onClose}
+              className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl hover:from-pink-600 hover:to-rose-700 transition-all font-medium shadow-lg"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className={`w-full max-w-7xl h-[90vh] flex flex-col rounded-3xl border shadow-2xl backdrop-blur-sm transition-all duration-500 ${
-        isDark ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200'
+      <div className={`w-full max-w-7xl h-[90vh] flex flex-col rounded-3xl border shadow-2xl ${
+        isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
       }`}>
-        
-        {/* Glassmorphism Header */}
-        <div className={`px-8 py-6 border-b backdrop-blur-sm ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/70 border-slate-200'} rounded-t-3xl`}>
+
+        {/* Header */}
+        <div className={`px-8 py-5 border-b ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'} rounded-t-3xl`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-md">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                  Rapport Mensuel d'Équipe
+                <h1 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Rapport Mensuel Équipe
                 </h1>
-                <div className="flex items-center space-x-3 mt-1">
-                  <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {monthlyAnalysis.monthName} {monthlyAnalysis.year}
-                  </span>
-                  <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-                  <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {monthlyAnalysis.statistics.weeksAnalyzed} semaines analysées
-                  </span>
-                </div>
+                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Présence, Ponctualité & Production
+                </p>
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className={`text-2xl font-light ${getPerformanceColor(monthlyAnalysis.monthlyPerformance.overall)}`}>
-                {monthlyAnalysis.monthlyPerformance.overall}%
-              </div>
-              
-              <button 
-                onClick={onClose} 
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-                  isDark ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={fetchMonthlyData}
+                className={`p-2 rounded-xl transition-all ${
+                  isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                }`}
+                title="Rafraîchir"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-xl transition-all ${
+                  isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
                 }`}
               >
                 <X className="w-5 h-5" />
@@ -757,34 +778,33 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
           </div>
         </div>
 
-        {/* Enhanced Navigation Bar */}
-        <div className={`px-8 py-4 border-b ${isDark ? 'bg-slate-800/30 border-slate-700' : 'bg-slate-50/70 border-slate-200'}`}>
+        {/* Navigation Bar */}
+        <div className={`px-8 py-4 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
-            
             {/* Month Navigation */}
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => navigateMonth(-1)}
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 ${
-                  isDark ? 'bg-slate-800 border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900'
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+                  isDark ? 'bg-slate-800 border-slate-600 hover:border-slate-500 text-slate-400' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
                 }`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
+
               <div className="text-center min-w-[180px]">
-                <div className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {monthlyAnalysis.monthName} {monthlyAnalysis.year}
                 </div>
-                <div className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {monthlyAnalysis.statistics.weeksAnalyzed} semaines • {monthlyAnalysis.statistics.totalEntries} entrées
+                <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {monthlyAnalysis.stats.totalEmployees} employés • {monthlyAnalysis.stats.totalWorkingDays} jours
                 </div>
               </div>
-              
+
               <button
                 onClick={() => navigateMonth(1)}
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 ${
-                  isDark ? 'bg-slate-800 border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900'
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+                  isDark ? 'bg-slate-800 border-slate-600 hover:border-slate-500 text-slate-400' : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
                 }`}
               >
                 <ChevronRight className="w-5 h-5" />
@@ -792,783 +812,629 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
             </div>
 
             {/* View Selector */}
-            <div className="flex items-center space-x-3">
-              <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} shadow-sm`}>
-                {[
-                  { id: 'overview', label: 'Vue d\'ensemble', icon: Eye },
-                  { id: 'charts', label: 'Graphiques', icon: BarChart3 },
-                  { id: 'weekly', label: 'Hebdomadaire', icon: Calendar }
-                ].map((view) => (
-                  <button
-                    key={view.id}
-                    onClick={() => setSelectedView(view.id)}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedView === view.id 
-                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg' 
-                        : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <view.icon className="w-4 h-4" />
-                    <span>{view.label}</span>
-                  </button>
-                ))}
-              </div>
-              
-              {/* Export Buttons */}
-              <div className="flex items-center space-x-2">
+            <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+              {[
+                { id: 'overview', label: 'Vue d\'ensemble', icon: Activity },
+                { id: 'employees', label: 'Employés', icon: Users },
+                { id: 'charts', label: 'Graphiques', icon: BarChart3 }
+              ].map((view) => (
                 <button
-                  onClick={exportToPDF}
-                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 ${
-                    isDark ? 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  key={view.id}
+                  onClick={() => setSelectedView(view.id)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedView === view.id
+                      ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md'
+                      : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <FileText className="w-4 h-4" />
+                  <view.icon className="w-4 h-4" />
+                  <span>{view.label}</span>
                 </button>
-                
-                <button
-                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all duration-200 ${
-                    isDark ? 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <Share className="w-4 h-4" />
-                </button>
-              </div>
+              ))}
             </div>
+
+            {/* Export Button */}
+            <button
+              onClick={exportToPDF}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all ${
+                isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Download className="w-4 h-4" />
+              <span>Exporter</span>
+            </button>
           </div>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-6">
+
+          {/* Overview View */}
           {selectedView === 'overview' && (
-            <div className="h-full overflow-y-auto p-6 space-y-8">
-              
-              {/* Modern Performance Dashboard */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                {/* Main Performance Hero Card */}
-                <div className="lg:col-span-7">
-                  <div className={`relative p-8 rounded-3xl border backdrop-blur-sm overflow-hidden ${
-                    isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
-                  }`}>
-                    
-                    {/* Subtle Background Pattern */}
-                    <div className="absolute inset-0 opacity-[0.02]">
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500"></div>
+            <div className="space-y-6">
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  {
+                    title: 'Taux de Présence',
+                    value: `${monthlyAnalysis.stats.attendanceRate}%`,
+                    icon: CheckCircle,
+                    color: monthlyAnalysis.stats.attendanceRate >= 90 ? 'emerald' : monthlyAnalysis.stats.attendanceRate >= 75 ? 'amber' : 'red',
+                    subtitle: `${monthlyAnalysis.stats.totalPresenceDays}/${monthlyAnalysis.stats.totalWorkingDays} jours`
+                  },
+                  {
+                    title: 'Ponctualité',
+                    value: `${monthlyAnalysis.stats.punctualityRate}%`,
+                    icon: Clock,
+                    color: monthlyAnalysis.stats.punctualityRate >= 90 ? 'emerald' : monthlyAnalysis.stats.punctualityRate >= 75 ? 'amber' : 'red',
+                    subtitle: `${monthlyAnalysis.stats.totalLateDays} retards`
+                  },
+                  {
+                    title: 'Production Totale',
+                    value: `${(monthlyAnalysis.stats.totalProduction / 1000).toFixed(1)}t`,
+                    icon: Package,
+                    color: 'pink',
+                    subtitle: `${(monthlyAnalysis.stats.avgProductionPerEmployee / 1000).toFixed(2)}t/emp`
+                  },
+                  {
+                    title: 'Heures Travaillées',
+                    value: `${Math.round(monthlyAnalysis.stats.totalHoursWorked)}h`,
+                    icon: Timer,
+                    color: 'blue',
+                    subtitle: `${Math.round(monthlyAnalysis.stats.totalHoursWorked / monthlyAnalysis.stats.totalEmployees)}h/emp`
+                  }
+                ].map((stat, index) => (
+                  <div
+                    key={index}
+                    className={`p-5 rounded-2xl border transition-all hover:shadow-lg ${
+                      isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-3 rounded-xl ${
+                        stat.color === 'emerald' ? 'bg-emerald-500/15 text-emerald-600' :
+                        stat.color === 'amber' ? 'bg-amber-500/15 text-amber-600' :
+                        stat.color === 'red' ? 'bg-red-500/15 text-red-600' :
+                        stat.color === 'pink' ? 'bg-pink-500/15 text-pink-600' :
+                        'bg-blue-500/15 text-blue-600'
+                      }`}>
+                        <stat.icon className="w-5 h-5" />
+                      </div>
                     </div>
-                    
-                    <div className="relative">
-                      <div className="flex items-start justify-between mb-8">
-                        <div>
-                          <h2 className={`text-2xl font-light ${isDark ? 'text-white' : 'text-slate-900'} mb-3`}>
-                            Performance Mensuelle
-                          </h2>
-                          <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Vue d'ensemble • {monthlyAnalysis.monthName} {monthlyAnalysis.year}
+                    <div>
+                      <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {stat.title}
+                      </p>
+                      <p className={`text-2xl font-bold mb-1 ${
+                        stat.color === 'emerald' ? 'text-emerald-500' :
+                        stat.color === 'amber' ? 'text-amber-500' :
+                        stat.color === 'red' ? 'text-red-500' :
+                        stat.color === 'pink' ? 'text-pink-500' :
+                        'text-blue-500'
+                      }`}>
+                        {stat.value}
+                      </p>
+                      <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {stat.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Charts Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Attendance Trend */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Évolution Présence
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Présents, retards et absences par jour
+                      </p>
+                    </div>
+                  </div>
+                  {getAttendanceTrendChart() ? (
+                    <ReactECharts option={getAttendanceTrendChart()} style={{ height: '250px' }} />
+                  ) : (
+                    <div className={`h-[250px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données de présence
+                    </div>
+                  )}
+                </div>
+
+                {/* Production Trend */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                      <Package className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Évolution Production
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Production quotidienne (kg)
+                      </p>
+                    </div>
+                  </div>
+                  {getProductionTrendChart() ? (
+                    <ReactECharts option={getProductionTrendChart()} style={{ height: '250px' }} />
+                  ) : (
+                    <div className={`h-[250px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données de production
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Rankings */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Top Producers */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                      <Award className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Top Producteurs
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {monthlyAnalysis.rankings.topProducers.length > 0 ? (
+                      monthlyAnalysis.rankings.topProducers.map((emp, idx) => (
+                        <div key={emp.id} className={`flex items-center justify-between p-3 rounded-xl ${
+                          isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+                        }`}>
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                              idx === 0 ? 'bg-amber-500 text-white' :
+                              idx === 1 ? 'bg-slate-400 text-white' :
+                              idx === 2 ? 'bg-orange-600 text-white' :
+                              isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                              {emp.name}
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-pink-500">
+                            {(emp.production.totalKg / 1000).toFixed(2)}t
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className={`text-sm text-center py-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Pas de données
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Best Attendance */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Meilleure Assiduité
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {monthlyAnalysis.rankings.bestAttendance.length > 0 ? (
+                      monthlyAnalysis.rankings.bestAttendance.map((emp, idx) => {
+                        const rate = emp.attendance.totalDays > 0
+                          ? Math.round((emp.attendance.presentDays / emp.attendance.totalDays) * 100)
+                          : 0;
+                        return (
+                          <div key={emp.id} className={`flex items-center justify-between p-3 rounded-xl ${
+                            isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+                          }`}>
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                                idx === 0 ? 'bg-emerald-500 text-white' :
+                                idx === 1 ? 'bg-slate-400 text-white' :
+                                idx === 2 ? 'bg-green-600 text-white' :
+                                isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+                              }`}>
+                                {idx + 1}
+                              </div>
+                              <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                                {emp.name}
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-emerald-500">{rate}%</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className={`text-sm text-center py-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Pas de données
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Most Late */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                      <AlertTriangle className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Plus de Retards
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {monthlyAnalysis.rankings.mostLate.length > 0 ? (
+                      monthlyAnalysis.rankings.mostLate.map((emp, idx) => (
+                        <div key={emp.id} className={`flex items-center justify-between p-3 rounded-xl ${
+                          isDark ? 'bg-slate-700/50' : 'bg-slate-50'
+                        }`}>
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                              idx === 0 ? 'bg-red-500 text-white' :
+                              idx === 1 ? 'bg-amber-500 text-white' :
+                              idx === 2 ? 'bg-orange-500 text-white' :
+                              isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <span className={`font-medium text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                              {emp.name}
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-amber-500">
+                            {emp.attendance.lateDays}j ({emp.attendance.totalLateMinutes}min)
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className={`text-sm text-center py-4 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Aucun retard
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Employees View */}
+          {selectedView === 'employees' && (
+            <div className="space-y-6">
+
+              {/* Search */}
+              <div className={`flex items-center space-x-3 p-3 rounded-xl border ${
+                isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+              }`}>
+                <Search className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <input
+                  type="text"
+                  placeholder="Rechercher un employé..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`flex-1 bg-transparent outline-none text-sm ${
+                    isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Employee Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredEmployees.map(emp => {
+                  const attendanceRate = emp.attendance.totalDays > 0
+                    ? Math.round((emp.attendance.presentDays / emp.attendance.totalDays) * 100)
+                    : 0;
+                  const punctualityRate = emp.attendance.presentDays > 0
+                    ? Math.round(((emp.attendance.presentDays - emp.attendance.lateDays) / emp.attendance.presentDays) * 100)
+                    : 100;
+
+                  return (
+                    <div
+                      key={emp.id}
+                      onClick={() => setSelectedEmployee(selectedEmployee?.id === emp.id ? null : emp)}
+                      className={`p-5 rounded-2xl border cursor-pointer transition-all hover:shadow-lg ${
+                        selectedEmployee?.id === emp.id
+                          ? isDark ? 'bg-pink-900/30 border-pink-500' : 'bg-pink-50 border-pink-300'
+                          : isDark ? 'bg-slate-800/60 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white font-bold text-lg">
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                              {emp.name}
+                            </h4>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              #{emp.matricule} • {emp.role}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Présence</p>
+                          <p className={`text-lg font-bold ${
+                            attendanceRate >= 90 ? 'text-emerald-500' :
+                            attendanceRate >= 70 ? 'text-amber-500' : 'text-red-500'
+                          }`}>
+                            {attendanceRate}%
+                          </p>
+                          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {emp.attendance.presentDays}/{emp.attendance.totalDays} jours
                           </p>
                         </div>
-                        
-                        <div className="text-right">
-                          <div className={`text-5xl font-extralight ${getPerformanceColor(monthlyAnalysis.monthlyPerformance.overall)} mb-2`}>
-                            {monthlyAnalysis.monthlyPerformance.overall}%
-                          </div>
-                          <div className={`text-xs font-medium uppercase tracking-wide ${
-                            overallStatus.color === 'emerald' ? 'text-blue-600' :
-                            overallStatus.color === 'blue' ? 'text-blue-600' :
-                            overallStatus.color === 'amber' ? 'text-amber-600' :
-                            'text-red-600'
+                        <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ponctualité</p>
+                          <p className={`text-lg font-bold ${
+                            punctualityRate >= 90 ? 'text-emerald-500' :
+                            punctualityRate >= 70 ? 'text-amber-500' : 'text-red-500'
                           }`}>
-                            {overallStatus.text}
-                          </div>
+                            {punctualityRate}%
+                          </p>
+                          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {emp.attendance.lateDays} retards
+                          </p>
+                        </div>
+                        <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Production</p>
+                          <p className="text-lg font-bold text-pink-500">
+                            {(emp.production.totalKg / 1000).toFixed(2)}t
+                          </p>
+                          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {emp.production.tasks.length} tâches
+                          </p>
+                        </div>
+                        <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-slate-50'}`}>
+                          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Heures</p>
+                          <p className="text-lg font-bold text-blue-500">
+                            {Math.round(emp.attendance.totalHours)}h
+                          </p>
+                          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            travaillées
+                          </p>
                         </div>
                       </div>
 
-                      {/* Refined KPI Grid */}
-                      <div className="grid grid-cols-3 gap-6">
-                        {[
-                          { title: 'Productivité', value: monthlyAnalysis.monthlyPerformance.attendance, icon: Users, color: 'blue' },
-                          { title: 'Sécurité', value: monthlyAnalysis.monthlyPerformance.safety, icon: ShieldCheck, color: 'indigo' },
-                          { title: 'Efficacité', value: monthlyAnalysis.monthlyPerformance.efficiency, icon: Zap, color: 'purple' }
-                        ].map((kpi, index) => (
-                          <div key={index} className={`p-5 rounded-2xl ${
-                            isDark ? 'bg-slate-700/20 border border-slate-600/30' : 'bg-slate-50/50 border border-slate-200/50'
-                          } backdrop-blur-sm`}>
-                            
-                            <div className="flex items-center space-x-3 mb-4">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                kpi.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
-                                kpi.color === 'indigo' ? 'bg-indigo-500/15 text-indigo-600' :
-                                'bg-purple-500/15 text-purple-600'
-                              }`}>
-                                <kpi.icon className="w-4 h-4" />
-                              </div>
-                              <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                {kpi.title}
-                              </span>
-                            </div>
-                            
-                            <div className={`text-3xl font-light mb-4 ${getPerformanceColor(kpi.value)}`}>
-                              {kpi.value}%
-                            </div>
-                            
-                            <div className={`w-full h-1 rounded-full ${                            isDark ? 'bg-slate-600/30' : 'bg-slate-200/50'} overflow-hidden`}>
-                              <div
-                                className={`h-1 rounded-full transition-all duration-1000 ${
-                                  kpi.value >= 90 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
-                                  kpi.value >= 75 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-                                  kpi.value >= 60 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
-                                  'bg-gradient-to-r from-red-500 to-pink-500'
-                                }`}
-                                style={{ 
-                                  width: animatedStats ? `${Math.min(kpi.value, 100)}%` : '0%',
-                                  transition: 'width 2s ease-out'
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                      {/* Expanded Details */}
+                      {selectedEmployee?.id === emp.id && (
+                        <div className={`mt-4 pt-4 border-t ${isDark ? 'border-slate-600' : 'border-slate-200'}`}>
+                          <h5 className={`text-sm font-semibold mb-3 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            Détails du mois
+                          </h5>
 
-                {/* Elegant Stats Sidebar */}
-                <div className="lg:col-span-5 space-y-6">
-                  
-                  {/* Key Metrics */}
-                  <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                    isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
-                  }`}>
-                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'} mb-5`}>
-                      Métriques Clés
-                    </h3>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Semaines Excellentes
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            {monthlyAnalysis.statistics.excellentWeeks}
-                          </span>
-                          <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            /{monthlyAnalysis.statistics.weeksAnalyzed}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Alertes Critiques
-                        </span>
-                        <span className={`text-lg font-medium ${
-                          monthlyAnalysis.statistics.criticalIssues > 0 ? 'text-red-500' : isDark ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
-                          {monthlyAnalysis.statistics.criticalIssues}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Total Entrées
-                        </span>
-                        <span className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {monthlyAnalysis.statistics.totalEntries}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Jours Analysés
-                        </span>
-                        <span className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                          {monthlyAnalysis.statistics.daysInMonth}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress Overview */}
-                  <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                    isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
-                  }`}>
-                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'} mb-5`}>
-                      Évolution
-                    </h3>
-                    
-                    <div className="space-y-3">
-                      {monthlyAnalysis.weeklyBreakdown.slice(0, 4).map((week, index) => (
-                        <div key={index} className="flex items-center space-x-3">
-                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-medium ${
-                            week.overallStatus === 'excellent' ? 'bg-blue-500/20 text-blue-600' :
-                            week.overallStatus === 'critical' ? 'bg-red-500/20 text-red-600' :
-                            week.overallStatus === 'warning' ? 'bg-amber-500/20 text-amber-600' :
-                            isDark ? 'bg-slate-600/20 text-slate-400' : 'bg-slate-200 text-slate-600'
-                          }`}>
-                            {week.week}
-                          </div>
-                          <div className="flex-1">
-                            <div className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                              Semaine {week.week}
-                            </div>
-                          </div>
-                          <div className={`text-sm font-medium ${
-                            week.overallStatus === 'excellent' ? 'text-blue-600' :
-                            week.overallStatus === 'critical' ? 'text-red-600' :
-                            week.overallStatus === 'warning' ? 'text-amber-600' :
-                            isDark ? 'text-slate-400' : 'text-slate-600'
-                          }`}>
-                            {Math.round((week.attendance.average + week.safety.average + week.efficiency.average) / 3)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Simplified Trend Visualization */}
-              <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
-              }`}>
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'} mb-1`}>
-                      Tendances Hebdomadaires
-                    </h3>
-                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Évolution des performances par semaine
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4 text-xs">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded bg-blue-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Productivité</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded bg-indigo-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Sécurité</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded bg-purple-500"></div>
-                      <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Efficacité</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <ReactECharts 
-                  option={getWeeklyTrendChart()} 
-                  style={{ height: '280px' }}
-                  opts={{ renderer: 'svg' }}
-                />
-              </div>
-            </div>
-          )}
-
-          {selectedView === 'charts' && (
-            <div className="h-full overflow-y-auto p-6 space-y-6">
-              
-              {/* Main Charts Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Trend Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <LineChart className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Tendances Hebdomadaires
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Évolution des KPIs par semaine
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getWeeklyTrendChart()} 
-                    style={{ height: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* Radar Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Analyse Multidimensionnelle
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Performance globale en radar
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getPerformanceRadarChart()} 
-                    style={{ height: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* Monthly Comparison Bar Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Performance Hebdomadaire
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Comparaison des performances globales
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getMonthlyComparisonChart()} 
-                    style={{ height: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* KPI Distribution Pie Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                      <PieChart className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Distribution des KPIs
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Répartition des performances moyennes
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getKPIDistributionChart()} 
-                    style={{ height: '300px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-              </div>
-
-              {/* Secondary Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Weekly Detections Chart */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                      <AlertTriangle className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Détections par Semaine
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Volume des alertes critiques et d'attention
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ReactECharts 
-                    option={getWeeklyDetectionsChart()} 
-                    style={{ height: '280px' }}
-                    opts={{ renderer: 'svg' }}
-                  />
-                </div>
-
-                {/* Performance Metrics Summary */}
-                <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                  isDark ? 'bg-slate-800/40 border-slate-700' : 'bg-white/70 border-slate-200'
-                }`}>
-                  <div className="flex items-center space-x-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                      <Activity className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                        Métriques Résumées
-                      </h3>
-                      <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Statistiques clés du mois
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {[
-                      {
-                        label: 'Moyenne Productivité',
-                        value: `${monthlyAnalysis.monthlyPerformance.attendance}%`,
-                        color: 'blue',
-                        progress: monthlyAnalysis.monthlyPerformance.attendance
-                      },
-                      {
-                        label: 'Moyenne Sécurité',
-                        value: `${monthlyAnalysis.monthlyPerformance.safety}%`,
-                        color: 'emerald',
-                        progress: monthlyAnalysis.monthlyPerformance.safety
-                      },
-                      {
-                        label: 'Moyenne Efficacité',
-                        value: `${monthlyAnalysis.monthlyPerformance.efficiency}%`,
-                        color: 'purple',
-                        progress: monthlyAnalysis.monthlyPerformance.efficiency
-                      },
-                      {
-                        label: 'Semaines Excellentes',
-                        value: `${monthlyAnalysis.statistics.excellentWeeks}/${monthlyAnalysis.statistics.weeksAnalyzed}`,
-                        color: 'green',
-                        progress: (monthlyAnalysis.statistics.excellentWeeks / monthlyAnalysis.statistics.weeksAnalyzed) * 100
-                      }
-                    ].map((metric, index) => (
-                      <div key={index} className={`p-4 rounded-xl ${
-                        isDark ? 'bg-slate-700/30' : 'bg-slate-50'
-                      }`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                            {metric.label}
-                          </span>
-                          <span className={`text-lg font-bold ${getPerformanceColor(metric.progress)}`}>
-                            {metric.value}
-                          </span>
-                        </div>
-                        <div className={`w-full h-2 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'}`}>
-                          <div
-                            className={`h-2 rounded-full transition-all duration-1000 ${
-                              metric.color === 'blue' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-                              metric.color === 'emerald' ? 'bg-gradient-to-r from-indigo-500 to-purple-500' :
-                              metric.color === 'purple' ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
-                              'bg-gradient-to-r from-green-500 to-emerald-500'
-                            }`}
-                            style={{ width: `${Math.min(metric.progress, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedView === 'weekly' && (
-            <div className="h-full overflow-y-auto p-6 space-y-8">
-              
-              {/* Elegant Week Selector */}
-              <div>
-                <div className="mb-6">
-                  <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'} mb-2`}>
-                    Analyse Hebdomadaire Détaillée
-                  </h3>
-                  <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Sélectionnez une semaine pour explorer les performances en détail
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                  {monthlyAnalysis.weeklyBreakdown.map((week, index) => {
-                    const isSelected = selectedWeekDetail === week.week;
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedWeekDetail(isSelected ? null : week.week)}
-                        className={`group relative p-3 rounded-xl border transition-all duration-300 hover:scale-105 ${
-                          isSelected ?
-                            'bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-300/50 shadow-lg' :
-                          week.overallStatus === 'excellent' ?
-                            isDark ? 'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10' : 'bg-blue-50/50 border-blue-200/50 hover:bg-blue-50' :
-                          week.overallStatus === 'critical' ?
-                            isDark ? 'bg-red-500/5 border-red-500/20 hover:bg-red-500/10' : 'bg-red-50/50 border-red-200/50 hover:bg-red-50' :
-                          week.overallStatus === 'warning' ?
-                            isDark ? 'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10' : 'bg-amber-50/50 border-amber-200/50 hover:bg-amber-50' :
-                            isDark ? 'bg-slate-800/30 border-slate-700/50 hover:bg-slate-800/50' : 'bg-slate-50/50 border-slate-200/50 hover:bg-slate-100/50'
-                        }`}
-                      >
-                        {/* Week Number */}
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-2 transition-all duration-300 ${
-                          isSelected ? 
-                            'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md' :
-                          week.overallStatus === 'excellent' ? 
-                            'bg-blue-500/80 text-white' :
-                          week.overallStatus === 'critical' ? 
-                            'bg-red-500/80 text-white' :
-                          week.overallStatus === 'warning' ? 
-                            'bg-amber-500/80 text-white' : 
-                            isDark ? 'bg-slate-600/80 text-slate-200' : 'bg-slate-400/80 text-white'
-                        }`}>
-                          <span className="text-xs font-medium">{week.week}</span>
-                        </div>
-                        
-                        {/* Week Label */}
-                        <div className={`text-xs font-medium transition-colors ${
-                          isSelected ? 
-                            isDark ? 'text-indigo-300' : 'text-indigo-600' :
-                          isDark ? 'text-slate-300' : 'text-slate-700'
-                        }`}>
-                          Sem {week.week}
-                        </div>
-                        
-                        {/* Status Indicator */}
-                        <div className={`text-xs mt-1 transition-colors ${
-                          isSelected ? 
-                            isDark ? 'text-slate-400' : 'text-slate-500' :
-                          week.detectedEvents.length > 0 ? 
-                            isDark ? 'text-amber-400' : 'text-amber-600' :
-                            isDark ? 'text-slate-500' : 'text-slate-400'
-                        }`}>
-                          {week.detectedEvents.length === 0 ? '✓' : `${week.detectedEvents.length} alertes`}
-                        </div>
-
-                        {/* Selection Indicator */}
-                        {isSelected && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-2 border-indigo-400/30"></div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Elegant Week Details */}
-              {selectedWeekDetail && (
-                <div className="space-y-6">
-                  {(() => {
-                    const selectedWeek = monthlyAnalysis.weeklyBreakdown.find(w => w.week === selectedWeekDetail);
-                    if (!selectedWeek) return null;
-
-                    return (
-                      <>
-                        {/* Week Overview Card */}
-                        <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
-                          isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
-                        }`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${
-                                selectedWeek.overallStatus === 'excellent' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' :
-                                selectedWeek.overallStatus === 'critical' ? 'bg-gradient-to-br from-red-500 to-pink-600' :
-                                selectedWeek.overallStatus === 'warning' ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
-                                'bg-gradient-to-br from-slate-500 to-slate-600'
-                              }`}>
-                                <span className="text-white font-medium">{selectedWeek.week}</span>
-                              </div>
-                              <div>
-                                <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-slate-900'} mb-1`}>
-                                  Semaine {selectedWeek.week}
-                                </h3>
-                                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                  {selectedWeek.startDate} → {selectedWeek.endDate}
-                                </p>
-                              </div>
-                            </div>
-                            
-                            {/* Refined Status Indicator */}
-                            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg ${
-                              isDark ? 'bg-slate-700/50' : 'bg-slate-100/70'
-                            }`}>
-                              <div className={`w-2 h-2 rounded-full ${
-                                selectedWeek.overallStatus === 'excellent' ? 'bg-blue-500' :
-                                selectedWeek.overallStatus === 'critical' ? 'bg-red-500' :
-                                selectedWeek.overallStatus === 'warning' ? 'bg-amber-500' :
-                                'bg-slate-500'
-                              }`} />
-                              <span className={`text-xs font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                                {selectedWeek.overallStatus === 'excellent' ? 'Optimal' :
-                                 selectedWeek.overallStatus === 'critical' ? 'Critique' :
-                                 selectedWeek.overallStatus === 'warning' ? 'Attention' :
-                                 'Standard'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Performance Metrics Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {[
-                            { 
-                              title: 'Productivité', 
-                              value: selectedWeek.attendance.average, 
-                              icon: Users, 
-                              color: 'blue',
-                              subtitle: 'Équipe & Présence'
-                            },
-                            { 
-                              title: 'Sécurité', 
-                              value: selectedWeek.safety.average, 
-                              icon: ShieldCheck, 
-                              color: 'emerald',
-                              subtitle: 'Workplace & Incidents'
-                            },
-                            { 
-                              title: 'Efficacité', 
-                              value: selectedWeek.efficiency.average, 
-                              icon: Zap, 
-                              color: 'purple',
-                              subtitle: 'Opérationnelle & Tâches'
-                            }
-                          ].map((metric, index) => (
-                            <div key={index} className={`p-5 rounded-xl border transition-all duration-300 hover:scale-[1.02] ${
-                              isDark ? 'bg-slate-800/30 border-slate-700/50' : 'bg-white/60 border-slate-200/50'
-                            }`}>
-                              <div className="flex items-center space-x-3 mb-4">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  metric.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
-                                  metric.color === 'emerald' ? 'bg-emerald-500/15 text-emerald-600' :
-                                  'bg-purple-500/15 text-purple-600'
-                                }`}>
-                                  <metric.icon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <h4 className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                    {metric.title}
-                                  </h4>
-                                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    {metric.subtitle}
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              <div className={`text-2xl font-light mb-3 ${getPerformanceColor(metric.value)}`}>
-                                {metric.value}%
-                              </div>
-                              
-                              <div className={`w-full h-1.5 rounded-full ${isDark ? 'bg-slate-700/50' : 'bg-slate-200/50'} overflow-hidden`}>
-                                <div
-                                  className={`h-1.5 rounded-full transition-all duration-1000 ${
-                                    metric.value >= 90 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
-                                    metric.value >= 75 ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
-                                    metric.value >= 60 ? 'bg-gradient-to-r from-amber-500 to-orange-500' :
-                                    'bg-gradient-to-r from-red-500 to-pink-500'
-                                  }`}
-                                  style={{ width: `${Math.min(metric.value, 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Alerts & Detections */}
-                        {selectedWeek.detectedEvents.length > 0 && (
-                          <div className={`p-6 rounded-2xl border ${
-                            isDark ? 'bg-slate-800/30 border-slate-700/50' : 'bg-white/60 border-slate-200/50'
-                          }`}>
-                            <div className="flex items-center space-x-3 mb-5">
-                              <div className="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center">
-                                <AlertTriangle className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <h4 className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                  Alertes de la Semaine
-                                </h4>
-                                <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                  {selectedWeek.detectedEvents.length} détection{selectedWeek.detectedEvents.length > 1 ? 's' : ''} nécessitant votre attention
-                                </p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                              {selectedWeek.detectedEvents.map((detection, idx) => (
-                                <div key={idx} className={`p-4 rounded-lg border ${
-                                  detection.severity === 'critical' ?
-                                    isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50/50 border-red-200/50' :
-                                    isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200/50'
-                                }`}>
-                                  <div className="flex items-start space-x-3">
-                                    <div className={`px-2 py-1 rounded-md text-xs font-medium ${
-                                      detection.severity === 'critical' ? 
-                                        'bg-red-500/20 text-red-700 dark:text-red-300' : 
-                                        'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                                    }`}>
-                                      {detection.severity === 'critical' ? 'Critique' : 'Attention'}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h5 className={`font-medium mb-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                        {detection.title}
-                                      </h5>
-                                      <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                        {detection.description}
-                                      </p>
-                                      <div className={`text-xs mt-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        Catégorie: {detection.category}
-                                      </div>
+                          {/* Recent attendance records */}
+                          {emp.attendance.records.length > 0 && (
+                            <div className="mb-4">
+                              <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Dernières présences
+                              </p>
+                              <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                                {emp.attendance.records.slice(0, 10).map((record, idx) => (
+                                  <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded-lg ${
+                                    isDark ? 'bg-slate-700/30' : 'bg-slate-100/50'
+                                  }`}>
+                                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                                      {new Date(record.date).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      {record.presence && (
+                                        <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-emerald-900/50 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
+                                          {record.presence}
+                                        </span>
+                                      )}
+                                      {record.retard && record.retard !== '00:00' && (
+                                        <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                                          +{record.retard}
+                                        </span>
+                                      )}
+                                      {record.motif && (
+                                        <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>
+                                          {record.motif}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
+                          )}
+
+                          {/* Recent production tasks */}
+                          {emp.production.tasks.length > 0 && (
+                            <div>
+                              <p className={`text-xs font-medium mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Dernières productions
+                              </p>
+                              <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                                {emp.production.tasks.slice(0, 10).map((task, idx) => (
+                                  <div key={idx} className={`flex items-center justify-between text-xs p-2 rounded-lg ${
+                                    isDark ? 'bg-slate-700/30' : 'bg-slate-100/50'
+                                  }`}>
+                                    <div className="flex items-center space-x-2">
+                                      <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                                        {new Date(task.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                                      </span>
+                                      <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                                        {task.product || task.description || '-'}
+                                      </span>
+                                    </div>
+                                    <span className="font-bold text-pink-500">
+                                      {(parseFloat(task.quantity_kg) || parseFloat(task.quantity) || 0).toLocaleString()} kg
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filteredEmployees.length === 0 && (
+                <div className={`text-center py-12 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucun employé trouvé</p>
                 </div>
               )}
             </div>
           )}
+
+          {/* Charts View */}
+          {selectedView === 'charts' && (
+            <div className="space-y-6">
+
+              {/* Main Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* Attendance Distribution */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+                      <PieChart className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Répartition Présence
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        À l'heure, retards et absences
+                      </p>
+                    </div>
+                  </div>
+                  {getAttendancePieChart() ? (
+                    <ReactECharts option={getAttendancePieChart()} style={{ height: '300px' }} />
+                  ) : (
+                    <div className={`h-[300px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données
+                    </div>
+                  )}
+                </div>
+
+                {/* Employee Production Ranking */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Production par Employé
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Classement des producteurs
+                      </p>
+                    </div>
+                  </div>
+                  {getEmployeeProductionChart() ? (
+                    <ReactECharts option={getEmployeeProductionChart()} style={{ height: '300px' }} />
+                  ) : (
+                    <div className={`h-[300px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données de production
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Detailed Charts */}
+              <div className="grid grid-cols-1 gap-6">
+
+                {/* Attendance Timeline */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                      <LineChart className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Évolution Journalière
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Présence et retards au fil du mois
+                      </p>
+                    </div>
+                  </div>
+                  {getAttendanceTrendChart() ? (
+                    <ReactECharts option={getAttendanceTrendChart()} style={{ height: '300px' }} />
+                  ) : (
+                    <div className={`h-[300px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données de présence
+                    </div>
+                  )}
+                </div>
+
+                {/* Production Timeline */}
+                <div className={`p-6 rounded-2xl border ${isDark ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Tendance Production
+                      </h3>
+                      <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Production quotidienne
+                      </p>
+                    </div>
+                  </div>
+                  {getProductionTrendChart() ? (
+                    <ReactECharts option={getProductionTrendChart()} style={{ height: '300px' }} />
+                  ) : (
+                    <div className={`h-[300px] flex items-center justify-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Pas de données de production
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Enhanced Footer */}
-        <div className={`px-8 py-4 border-t backdrop-blur-sm ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white/70 border-slate-200'} rounded-b-3xl`}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${getPerformanceColor(monthlyAnalysis.monthlyPerformance.overall).replace('text-', 'bg-')}`}></div>
-                <span className={`text-sm font-semibold ${getPerformanceColor(monthlyAnalysis.monthlyPerformance.overall)}`}>
-                  {monthlyAnalysis.monthlyPerformance.overall}% Performance Globale
-                </span>
-              </div>
-              
-              <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                {monthlyAnalysis.statistics.excellentWeeks} semaines excellentes • {monthlyAnalysis.statistics.criticalIssues} critiques
-              </div>
+        {/* Footer */}
+        <div className={`px-8 py-4 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'} rounded-b-3xl`}>
+          <div className="flex items-center justify-between">
+            <div className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <span className="font-medium">{monthlyAnalysis.stats.totalEmployees}</span> employés •
+              <span className="font-medium ml-1">{monthlyAnalysis.stats.attendanceRate}%</span> présence •
+              <span className="font-medium text-pink-500 ml-1">{(monthlyAnalysis.stats.totalProduction / 1000).toFixed(1)}t</span> production
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={exportToPDF}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl border text-sm transition-all duration-200 ${
-                  isDark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <Download className="w-4 h-4" />
-                <span>Exporter PDF</span>
-              </button>
-              
-              <button
-                onClick={onClose}
-                className="px-6 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-medium transition-all duration-200 hover:from-violet-700 hover:to-purple-700 shadow-lg"
-              >
-                Fermer
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl font-medium hover:from-pink-600 hover:to-rose-700 transition-all shadow-lg"
+            >
+              Fermer
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default MonthlyReportModal;

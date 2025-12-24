@@ -11,10 +11,17 @@ export const useTeamsKPIData = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔄 useTeamsKPIData: Starting to fetch KPI data...');
       const data = await teamsService.getAllKPIData();
+      console.log('📊 useTeamsKPIData: Received data from service:', data);
+      console.log('📈 useTeamsKPIData: Data summary:', {
+        attendance: data?.team_productivity_attendance?.length || 0,
+        efficiency: data?.operator_efficiency?.length || 0,
+        safety: data?.safety_incidents?.length || 0
+      });
       setKpiData(data);
     } catch (err) {
-      console.error('Error fetching KPI data:', err);
+      console.error('❌ useTeamsKPIData: Error fetching KPI data:', err);
       setError(err);
       // Set empty data structure on error
       setKpiData({

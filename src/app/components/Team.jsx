@@ -27,6 +27,7 @@ import { SafetyIncidentsForm } from '../components/Team/SafetyIncidentsForm';
 import { OperatorEfficiencyForm } from '../components/Team/OperatorEfficiencyForm';
 import { TeamCharts } from '../components/Team/TeamCharts';
 import { MonthlyReportModal } from '../components/Team/MonthlyReportModal';
+import { EmployeeDetailModal } from '../components/Team/EmployeeDetailModal';
 
 export const TeamPage = ({ isDark = false }) => {
   // UI State
@@ -34,6 +35,7 @@ export const TeamPage = ({ isDark = false }) => {
   const [selectedKPI, setSelectedKPI] = useState(null);
   const [showReports, setShowReports] = useState(false);
   const [showReportsMenu, setShowReportsMenu] = useState(false);
+  const [showEmployeeDetail, setShowEmployeeDetail] = useState(false);
   
   // Force re-render trigger
   const [updateTrigger, setUpdateTrigger] = useState(0);
@@ -76,7 +78,10 @@ export const TeamPage = ({ isDark = false }) => {
   
   const teamAnalytics = useMemo(() => {
     console.log('🔄 Recalculating teamAnalytics due to data change');
-    return stableGetTeamAnalytics();
+    console.log('📊 Current kpiData state:', kpiData);
+    const analytics = stableGetTeamAnalytics();
+    console.log('📈 Calculated teamAnalytics:', analytics);
+    return analytics;
   }, [stableGetTeamAnalytics]);
 
   // UPDATED: Handle form operations with date-specific data loading
@@ -241,9 +246,9 @@ export const TeamPage = ({ isDark = false }) => {
 
     const getKPIColor = (kpiId) => {
       switch (kpiId) {
-        case 'team_productivity_attendance': return 'from-blue-600 to-blue-700';
-        case 'safety_incidents': return 'from-red-600 to-red-700';
-        case 'operator_efficiency': return 'from-purple-600 to-purple-700';
+        case 'team_productivity_attendance': return 'from-pink-600 to-rose-700';
+        case 'safety_incidents': return 'from-rose-600 to-red-700';
+        case 'operator_efficiency': return 'from-fuchsia-600 to-pink-700';
         default: return 'from-pink-600 to-pink-700';
       }
     };
@@ -338,13 +343,13 @@ export const TeamPage = ({ isDark = false }) => {
       <div
         key={kpi.id}
         onClick={() => handleOpenForm(kpi.id)}
-        className={`group cursor-pointer p-6 rounded-2xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
-          isDark ? 'bg-slate-800/80 border-slate-700 hover:border-blue-500/50 hover:bg-slate-800' : 'bg-white border-slate-200 hover:border-blue-400/50 hover:bg-slate-50/50'
+        className={`group cursor-pointer p-5 rounded-2xl border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
+          isDark ? 'bg-slate-800/80 border-slate-700 hover:border-pink-500/50 hover:bg-slate-800' : 'bg-white border-slate-200 hover:border-pink-400/50 hover:bg-slate-50/50'
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${getKPIColor(kpi.id)} flex items-center justify-center shadow-lg`}>
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getKPIColor(kpi.id)} flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300`}>
             <KPIIcon className="w-6 h-6 text-white" />
           </div>
           <div className="flex items-center space-x-3">
@@ -356,7 +361,7 @@ export const TeamPage = ({ isDark = false }) => {
 
         {/* KPI Info */}
         <div className="mb-4">
-          <h4 className={`text-base font-bold mb-2 group-hover:text-blue-600 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          <h4 className={`text-base font-bold mb-2 group-hover:text-pink-600 transition-colors ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {kpiName}
           </h4>
           <p className={`text-sm leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -532,12 +537,20 @@ export const TeamPage = ({ isDark = false }) => {
 
         {/* Enhanced Monthly Report Modal */}
         {showReports && (
-          <MonthlyReportModal 
+          <MonthlyReportModal
             analytics={teamAnalytics}
             isDark={isDark}
             onClose={() => setShowReports(false)}
           />
         )}
+
+        {/* Employee Detail Modal */}
+        <EmployeeDetailModal
+          isOpen={showEmployeeDetail}
+          onClose={() => setShowEmployeeDetail(false)}
+          kpiData={kpiData}
+          isDark={isDark}
+        />
 
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -556,22 +569,35 @@ export const TeamPage = ({ isDark = false }) => {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Employee Detail Button */}
+            <button
+              onClick={() => setShowEmployeeDetail(true)}
+              className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
+                isDark
+                  ? 'border-slate-600 text-slate-300 hover:border-pink-500 hover:bg-pink-900/20 hover:text-pink-300'
+                  : 'border-slate-200 text-slate-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-700'
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              <span>Detail Employes</span>
+            </button>
+
             {/* Monthly Report Button */}
             <button
               onClick={() => setShowReports(true)}
               className={`flex items-center space-x-2 px-6 py-3 border rounded-xl transition-all duration-200 font-medium group shadow-sm ${
-                isDark 
-                  ? 'border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50' 
-                  : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                isDark
+                  ? 'border-slate-600 text-slate-300 hover:border-pink-500 hover:bg-pink-900/20 hover:text-pink-300'
+                  : 'border-slate-200 text-slate-700 hover:border-pink-500 hover:bg-pink-50 hover:text-pink-700'
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>Rapport Mensuel</span>
+              <span>Rapport</span>
             </button>
           </div>
         </div>
 
-        {/* Enhanced Stats Grid with Real Data */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
             <div
@@ -584,12 +610,12 @@ export const TeamPage = ({ isDark = false }) => {
             >
               <div className="flex items-start justify-between mb-6">
                 <div className={`p-3 rounded-xl shadow-md group-hover:shadow-lg transition-all ${
-                  stat.color === 'pink' ? 'bg-pink-600' :
-                  stat.color === 'violet' ? 'bg-violet-600' :
-                  stat.color === 'blue' ? 'bg-blue-600' :
-                  stat.color === 'emerald' ? 'bg-emerald-600' :
-                  stat.color === 'amber' ? 'bg-amber-600' :
-                  stat.color === 'red' ? 'bg-red-600' :
+                  stat.color === 'pink' ? 'bg-gradient-to-br from-pink-600 to-rose-700' :
+                  stat.color === 'violet' ? 'bg-gradient-to-br from-violet-600 to-purple-700' :
+                  stat.color === 'blue' ? 'bg-gradient-to-br from-blue-600 to-cyan-700' :
+                  stat.color === 'emerald' ? 'bg-gradient-to-br from-emerald-600 to-green-700' :
+                  stat.color === 'amber' ? 'bg-gradient-to-br from-amber-600 to-orange-700' :
+                  stat.color === 'red' ? 'bg-gradient-to-br from-red-600 to-rose-700' :
                   'bg-slate-600'
                 }`}>
                   <stat.icon className="w-5 h-5 text-white" />
@@ -612,16 +638,6 @@ export const TeamPage = ({ isDark = false }) => {
                   {stat.value}
                 </p>
                 <div className="flex items-center space-x-2">
-                  <span className={`text-sm font-semibold ${
-                    stat.color === 'pink' ? 'text-pink-600 dark:text-pink-400' :
-                    stat.color === 'violet' ? 'text-violet-600 dark:text-violet-400' :
-                    stat.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                    stat.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
-                    stat.color === 'amber' ? 'text-amber-600 dark:text-amber-400' :
-                    'text-red-600 dark:text-red-400'
-                  }`}>
-                    {stat.change}
-                  </span>
                   <span className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                     {stat.changeText}
                   </span>
@@ -641,7 +657,7 @@ export const TeamPage = ({ isDark = false }) => {
                 Indicateurs Clés de Performance
               </h3>
               <p className={`text-base mt-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentKPIs.length || 0} configurés • Gestion intelligente des équipes et performance opérationnelle
+                {departmentSummary?.kpis?.filter(kpi => kpi.latestValue).length || 0} / {departmentKPIs.length || 0} configurés • Suivi de la performance équipe et sécurité
               </p>
             </div>
           </div>

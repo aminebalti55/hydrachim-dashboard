@@ -51,6 +51,33 @@ const groupDataByQuarters = (data, year) => {
   return { filteredData, quarters };
 };
 
+const groupDataByMonths = (data, year) => {
+  const filteredData = data.filter(entry => {
+    const entryYear = new Date(entry.kpi_date).getFullYear();
+    return entryYear === year;
+  });
+
+  const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+  const months = {};
+
+  for (let i = 0; i < 12; i++) {
+    months[i] = {
+      monthIndex: i,
+      monthName: monthNames[i],
+      data: []
+    };
+  }
+
+  filteredData.forEach(entry => {
+    const month = new Date(entry.kpi_date).getMonth();
+    if (months[month]) {
+      months[month].data.push(entry);
+    }
+  });
+
+  return { filteredData, months };
+};
+
 const calculateQuarterlyAverage = (data) => {
   if (!data || data.length === 0) return 0;
   const sum = data.reduce((acc, entry) => acc + (entry.kpi_value || 0), 0);
@@ -310,10 +337,119 @@ export const TeamYearlyReport = ({ isDark, onClose }) => {
     };
     yearlyPerformance.overall = Math.round((yearlyPerformance.attendance + yearlyPerformance.efficiency + yearlyPerformance.safety) / 3);
 
+    // Monthly breakdown analysis
+    const { months: attendanceMonths } = groupDataByMonths(attendanceData, selectedYear);
+    const { months: efficiencyMonths } = groupDataByMonths(efficiencyData, selectedYear);
+    const { months: safetyMonths } = groupDataByMonths(safetyData, selectedYear);
+
+    const monthlyBreakdown = [];
+    const monthlyTrends = { attendance: [], efficiency: [], safety: [] };
+
+    for (let i = 0; i < 12; i++) {
+      const attendanceMonth = attendanceMonths[i]?.data || [];
+      const efficiencyMonth = efficiencyMonths[i]?.data || [];
+      const safetyMonth = safetyMonths[i]?.data || [];
+
+      const monthAnalysis = {
+        monthIndex: i,
+        monthName: attendanceMonths[i]?.monthName || '',
+        attendance: {
+          average: calculateQuarterlyAverage(attendanceMonth),
+          hasData: attendanceMonth.length > 0,
+          totalEmployees: 0,
+          presentEmployees: 0
+        },
+        efficiency: {
+          average: calculateQuarterlyAverage(efficiencyMonth),
+          hasData: efficiencyMonth.length > 0,
+          totalTasks: 0,
+          completedTasks: 0,
+          totalProductionKg: 0
+        },
+        safety: {
+          average: safetyMonth.length > 0 ? calculateQuarterlyAverage(safetyMonth) : 100,
+          hasData: safetyMonth.length > 0,
+          totalIncidents: 0,
+          criticalIncidents: 0
+        }
+      };
+
+      // Analyze attendance for this month
+      if (attendanceMonth.length > 0) {
+        attendanceMonth.forEach(entry => {
+          if (entry.employees) {
+            monthAnalysis.attendance.totalEmployees += entry.employees.length;
+            monthAnalysis.attendance.presentEmployees += entry.employees.filter(emp =>
+              emp.attendance_records && emp.attendance_records.length > 0
+            ).length;
+          }
+        });
+      }
+
+      // Analyze efficiency for this month
+      if (efficiencyMonth.length > 0) {
+        efficiencyMonth.forEach(entry => {
+          if (entry.employees) {
+            entry.employees.forEach(emp => {
+              monthAnalysis.efficiency.totalTasks += emp.tasks?.length || 0;
+              monthAnalysis.efficiency.completedTasks += emp.tasks?.filter(t => t.completed).length || 0;
+              monthAnalysis.efficiency.totalProductionKg += emp.total_production_kg || 0;
+            });
+          }
+        });
+      }
+
+      // Analyze safety for this month
+      if (safetyMonth.length > 0) {
+        safetyMonth.forEach(entry => {
+          monthAnalysis.safety.totalIncidents += entry.total_incidents || 0;
+          if (entry.incidents) {
+            monthAnalysis.safety.criticalIncidents += entry.incidents.filter(inc => inc.severity === 'critical').length;
+          }
+        });
+      }
+
+      monthlyBreakdown.push(monthAnalysis);
+      monthlyTrends.attendance.push(monthAnalysis.attendance.average);
+      monthlyTrends.efficiency.push(monthAnalysis.efficiency.average);
+      monthlyTrends.safety.push(monthAnalysis.safety.average);
+    }
+
+    // Calculate monthly insights
+    const monthsWithData = monthlyBreakdown.filter(m => m.attendance.hasData || m.efficiency.hasData || m.safety.hasData);
+    const bestMonth = monthsWithData.reduce((best, month) => {
+      const monthScore = Math.round((month.attendance.average + month.efficiency.average + month.safety.average) / 3);
+      const bestScore = Math.round((best.attendance.average + best.efficiency.average + best.safety.average) / 3);
+      return monthScore > bestScore ? month : best;
+    }, monthlyBreakdown[0] || {});
+
+    const worstMonth = monthsWithData.reduce((worst, month) => {
+      const monthScore = Math.round((month.attendance.average + month.efficiency.average + month.safety.average) / 3);
+      const worstScore = Math.round((worst.attendance.average + worst.efficiency.average + worst.safety.average) / 3);
+      return monthScore < worstScore ? month : worst;
+    }, monthlyBreakdown[0] || {});
+
+    const monthlyInsights = {
+      bestMonth: bestMonth?.monthName || 'N/A',
+      worstMonth: worstMonth?.monthName || 'N/A',
+      monthsAboveTarget: monthsWithData.filter(m =>
+        (m.attendance.average + m.efficiency.average + m.safety.average) / 3 >= 85
+      ).length,
+      monthsNeedingAttention: monthsWithData.filter(m =>
+        m.attendance.average < 75 || m.efficiency.average < 70 || m.safety.average < 85
+      ).length,
+      totalProductionKg: monthlyBreakdown.reduce((sum, m) => sum + m.efficiency.totalProductionKg, 0),
+      averageMonthlyIncidents: monthsWithData.length > 0 ?
+        Math.round(monthlyBreakdown.reduce((sum, m) => sum + m.safety.totalIncidents, 0) / monthsWithData.length) : 0
+    };
+
     return {
       year: selectedYear,
       yearlyPerformance,
       quarterlyBreakdown,
+      monthlyBreakdown,
+      monthlyTrends,
+      monthlyInsights,
       detections: allDetections.sort((a, b) => {
         const severityOrder = { 'critical': 3, 'warning': 2, 'low': 1 };
         return severityOrder[b.severity] - severityOrder[a.severity];
@@ -701,8 +837,8 @@ export const TeamYearlyReport = ({ isDark, onClose }) => {
                 <button
                   onClick={() => setSelectedView('overview')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    selectedView === 'overview' 
-                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg' 
+                    selectedView === 'overview'
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg'
                       : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
@@ -710,14 +846,25 @@ export const TeamYearlyReport = ({ isDark, onClose }) => {
                   <span>Vue d'ensemble</span>
                 </button>
                 <button
-                  onClick={() => setSelectedView('quarterly')}
+                  onClick={() => setSelectedView('monthly')}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    selectedView === 'quarterly' 
-                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg' 
+                    selectedView === 'monthly'
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg'
                       : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <Calendar className="w-4 h-4" />
+                  <span>Mensuel</span>
+                </button>
+                <button
+                  onClick={() => setSelectedView('quarterly')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    selectedView === 'quarterly'
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg'
+                      : isDark ? 'text-slate-300 hover:bg-slate-700 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
                   <span>Trimestriel</span>
                 </button>
               </div>
@@ -1109,6 +1256,358 @@ export const TeamYearlyReport = ({ isDark, onClose }) => {
                   })()}
                 </div>
               )}
+            </div>
+          )}
+
+          {selectedView === 'monthly' && (
+            <div className="h-full p-6 overflow-y-auto space-y-6">
+
+              {/* Monthly Insights Summary */}
+              <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
+                isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
+              }`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shadow-lg">
+                    <Brain className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Insights Mensuels {yearlyAnalysis.year}
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Analyse détaillée des performances par mois
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    {
+                      title: 'Meilleur Mois',
+                      value: yearlyAnalysis.monthlyInsights.bestMonth,
+                      icon: Award,
+                      color: 'emerald',
+                      subtitle: 'Performance optimale'
+                    },
+                    {
+                      title: 'Mois à Améliorer',
+                      value: yearlyAnalysis.monthlyInsights.worstMonth,
+                      icon: AlertTriangle,
+                      color: 'amber',
+                      subtitle: 'Nécessite attention'
+                    },
+                    {
+                      title: 'Mois au-dessus Cible',
+                      value: yearlyAnalysis.monthlyInsights.monthsAboveTarget,
+                      icon: Target,
+                      color: 'blue',
+                      subtitle: 'Sur 12 mois',
+                      isCount: true
+                    },
+                    {
+                      title: 'Production Totale',
+                      value: Math.round(yearlyAnalysis.monthlyInsights.totalProductionKg),
+                      icon: Zap,
+                      color: 'purple',
+                      subtitle: 'kg/année',
+                      isCount: true
+                    }
+                  ].map((insight, index) => (
+                    <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
+                      isDark ? 'bg-slate-700/30 border-slate-600/50' : 'bg-slate-50/50 border-slate-200/50'
+                    }`}>
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          insight.color === 'emerald' ? 'bg-emerald-500/15 text-emerald-600' :
+                          insight.color === 'amber' ? 'bg-amber-500/15 text-amber-600' :
+                          insight.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
+                          'bg-purple-500/15 text-purple-600'
+                        }`}>
+                          <insight.icon className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {insight.title}
+                      </div>
+                      <div className={`text-2xl font-light mb-2 ${
+                        insight.color === 'emerald' ? 'text-emerald-500' :
+                        insight.color === 'amber' ? 'text-amber-500' :
+                        insight.color === 'blue' ? 'text-blue-500' :
+                        'text-purple-500'
+                      }`}>
+                        {insight.value}
+                      </div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {insight.subtitle}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Monthly Trends Chart */}
+              <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
+                isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
+              }`}>
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Tendances Mensuelles
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Évolution des KPIs sur 12 mois
+                    </p>
+                  </div>
+                </div>
+
+                <ReactECharts
+                  option={{
+                    backgroundColor: 'transparent',
+                    textStyle: {
+                      color: isDark ? '#E2E8F0' : '#475569',
+                      fontFamily: 'Inter, system-ui, sans-serif'
+                    },
+                    tooltip: {
+                      trigger: 'axis',
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? '#475569' : '#E2E8F0',
+                      borderWidth: 1,
+                      textStyle: { color: isDark ? '#E2E8F0' : '#1E293B' },
+                      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);'
+                    },
+                    legend: {
+                      bottom: '5%',
+                      textStyle: { color: isDark ? '#CBD5E1' : '#64748B', fontSize: 12 }
+                    },
+                    grid: {
+                      left: '3%',
+                      right: '4%',
+                      bottom: '15%',
+                      top: '10%',
+                      containLabel: true
+                    },
+                    xAxis: {
+                      type: 'category',
+                      data: yearlyAnalysis.monthlyBreakdown.map(m => m.monthName),
+                      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+                      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11 }
+                    },
+                    yAxis: {
+                      type: 'value',
+                      max: 100,
+                      axisLine: { lineStyle: { color: isDark ? '#475569' : '#E2E8F0' } },
+                      axisLabel: { color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, formatter: '{value}%' },
+                      splitLine: { lineStyle: { color: isDark ? '#374151' : '#E5E7EB', type: 'dashed' } }
+                    },
+                    series: [
+                      {
+                        name: 'Productivité',
+                        type: 'line',
+                        data: yearlyAnalysis.monthlyTrends.attendance,
+                        smooth: true,
+                        lineStyle: { color: '#3B82F6', width: 3 },
+                        itemStyle: { color: '#3B82F6', borderWidth: 2, borderColor: '#FFFFFF' },
+                        areaStyle: {
+                          color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+                              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        name: 'Efficacité',
+                        type: 'line',
+                        data: yearlyAnalysis.monthlyTrends.efficiency,
+                        smooth: true,
+                        lineStyle: { color: '#8B5CF6', width: 3 },
+                        itemStyle: { color: '#8B5CF6', borderWidth: 2, borderColor: '#FFFFFF' }
+                      },
+                      {
+                        name: 'Sécurité',
+                        type: 'line',
+                        data: yearlyAnalysis.monthlyTrends.safety,
+                        smooth: true,
+                        lineStyle: { color: '#6366F1', width: 3 },
+                        itemStyle: { color: '#6366F1', borderWidth: 2, borderColor: '#FFFFFF' }
+                      }
+                    ]
+                  }}
+                  style={{ height: '320px' }}
+                  opts={{ renderer: 'svg' }}
+                />
+              </div>
+
+              {/* Monthly Grid */}
+              <div>
+                <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Détails Mensuels
+                </h3>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {yearlyAnalysis.monthlyBreakdown.map((month, index) => {
+                    const hasData = month.attendance.hasData || month.efficiency.hasData || month.safety.hasData;
+                    const monthScore = Math.round((month.attendance.average + month.efficiency.average + month.safety.average) / 3);
+
+                    return (
+                      <div key={index} className={`p-4 rounded-xl border transition-all duration-300 hover:scale-105 ${
+                        !hasData ?
+                          isDark ? 'bg-slate-800/20 border-slate-700/30 opacity-50' : 'bg-slate-50/30 border-slate-200/30 opacity-50' :
+                        monthScore >= 90 ?
+                          isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50/50 border-emerald-200/50' :
+                        monthScore >= 75 ?
+                          isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/50 border-blue-200/50' :
+                        monthScore >= 60 ?
+                          isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200/50' :
+                          isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50/50 border-red-200/50'
+                      }`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            {month.monthName}
+                          </div>
+                          {hasData && (
+                            <div className={`text-lg font-light ${getPerformanceColor(monthScore)}`}>
+                              {monthScore}%
+                            </div>
+                          )}
+                        </div>
+
+                        {hasData ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Productivité</span>
+                              <span className={`font-medium ${getPerformanceColor(month.attendance.average)}`}>
+                                {month.attendance.average}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Efficacité</span>
+                              <span className={`font-medium ${getPerformanceColor(month.efficiency.average)}`}>
+                                {month.efficiency.average}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Sécurité</span>
+                              <span className={`font-medium ${getPerformanceColor(month.safety.average)}`}>
+                                {month.safety.average}%
+                              </span>
+                            </div>
+
+                            {month.efficiency.totalProductionKg > 0 && (
+                              <div className={`mt-3 pt-2 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-200/50'}`}>
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>Production</span>
+                                  <span className={`font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                                    {Math.round(month.efficiency.totalProductionKg)} kg
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {month.safety.totalIncidents > 0 && (
+                              <div className={`flex items-center space-x-1 text-xs mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>{month.safety.totalIncidents} incident{month.safety.totalIncidents > 1 ? 's' : ''}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className={`text-xs text-center py-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Aucune donnée
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Monthly Summary Stats */}
+              <div className={`p-6 rounded-2xl border backdrop-blur-sm ${
+                isDark ? 'bg-slate-800/40 border-slate-700/50' : 'bg-white/80 border-slate-200/50'
+              }`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                    <PieChart className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-lg font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      Résumé Annuel Complet
+                    </h3>
+                    <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                      Basé sur les données mensuelles de {yearlyAnalysis.year}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    {
+                      title: 'Mois Analysés',
+                      value: yearlyAnalysis.monthlyBreakdown.filter(m => m.attendance.hasData || m.efficiency.hasData || m.safety.hasData).length,
+                      subtitle: 'sur 12 mois',
+                      icon: Calendar,
+                      color: 'blue'
+                    },
+                    {
+                      title: 'Incidents Moyens',
+                      value: yearlyAnalysis.monthlyInsights.averageMonthlyIncidents,
+                      subtitle: 'par mois',
+                      icon: Shield,
+                      color: 'indigo'
+                    },
+                    {
+                      title: 'Mois à Optimiser',
+                      value: yearlyAnalysis.monthlyInsights.monthsNeedingAttention,
+                      subtitle: 'nécessitent attention',
+                      icon: AlertTriangle,
+                      color: 'amber'
+                    },
+                    {
+                      title: 'Taux de Réussite',
+                      value: Math.round((yearlyAnalysis.monthlyInsights.monthsAboveTarget / 12) * 100),
+                      subtitle: '% mois au-dessus cible',
+                      icon: CheckCircle,
+                      color: 'emerald'
+                    }
+                  ].map((stat, index) => (
+                    <div key={index} className={`p-4 rounded-xl border transition-all duration-300 ${
+                      isDark ? 'bg-slate-700/30 border-slate-600/50' : 'bg-slate-50/50 border-slate-200/50'
+                    }`}>
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          stat.color === 'blue' ? 'bg-blue-500/15 text-blue-600' :
+                          stat.color === 'indigo' ? 'bg-indigo-500/15 text-indigo-600' :
+                          stat.color === 'amber' ? 'bg-amber-500/15 text-amber-600' :
+                          'bg-emerald-500/15 text-emerald-600'
+                        }`}>
+                          <stat.icon className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className={`text-sm font-medium mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {stat.title}
+                      </div>
+                      <div className={`text-2xl font-light mb-2 ${
+                        stat.color === 'blue' ? 'text-blue-500' :
+                        stat.color === 'indigo' ? 'text-indigo-500' :
+                        stat.color === 'amber' ? 'text-amber-500' :
+                        'text-emerald-500'
+                      }`}>
+                        {stat.value}
+                      </div>
+                      <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {stat.subtitle}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
