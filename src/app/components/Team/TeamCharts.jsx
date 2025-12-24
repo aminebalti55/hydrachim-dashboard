@@ -45,6 +45,8 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
       let totalLateMinutes = 0;
       let totalHoursWorked = 0;
       let absenceDays = 0;
+      let congeDays = 0;
+      let sickLeaveDays = 0;
 
       if (entry.employees) {
         entry.employees.forEach(emp => {
@@ -58,8 +60,8 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
               const presenceHours = hours + (minutes || 0) / 60;
               totalHoursWorked += presenceHours;
 
-              // Parse late minutes
-              if (day.retard) {
+              // Parse late minutes (only count if employee was present - not on congé/absence/sick leave)
+              if (day.retard && !day.motif) {
                 const [h, m] = day.retard.split(':').map(Number);
                 const lateMinutes = h * 60 + m;
                 if (lateMinutes > 0) {
@@ -68,9 +70,23 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
                 }
               }
 
-              // Count absences
-              if (day.motif && ['Absence', 'Congé', 'Maladie'].includes(day.motif)) {
-                absenceDays++;
+              // Properly categorize motifs (reasons for absence)
+              if (day.motif) {
+                const motifLower = day.motif.toLowerCase();
+
+                if (motifLower.includes('congé')) {
+                  // Congé = Approved leave/vacation
+                  congeDays++;
+                } else if (motifLower.includes('maladie')) {
+                  // Maladie/Maladie P = Sick leave
+                  sickLeaveDays++;
+                } else if (motifLower.includes('absence')) {
+                  // Absence = Unexcused absence
+                  absenceDays++;
+                } else {
+                  // Other motifs count as absence
+                  absenceDays++;
+                }
               }
 
               allRecords.push({
@@ -95,6 +111,8 @@ export const TeamCharts = ({ analytics, isDark, className = '' }) => {
         totalLateMinutes,
         avgHoursWorked: totalDays > 0 ? (totalHoursWorked / totalDays).toFixed(1) : 0,
         absenceDays,
+        congeDays,
+        sickLeaveDays,
         punctualityRate: totalDays > 0 ? Math.round(((totalDays - lateDays) / totalDays) * 100) : 100
       });
     });
