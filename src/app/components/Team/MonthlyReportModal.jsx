@@ -95,6 +95,8 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
             presentDays: 0,
             lateDays: 0,
             absentDays: 0,
+            congeDays: 0,
+            sickLeaveDays: 0,
             totalHours: 0,
             totalLateMinutes: 0,
             records: []
@@ -122,8 +124,8 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
               }
             }
 
-            // Parse late minutes
-            if (record.retard) {
+            // Parse late minutes (only count if employee was present - not on leave/absence/sick)
+            if (record.retard && !record.motif) {
               const [h, m] = record.retard.split(':').map(Number);
               const lateMinutes = h * 60 + m;
               if (lateMinutes > 0) {
@@ -132,9 +134,23 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
               }
             }
 
-            // Check for absences
-            if (record.motif && ['Absence', 'Congé', 'Maladie'].includes(record.motif)) {
-              existing.attendance.absentDays++;
+            // Properly categorize motifs (reasons for absence)
+            if (record.motif) {
+              const motifLower = record.motif.toLowerCase();
+
+              if (motifLower.includes('congé')) {
+                // Congé = Approved leave/vacation
+                existing.attendance.congeDays++;
+              } else if (motifLower.includes('maladie')) {
+                // Maladie/Maladie P = Sick leave
+                existing.attendance.sickLeaveDays++;
+              } else if (motifLower.includes('absence')) {
+                // Absence = Unexcused absence
+                existing.attendance.absentDays++;
+              } else {
+                // Other motifs count as absence
+                existing.attendance.absentDays++;
+              }
             }
           });
         }
@@ -156,6 +172,8 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
             presentDays: 0,
             lateDays: 0,
             absentDays: 0,
+            congeDays: 0,
+            sickLeaveDays: 0,
             totalHours: 0,
             totalLateMinutes: 0,
             records: []
@@ -228,15 +246,20 @@ export const MonthlyReportModal = ({ analytics, isDark, onClose }) => {
           }
         }
 
-        if (record.retard) {
+        if (record.retard && !record.motif) {
           const [h, m] = record.retard.split(':').map(Number);
           if ((h * 60 + m) > 0) {
             dailyData[record.date].late++;
           }
         }
 
-        if (record.motif && ['Absence', 'Congé', 'Maladie'].includes(record.motif)) {
-          dailyData[record.date].absent++;
+        // Only count true absences (not congé or sick leave) for dailyData
+        if (record.motif) {
+          const motifLower = record.motif.toLowerCase();
+          if (motifLower.includes('absence')) {
+            dailyData[record.date].absent++;
+          }
+          // Note: Congé and Maladie are not counted as absent in daily charts
         }
       });
     });

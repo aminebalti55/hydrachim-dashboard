@@ -154,12 +154,13 @@ export default function AttendanceForm({ onSave, onCancel, existingData = null, 
     const monthRecords = attendanceRecords.filter(rec => new Date(rec.date).getMonth() === currentMonth);
 
     const workedDays = monthRecords.filter(r => !r.motif && r.presence).length;
-    const lateDays = monthRecords.filter(r => r.retard && r.retard !== '00:00').length;
+    const lateDays = monthRecords.filter(r => r.retard && r.retard !== '00:00' && !r.motif).length;
     const congeDays = monthRecords.filter(r => r.motif === 'Congé').length;
     const maladieDays = monthRecords.filter(r => r.motif?.includes('Maladie')).length;
+    const absenceDays = monthRecords.filter(r => r.motif && r.motif.toLowerCase().includes('absence')).length;
 
     const totalLateMinutes = monthRecords.reduce((sum, r) => {
-      if (r.retard) {
+      if (r.retard && !r.motif) {
         const [h, m] = r.retard.split(':').map(Number);
         return sum + (h * 60 + m);
       }

@@ -51,6 +51,8 @@ export const EmployeeDetailModal = ({ isOpen, onClose, kpiData, isDark = false }
                   totalPresenceDays: 0,
                   totalLateDays: 0,
                   totalAbsentDays: 0,
+                  totalCongeDays: 0,
+                  totalSickLeaveDays: 0,
                   totalProduction: 0,
                   avgEfficiency: 0
                 });
@@ -82,6 +84,8 @@ export const EmployeeDetailModal = ({ isOpen, onClose, kpiData, isDark = false }
                   totalPresenceDays: 0,
                   totalLateDays: 0,
                   totalAbsentDays: 0,
+                  totalCongeDays: 0,
+                  totalSickLeaveDays: 0,
                   totalProduction: 0,
                   avgEfficiency: 0
                 });
@@ -114,16 +118,31 @@ export const EmployeeDetailModal = ({ isOpen, onClose, kpiData, isDark = false }
               emp.totalPresenceDays++;
             }
 
-            // Parse retard string like "00:09" to get minutes
-            if (day.retard) {
+            // Parse retard string like "00:09" to get minutes (only count if employee was present - not on leave/absence/sick)
+            if (day.retard && !day.motif) {
               const [retardHours, retardMins] = day.retard.split(':').map(Number);
               if ((retardHours * 60 + retardMins) > 0) {
                 emp.totalLateDays++;
               }
             }
 
-            if (day.motif && ['Absence', 'Congé', 'Maladie'].includes(day.motif)) {
-              emp.totalAbsentDays++;
+            // Properly categorize motifs (reasons for absence)
+            if (day.motif) {
+              const motifLower = day.motif.toLowerCase();
+
+              if (motifLower.includes('congé')) {
+                // Congé = Approved leave/vacation
+                emp.totalCongeDays++;
+              } else if (motifLower.includes('maladie')) {
+                // Maladie/Maladie P = Sick leave
+                emp.totalSickLeaveDays++;
+              } else if (motifLower.includes('absence')) {
+                // Absence = Unexcused absence
+                emp.totalAbsentDays++;
+              } else {
+                // Other motifs count as absence
+                emp.totalAbsentDays++;
+              }
             }
           });
         }
@@ -212,8 +231,8 @@ export const EmployeeDetailModal = ({ isOpen, onClose, kpiData, isDark = false }
             totalHours += presenceHours;
           }
 
-          // Parse retard string like "00:09"
-          if (day.retard) {
+          // Parse retard string like "00:09" (only count if employee was present - not on congé/absence/sick)
+          if (day.retard && !day.motif) {
             const [retardHours, retardMins] = day.retard.split(':').map(Number);
             const tardiness = retardHours * 60 + retardMins;
             if (tardiness > 0) {
